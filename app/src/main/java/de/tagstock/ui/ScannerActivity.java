@@ -46,6 +46,7 @@ import de.tagstock.util.ScanResult;
  * Vollbild-Scanner: liest Barcodes und QR-Codes ueber die Kamera und
  * gleichzeitig NFC-Tags ueber den Reader-Mode.
  */
+@ExperimentalGetImage
 public class ScannerActivity extends AppCompatActivity {
 
     private ActivityScannerBinding binding;
@@ -160,7 +161,6 @@ public class ScannerActivity extends AppCompatActivity {
     }
 
     @SuppressLint("UnsafeOptInUsageError")
-    @ExperimentalGetImage
     private void analyze(@NonNull ImageProxy proxy) {
         Image image = proxy.getImage();
         if (image == null || handled.get()) {

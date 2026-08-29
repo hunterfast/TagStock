@@ -3,6 +3,7 @@ package de.tagstock.data;
 import androidx.annotation.NonNull;
 import androidx.room.ColumnInfo;
 import androidx.room.Entity;
+import androidx.room.Ignore;
 import androidx.room.PrimaryKey;
 
 /** Ein Lager (Standort), in dem Artikel abgelegt werden. */
@@ -28,6 +29,7 @@ public class Lager {
     public Lager() {
     }
 
+    @Ignore
     public Lager(@NonNull String name, String beschreibung, String ort) {
         this.name = name;
         this.beschreibung = beschreibung;

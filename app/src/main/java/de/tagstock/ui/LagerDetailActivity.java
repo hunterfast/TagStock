@@ -194,13 +194,7 @@ public class LagerDetailActivity extends AppCompatActivity implements ItemAdapte
     }
 
     private void editLager() {
-        Dialogs.textInput(this, getString(R.string.lager_bearbeiten),
-                getString(R.string.lager_name), lager.name, name -> {
-                    lager.name = name;
-                    repository.updateLager(lager);
-                    setTitle(name);
-                    Toast.makeText(this, R.string.lager_gespeichert, Toast.LENGTH_SHORT).show();
-                });
+        LagerDialog.show(this, repository, lager, () -> setTitle(lager.name));
     }
 
     @Override

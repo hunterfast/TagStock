@@ -34,6 +34,7 @@
         android:layout_height="?attr/actionBarSize"
         android:background="@android:color/transparent"
         app:navigationIcon="@drawable/ic_close"
+        app:navigationIconTint="@color/white"
         app:title="@string/scan_titel"
         app:titleTextColor="@color/white" />
 

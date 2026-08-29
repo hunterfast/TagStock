@@ -9,9 +9,6 @@
     <string name="action_edit">Bearbeiten</string>
     <string name="action_ok">OK</string>
     <string name="action_scan">Scannen</string>
-    <string name="action_back">Zurück</string>
-    <string name="action_search">Suchen</string>
-    <string name="action_add">Hinzufügen</string>
 
     <!-- Status -->
     <string name="status_vorhanden">Vorhanden</string>
@@ -29,7 +26,6 @@
     <string name="codetype_manuell">Manuell erfasst</string>
 
     <!-- Lagerübersicht -->
-    <string name="lager_uebersicht">Lager</string>
     <string name="lager_neu">Neues Lager</string>
     <string name="lager_bearbeiten">Lager bearbeiten</string>
     <string name="lager_name">Name des Lagers</string>
@@ -75,7 +71,6 @@
     <string name="scan_hinweis">Barcode oder QR-Code in den Rahmen halten – oder ein NFC-Tag an die Rückseite des Geräts.</string>
     <string name="scan_hinweis_nur_nfc">Halte ein NFC-Tag an die Rückseite des Geräts.</string>
     <string name="scan_nfc_aus">NFC ist ausgeschaltet – nur Kamera-Scan möglich.</string>
-    <string name="scan_kamera_fehlt">Kamera nicht verfügbar</string>
     <string name="scan_kamera_verweigert">Ohne Kamerafreigabe ist nur das Lesen von NFC-Tags möglich.</string>
     <string name="scan_taschenlampe">Taschenlampe</string>
     <string name="scan_manuell">Code manuell eingeben</string>
@@ -99,7 +94,6 @@
 
     <!-- Menü -->
     <string name="menu_lager_neu">Lager anlegen</string>
-    <string name="menu_scan">Scannen</string>
 
     <!-- Barcode-Formate -->
     <string name="format_unbekannt">Code</string>

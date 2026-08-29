@@ -3,7 +3,6 @@ package de.tagstock.ui;
 import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
-import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -25,7 +24,6 @@ import de.tagstock.R;
 import de.tagstock.data.Lager;
 import de.tagstock.data.Repository;
 import de.tagstock.databinding.ActivityMainBinding;
-import de.tagstock.databinding.DialogLagerEditBinding;
 import de.tagstock.util.NfcHelper;
 import de.tagstock.util.ScanResult;
 
@@ -99,7 +97,7 @@ public class MainActivity extends AppCompatActivity implements LagerAdapter.List
     @Override
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
         if (item.getItemId() == R.id.action_add_lager) {
-            showLagerDialog(null);
+            LagerDialog.show(this, repository, null, null);
             return true;
         }
         return super.onOptionsItemSelected(item);
@@ -117,7 +115,7 @@ public class MainActivity extends AppCompatActivity implements LagerAdapter.List
                 .setTitle(lager.name)
                 .setItems(optionen, (dialog, which) -> {
                     if (which == 0) {
-                        showLagerDialog(lager);
+                        LagerDialog.show(this, repository, lager, null);
                     } else {
                         confirmDeleteLager(lager);
                     }
@@ -133,43 +131,6 @@ public class MainActivity extends AppCompatActivity implements LagerAdapter.List
                 .setPositiveButton(R.string.action_delete, (dialog, which) -> {
                     repository.deleteLager(lager);
                     Toast.makeText(this, R.string.lager_geloescht, Toast.LENGTH_SHORT).show();
-                })
-                .show();
-    }
-
-    /** Dialog zum Anlegen (lager == null) oder Bearbeiten eines Lagers. */
-    private void showLagerDialog(@Nullable Lager lager) {
-        DialogLagerEditBinding dialogBinding = DialogLagerEditBinding.inflate(LayoutInflater.from(this));
-        if (lager != null) {
-            dialogBinding.editLagerName.setText(lager.name);
-            dialogBinding.editLagerOrt.setText(lager.ort);
-            dialogBinding.editLagerBeschreibung.setText(lager.beschreibung);
-        }
-
-        new MaterialAlertDialogBuilder(this)
-                .setTitle(lager == null ? R.string.lager_neu : R.string.lager_bearbeiten)
-                .setView(dialogBinding.getRoot())
-                .setNegativeButton(R.string.action_cancel, null)
-                .setPositiveButton(R.string.action_save, (dialog, which) -> {
-                    String name = value(dialogBinding.editLagerName.getText());
-                    if (name.isEmpty()) {
-                        Toast.makeText(this, R.string.lager_name_fehlt, Toast.LENGTH_SHORT).show();
-                        return;
-                    }
-                    String ort = value(dialogBinding.editLagerOrt.getText());
-                    String beschreibung = value(dialogBinding.editLagerBeschreibung.getText());
-
-                    if (lager == null) {
-                        repository.insertLager(new Lager(name, nullIfEmpty(beschreibung), nullIfEmpty(ort)),
-                                id -> Toast.makeText(this, R.string.lager_gespeichert,
-                                        Toast.LENGTH_SHORT).show());
-                    } else {
-                        lager.name = name;
-                        lager.ort = nullIfEmpty(ort);
-                        lager.beschreibung = nullIfEmpty(beschreibung);
-                        repository.updateLager(lager);
-                        Toast.makeText(this, R.string.lager_gespeichert, Toast.LENGTH_SHORT).show();
-                    }
                 })
                 .show();
     }
@@ -219,14 +180,5 @@ public class MainActivity extends AppCompatActivity implements LagerAdapter.List
                         startActivity(ItemEditActivity.newIntent(this, lagerListe.get(which).id, scan)))
                 .setNegativeButton(R.string.action_cancel, null)
                 .show();
-    }
-
-    private String value(CharSequence text) {
-        return text == null ? "" : text.toString().trim();
-    }
-
-    @Nullable
-    private String nullIfEmpty(String value) {
-        return value.isEmpty() ? null : value;
     }
 }
