@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/status_vorhanden"
+        android:title="@string/status_vorhanden" />
+    <item
+        android:id="@+id/status_verliehen"
+        android:title="@string/status_verliehen" />
+    <item
+        android:id="@+id/status_verloren"
+        android:title="@string/status_verloren" />
+    <item
+        android:id="@+id/item_bearbeiten"
+        android:title="@string/action_edit" />
+    <item
+        android:id="@+id/item_loeschen"
+        android:title="@string/action_delete" />
+</menu>

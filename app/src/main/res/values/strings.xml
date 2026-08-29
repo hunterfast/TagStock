@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">TagStock</string>
+
+    <!-- Allgemein -->
+    <string name="action_save">Speichern</string>
+    <string name="action_cancel">Abbrechen</string>
+    <string name="action_delete">Löschen</string>
+    <string name="action_edit">Bearbeiten</string>
+    <string name="action_ok">OK</string>
+    <string name="action_scan">Scannen</string>
+    <string name="action_back">Zurück</string>
+    <string name="action_search">Suchen</string>
+    <string name="action_add">Hinzufügen</string>
+
+    <!-- Status -->
+    <string name="status_vorhanden">Vorhanden</string>
+    <string name="status_verliehen">Verliehen</string>
+    <string name="status_verloren">Verloren</string>
+    <string name="status_alle">Alle</string>
+    <string name="status_label">Status</string>
+    <string name="status_geaendert">Status geändert: %1$s</string>
+
+    <!-- Code-Typen -->
+    <string name="codetype_keiner">Kein Code</string>
+    <string name="codetype_barcode">Barcode</string>
+    <string name="codetype_qr">QR-Code</string>
+    <string name="codetype_nfc">NFC-Tag</string>
+    <string name="codetype_manuell">Manuell erfasst</string>
+
+    <!-- Lagerübersicht -->
+    <string name="lager_uebersicht">Lager</string>
+    <string name="lager_neu">Neues Lager</string>
+    <string name="lager_bearbeiten">Lager bearbeiten</string>
+    <string name="lager_name">Name des Lagers</string>
+    <string name="lager_beschreibung">Beschreibung (optional)</string>
+    <string name="lager_ort">Ort (optional)</string>
+    <string name="lager_leer_titel">Noch kein Lager angelegt</string>
+    <string name="lager_leer_text">Lege dein erstes Lager an, zum Beispiel „Werkstatt“ oder „Keller“. Danach kannst du Artikel per Barcode, QR-Code oder NFC-Tag erfassen.</string>
+    <string name="lager_loeschen_titel">Lager löschen?</string>
+    <string name="lager_loeschen_text">„%1$s“ und alle darin enthaltenen Artikel werden endgültig gelöscht.</string>
+    <string name="lager_gespeichert">Lager gespeichert</string>
+    <string name="lager_geloescht">Lager gelöscht</string>
+    <string name="lager_name_fehlt">Bitte einen Namen eingeben</string>
+    <string name="lager_artikel_anzahl">%1$d Artikel</string>
+    <string name="lager_auswaehlen">Lager auswählen</string>
+
+    <!-- Artikelliste -->
+    <string name="artikel_neu">Neuer Artikel</string>
+    <string name="artikel_bearbeiten">Artikel bearbeiten</string>
+    <string name="artikel_suchen">Artikel oder Code suchen</string>
+    <string name="artikel_leer_titel">Keine Artikel</string>
+    <string name="artikel_leer_text">Scanne einen Barcode, QR-Code oder NFC-Tag oder lege einen Artikel manuell an.</string>
+    <string name="artikel_leer_filter">Kein Artikel passt zum Filter.</string>
+    <string name="artikel_gespeichert">Artikel gespeichert</string>
+    <string name="artikel_geloescht">Artikel gelöscht</string>
+    <string name="artikel_loeschen_titel">Artikel löschen?</string>
+    <string name="artikel_loeschen_text">„%1$s“ wird endgültig gelöscht.</string>
+    <string name="artikel_name">Bezeichnung</string>
+    <string name="artikel_name_fehlt">Bitte eine Bezeichnung eingeben</string>
+    <string name="artikel_beschreibung">Beschreibung (optional)</string>
+    <string name="artikel_menge">Menge</string>
+    <string name="artikel_notiz">Notiz (optional)</string>
+    <string name="artikel_verliehen_an">Verliehen an</string>
+    <string name="artikel_verliehen_seit">seit %1$s</string>
+    <string name="artikel_code">Code</string>
+    <string name="artikel_code_leer">Noch kein Code hinterlegt</string>
+    <string name="artikel_code_entfernen">Code entfernen</string>
+    <string name="artikel_code_scannen">Code scannen</string>
+    <string name="artikel_lager">Lager</string>
+    <string name="artikel_menge_kurz">Menge: %1$d</string>
+
+    <!-- Scannen -->
+    <string name="scan_titel">Code scannen</string>
+    <string name="scan_hinweis">Barcode oder QR-Code in den Rahmen halten – oder ein NFC-Tag an die Rückseite des Geräts.</string>
+    <string name="scan_hinweis_nur_nfc">Halte ein NFC-Tag an die Rückseite des Geräts.</string>
+    <string name="scan_nfc_aus">NFC ist ausgeschaltet – nur Kamera-Scan möglich.</string>
+    <string name="scan_kamera_fehlt">Kamera nicht verfügbar</string>
+    <string name="scan_kamera_verweigert">Ohne Kamerafreigabe ist nur das Lesen von NFC-Tags möglich.</string>
+    <string name="scan_taschenlampe">Taschenlampe</string>
+    <string name="scan_manuell">Code manuell eingeben</string>
+    <string name="scan_manuell_titel">Code eingeben</string>
+    <string name="scan_erkannt">Erkannt: %1$s</string>
+
+    <!-- Scan-Treffer -->
+    <string name="treffer_gefunden">Artikel gefunden: %1$s</string>
+    <string name="treffer_nicht_gefunden_titel">Kein Artikel zu diesem Code</string>
+    <string name="treffer_nicht_gefunden_text">Code %1$s ist noch keinem Artikel zugeordnet. Jetzt neu anlegen?</string>
+    <string name="treffer_anlegen">Anlegen</string>
+    <string name="treffer_anderes_lager_titel">Artikel liegt in einem anderen Lager</string>
+    <string name="treffer_anderes_lager_text">„%1$s“ ist im Lager „%2$s“ erfasst. Hierher verschieben?</string>
+    <string name="treffer_verschieben">Verschieben</string>
+    <string name="treffer_oeffnen">Öffnen</string>
+    <string name="treffer_verschoben">Artikel verschoben nach „%1$s“</string>
+    <string name="treffer_kein_lager">Bitte zuerst ein Lager anlegen</string>
+
+    <!-- NFC -->
+    <string name="nfc_tag_gelesen">NFC-Tag gelesen: %1$s</string>
+
+    <!-- Menü -->
+    <string name="menu_lager_neu">Lager anlegen</string>
+    <string name="menu_scan">Scannen</string>
+
+    <!-- Barcode-Formate -->
+    <string name="format_unbekannt">Code</string>
+</resources>
