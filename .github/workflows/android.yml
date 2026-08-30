@@ -32,7 +32,11 @@ jobs:
         run: ./gradlew --no-daemon --stacktrace testDebugUnitTest
 
       - name: Lint
-        run: ./gradlew --no-daemon lintDebug
+        run: |
+          ./gradlew --no-daemon lintDebug || {
+            find app/build -name 'lint-results-*.txt' -exec cat {} +
+            exit 1
+          }
 
       - name: Debug-APK bauen
         run: ./gradlew --no-daemon --stacktrace assembleDebug

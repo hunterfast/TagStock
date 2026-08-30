@@ -42,7 +42,6 @@ import de.tagstock.util.ScanResult;
  * Gemeinsame Grundlage der scannenden Bildschirme: Kameravorschau mit
  * Barcode-Erkennung und parallel aktivem NFC-Reader-Mode.
  */
-@ExperimentalGetImage
 public abstract class ScannerBaseActivity extends AppCompatActivity {
 
     /** Derselbe Code wird innerhalb dieser Zeitspanne nur einmal gemeldet. */
@@ -145,6 +144,7 @@ public abstract class ScannerBaseActivity extends AppCompatActivity {
         }, ContextCompat.getMainExecutor(this));
     }
 
+    @SuppressLint("UnsafeOptInUsageError")
     private void bindeAnwendungsfaelle(ProcessCameraProvider provider) {
         Preview vorschau = new Preview.Builder().build();
         vorschau.setSurfaceProvider(preview.getSurfaceProvider());
@@ -168,6 +168,7 @@ public abstract class ScannerBaseActivity extends AppCompatActivity {
     protected void onKameraBereit() {
     }
 
+    @ExperimentalGetImage
     @SuppressLint("UnsafeOptInUsageError")
     private void analysieren(@NonNull ImageProxy proxy) {
         Image bild = proxy.getImage();

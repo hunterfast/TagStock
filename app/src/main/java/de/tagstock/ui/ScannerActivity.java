@@ -8,7 +8,6 @@ import android.view.View;
 import android.widget.Toast;
 
 import androidx.annotation.Nullable;
-import androidx.camera.core.ExperimentalGetImage;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -23,7 +22,6 @@ import de.tagstock.util.ScanResult;
  * Vollbild-Scanner fuer einen einzelnen Code. Liest Barcodes und QR-Codes ueber
  * die Kamera und gleichzeitig NFC-Tags ueber den Reader-Mode.
  */
-@ExperimentalGetImage
 public class ScannerActivity extends ScannerBaseActivity {
 
     private ActivityScannerBinding binding;

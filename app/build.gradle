@@ -51,6 +51,10 @@ android {
         }
     }
 
+    lint {
+        textReport = true
+    }
+
     testOptions {
         unitTests {
             includeAndroidResources = true

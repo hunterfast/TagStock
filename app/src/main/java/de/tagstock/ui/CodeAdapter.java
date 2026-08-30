@@ -8,6 +8,8 @@ import androidx.recyclerview.widget.DiffUtil;
 import androidx.recyclerview.widget.ListAdapter;
 import androidx.recyclerview.widget.RecyclerView;
 
+import java.util.Objects;
+
 import de.tagstock.data.Code;
 import de.tagstock.databinding.ItemCodeBinding;
 import de.tagstock.util.Formatter;
@@ -34,7 +36,7 @@ public class CodeAdapter extends ListAdapter<Code, CodeAdapter.CodeViewHolder> {
 
         @Override
         public boolean areContentsTheSame(@NonNull Code a, @NonNull Code b) {
-            return a.wert.equals(b.wert) && a.typ == b.typ;
+            return a.wert.equals(b.wert) && Objects.equals(a.typ, b.typ);
         }
     };
 

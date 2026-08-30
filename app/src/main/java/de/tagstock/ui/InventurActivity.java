@@ -11,7 +11,6 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.camera.core.ExperimentalGetImage;
 import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -34,7 +33,6 @@ import de.tagstock.util.ScanResult;
  * wandert in eine Liste. Am Ende wertet {@link InventurErgebnisActivity} aus,
  * was fehlt, was aus einem anderen Lager stammt und welche Codes unbekannt sind.
  */
-@ExperimentalGetImage
 public class InventurActivity extends ScannerBaseActivity {
 
     private static final String EXTRA_LAGER_ID = "de.tagstock.extra.LAGER_ID";
