@@ -39,10 +39,38 @@
             android:parentActivityName=".ui.MainActivity" />
 
         <activity
+            android:name=".ui.SucheActivity"
+            android:exported="false"
+            android:parentActivityName=".ui.MainActivity"
+            android:windowSoftInputMode="adjustResize" />
+
+        <activity
             android:name=".ui.ScannerActivity"
             android:exported="false"
             android:screenOrientation="portrait"
             android:theme="@style/Theme.TagStock.Scanner" />
+
+        <activity
+            android:name=".ui.InventurActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.TagStock.Scanner" />
+
+        <activity
+            android:name=".ui.InventurErgebnisActivity"
+            android:exported="false"
+            android:parentActivityName=".ui.MainActivity" />
+
+        <!-- Gibt der Kamera-App Schreibrecht auf genau ein Verzeichnis. -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fotos"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
     </application>
 
 </manifest>

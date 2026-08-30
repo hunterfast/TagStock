@@ -4,6 +4,7 @@ import android.content.Context;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.core.content.ContextCompat;
@@ -16,7 +17,7 @@ import de.tagstock.data.Lager;
 import de.tagstock.data.LagerWithCount;
 import de.tagstock.databinding.ItemLagerBinding;
 
-/** Zeigt die Lager mit den Artikelzahlen je Status. */
+/** Zeigt die Lager mit den Stueckzahlen je Zustand. */
 public class LagerAdapter extends ListAdapter<LagerWithCount, LagerAdapter.LagerViewHolder> {
 
     public interface Listener {
@@ -42,15 +43,15 @@ public class LagerAdapter extends ListAdapter<LagerWithCount, LagerAdapter.Lager
                 @Override
                 public boolean areContentsTheSame(@NonNull LagerWithCount a, @NonNull LagerWithCount b) {
                     return a.lager.name.equals(b.lager.name)
-                            && equal(a.lager.ort, b.lager.ort)
-                            && equal(a.lager.beschreibung, b.lager.beschreibung)
+                            && gleich(a.lager.ort, b.lager.ort)
+                            && gleich(a.lager.beschreibung, b.lager.beschreibung)
                             && a.gesamt == b.gesamt
-                            && a.vorhanden == b.vorhanden
+                            && a.artikel == b.artikel
                             && a.verliehen == b.verliehen
                             && a.verloren == b.verloren;
                 }
 
-                private boolean equal(String a, String b) {
+                private boolean gleich(String a, String b) {
                     return a == null ? b == null : a.equals(b);
                 }
             };
@@ -58,9 +59,8 @@ public class LagerAdapter extends ListAdapter<LagerWithCount, LagerAdapter.Lager
     @NonNull
     @Override
     public LagerViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        ItemLagerBinding binding = ItemLagerBinding.inflate(
-                LayoutInflater.from(parent.getContext()), parent, false);
-        return new LagerViewHolder(binding);
+        return new LagerViewHolder(ItemLagerBinding.inflate(
+                LayoutInflater.from(parent.getContext()), parent, false));
     }
 
     @Override
@@ -92,12 +92,13 @@ public class LagerAdapter extends ListAdapter<LagerWithCount, LagerAdapter.Lager
                 binding.textOrt.setText(ort);
             }
 
-            binding.textGesamt.setText(context.getString(R.string.lager_artikel_anzahl, entry.gesamt));
-            bindCount(binding.textVorhanden, entry.vorhanden, R.string.status_vorhanden,
+            binding.textGesamt.setText(context.getResources().getQuantityString(
+                    R.plurals.lager_artikel_anzahl, entry.artikel, entry.artikel));
+            zaehler(binding.textVorhanden, entry.vorhanden(), R.string.bestand_vorhanden,
                     R.color.status_vorhanden);
-            bindCount(binding.textVerliehen, entry.verliehen, R.string.status_verliehen,
+            zaehler(binding.textVerliehen, entry.verliehen, R.string.bestand_verliehen,
                     R.color.status_verliehen);
-            bindCount(binding.textVerloren, entry.verloren, R.string.status_verloren,
+            zaehler(binding.textVerloren, entry.verloren, R.string.bestand_verloren,
                     R.color.status_verloren);
 
             binding.getRoot().setOnClickListener(v -> listener.onLagerClick(entry.lager));
@@ -107,12 +108,11 @@ public class LagerAdapter extends ListAdapter<LagerWithCount, LagerAdapter.Lager
             });
         }
 
-        private void bindCount(android.widget.TextView view, int count, int labelRes, int colorRes) {
+        private void zaehler(TextView view, int anzahl, int formatRes, int farbeRes) {
             Context context = view.getContext();
-            view.setText(count + " " + context.getString(labelRes).toLowerCase(
-                    java.util.Locale.getDefault()));
-            view.setTextColor(ContextCompat.getColor(context, colorRes));
-            view.setVisibility(count > 0 ? View.VISIBLE : View.GONE);
+            view.setText(context.getString(formatRes, anzahl));
+            view.setTextColor(ContextCompat.getColor(context, farbeRes));
+            view.setVisibility(anzahl > 0 ? View.VISIBLE : View.GONE);
         }
     }
 }

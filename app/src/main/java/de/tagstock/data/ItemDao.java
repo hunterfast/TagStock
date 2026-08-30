@@ -5,12 +5,17 @@ import androidx.room.Dao;
 import androidx.room.Delete;
 import androidx.room.Insert;
 import androidx.room.Query;
+import androidx.room.Transaction;
 import androidx.room.Update;
 
 import java.util.List;
 
 @Dao
 public interface ItemDao {
+
+    /** Offene Ausleihen je Artikel; wird von allen Zustandsabfragen verwendet. */
+    String VERLIEHEN = "(SELECT COALESCE(SUM(v.menge), 0) FROM verleih v"
+            + " WHERE v.itemId = i.id AND v.zurueckAm IS NULL) AS verliehen";
 
     @Insert
     long insert(Item item);
@@ -24,29 +29,34 @@ public interface ItemDao {
     @Query("SELECT * FROM items WHERE id = :id")
     Item getById(long id);
 
-    @Query("SELECT * FROM items WHERE id = :id")
-    LiveData<Item> observeById(long id);
+    @Transaction
+    @Query("SELECT i.*, " + VERLIEHEN + " FROM items i WHERE i.id = :id")
+    LiveData<ItemWithState> observeState(long id);
 
-    @Query("SELECT * FROM items WHERE lagerId = :lagerId ORDER BY name COLLATE NOCASE ASC")
-    LiveData<List<Item>> observeByLager(long lagerId);
+    @Transaction
+    @Query("SELECT i.*, " + VERLIEHEN + " FROM items i WHERE i.id = :id")
+    ItemWithState getState(long id);
 
-    @Query("SELECT * FROM items ORDER BY geaendertAm DESC")
-    LiveData<List<Item>> observeAll();
+    @Transaction
+    @Query("SELECT i.*, " + VERLIEHEN + " FROM items i WHERE i.lagerId = :lagerId"
+            + " ORDER BY i.name COLLATE NOCASE ASC")
+    LiveData<List<ItemWithState>> observeByLager(long lagerId);
 
-    /** Suche ueber alle Lager hinweg (Name, Beschreibung, Code). */
-    @Query("SELECT * FROM items WHERE name LIKE '%' || :query || '%'"
-            + " OR beschreibung LIKE '%' || :query || '%'"
-            + " OR code LIKE '%' || :query || '%'"
-            + " ORDER BY name COLLATE NOCASE ASC")
-    LiveData<List<Item>> search(String query);
+    @Transaction
+    @Query("SELECT i.*, " + VERLIEHEN + " FROM items i ORDER BY i.name COLLATE NOCASE ASC")
+    LiveData<List<ItemWithState>> observeAll();
 
-    /** Erster Treffer zu einem gescannten Code, unabhaengig vom Lager. */
-    @Query("SELECT * FROM items WHERE code = :code LIMIT 1")
-    Item findByCode(String code);
+    @Transaction
+    @Query("SELECT i.*, " + VERLIEHEN + " FROM items i WHERE i.lagerId = :lagerId")
+    List<ItemWithState> getByLager(long lagerId);
 
-    @Query("SELECT * FROM items WHERE code = :code AND lagerId = :lagerId LIMIT 1")
-    Item findByCodeInLager(String code, long lagerId);
+    @Transaction
+    @Query("SELECT i.*, " + VERLIEHEN + " FROM items i")
+    List<ItemWithState> getAllStates();
 
-    @Query("SELECT COUNT(*) FROM items WHERE lagerId = :lagerId")
-    int countInLager(long lagerId);
+    @Query("SELECT * FROM items")
+    List<Item> getAll();
+
+    @Query("DELETE FROM items")
+    void deleteAll();
 }

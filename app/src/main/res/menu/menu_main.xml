@@ -2,8 +2,25 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
     <item
+        android:id="@+id/action_suche"
+        android:icon="@drawable/ic_search"
+        android:title="@string/suche_titel"
+        app:showAsAction="always" />
+    <item
         android:id="@+id/action_add_lager"
         android:icon="@drawable/ic_add"
         android:title="@string/menu_lager_neu"
         app:showAsAction="always" />
+    <item
+        android:id="@+id/action_export_json"
+        android:title="@string/export_json"
+        app:showAsAction="never" />
+    <item
+        android:id="@+id/action_export_csv"
+        android:title="@string/export_csv"
+        app:showAsAction="never" />
+    <item
+        android:id="@+id/action_import"
+        android:title="@string/import_aktion"
+        app:showAsAction="never" />
 </menu>

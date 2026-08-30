@@ -7,6 +7,10 @@
         android:title="@string/artikel_neu"
         app:showAsAction="always" />
     <item
+        android:id="@+id/action_inventur"
+        android:title="@string/inventur_starten"
+        app:showAsAction="never" />
+    <item
         android:id="@+id/action_edit_lager"
         android:title="@string/lager_bearbeiten"
         app:showAsAction="never" />

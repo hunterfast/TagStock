@@ -4,9 +4,8 @@ import androidx.annotation.StringRes;
 
 import de.tagstock.R;
 
-/** Herkunft des gespeicherten Codes eines Artikels. */
+/** Herkunft eines Codes. */
 public enum CodeType {
-    KEINER(R.string.codetype_keiner),
     BARCODE(R.string.codetype_barcode),
     QR(R.string.codetype_qr),
     NFC(R.string.codetype_nfc),
@@ -27,6 +26,6 @@ public enum CodeType {
                 }
             }
         }
-        return KEINER;
+        return MANUELL;
     }
 }

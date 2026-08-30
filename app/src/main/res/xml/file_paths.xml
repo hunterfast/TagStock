@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- Artikelfotos liegen im privaten App-Verzeichnis; die Kamera-App
+         bekommt ueber den FileProvider nur auf diesen Ordner Zugriff. -->
+    <files-path
+        name="fotos"
+        path="fotos/" />
+</paths>

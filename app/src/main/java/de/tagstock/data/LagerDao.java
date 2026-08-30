@@ -34,10 +34,16 @@ public interface LagerDao {
     Lager getById(long id);
 
     @Query("SELECT l.*,"
-            + " (SELECT COUNT(*) FROM items i WHERE i.lagerId = l.id) AS gesamt,"
-            + " (SELECT COUNT(*) FROM items i WHERE i.lagerId = l.id AND i.status = 'VORHANDEN') AS vorhanden,"
-            + " (SELECT COUNT(*) FROM items i WHERE i.lagerId = l.id AND i.status = 'VERLIEHEN') AS verliehen,"
-            + " (SELECT COUNT(*) FROM items i WHERE i.lagerId = l.id AND i.status = 'VERLOREN') AS verloren"
+            + " (SELECT COUNT(*) FROM items i WHERE i.lagerId = l.id) AS artikel,"
+            + " (SELECT COALESCE(SUM(i.menge), 0) FROM items i WHERE i.lagerId = l.id) AS gesamt,"
+            + " (SELECT COALESCE(SUM(i.mengeVerloren), 0) FROM items i WHERE i.lagerId = l.id)"
+            + "   AS verloren,"
+            + " (SELECT COALESCE(SUM(v.menge), 0) FROM verleih v"
+            + "   JOIN items i ON i.id = v.itemId"
+            + "   WHERE i.lagerId = l.id AND v.zurueckAm IS NULL) AS verliehen"
             + " FROM lager l ORDER BY l.name COLLATE NOCASE ASC")
     LiveData<List<LagerWithCount>> observeAllWithCounts();
+
+    @Query("DELETE FROM lager")
+    void deleteAll();
 }

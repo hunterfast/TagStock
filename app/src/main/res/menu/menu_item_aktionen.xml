@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/aktion_ausleihen"
+        android:title="@string/aktion_ausleihen" />
+    <item
+        android:id="@+id/aktion_zurueck"
+        android:title="@string/aktion_zurueck" />
+    <item
+        android:id="@+id/aktion_verloren"
+        android:title="@string/aktion_verloren" />
+    <item
+        android:id="@+id/aktion_gefunden"
+        android:title="@string/aktion_gefunden" />
+    <item
+        android:id="@+id/aktion_bearbeiten"
+        android:title="@string/action_edit" />
+    <item
+        android:id="@+id/aktion_loeschen"
+        android:title="@string/action_delete" />
+</menu>

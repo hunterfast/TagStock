@@ -2,6 +2,7 @@ package de.tagstock.ui;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -21,13 +22,16 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import java.util.List;
 
 import de.tagstock.R;
+import de.tagstock.data.Bestand;
 import de.tagstock.data.Lager;
 import de.tagstock.data.Repository;
 import de.tagstock.databinding.ActivityMainBinding;
+import de.tagstock.util.Hintergrund;
 import de.tagstock.util.NfcHelper;
 import de.tagstock.util.ScanResult;
+import de.tagstock.util.Sicherung;
 
-/** Startbildschirm: Uebersicht aller Lager und Einstieg in den Scanner. */
+/** Startbildschirm: Uebersicht aller Lager, Scan-Einstieg, Suche und Sicherung. */
 public class MainActivity extends AppCompatActivity implements LagerAdapter.Listener {
 
     private ActivityMainBinding binding;
@@ -39,10 +43,21 @@ public class MainActivity extends AppCompatActivity implements LagerAdapter.List
                 if (result.getResultCode() == Activity.RESULT_OK) {
                     ScanResult scan = ScanResult.fromIntent(result.getData());
                     if (scan != null) {
-                        handleScan(scan);
+                        scanVerarbeiten(scan);
                     }
                 }
             });
+
+    private final ActivityResultLauncher<String> jsonExport = registerForActivityResult(
+            new ActivityResultContracts.CreateDocument("application/json"),
+            uri -> exportieren(uri, true));
+
+    private final ActivityResultLauncher<String> csvExport = registerForActivityResult(
+            new ActivityResultContracts.CreateDocument("text/csv"),
+            uri -> exportieren(uri, false));
+
+    private final ActivityResultLauncher<String[]> importAuswahl = registerForActivityResult(
+            new ActivityResultContracts.OpenDocument(), this::importieren);
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -77,7 +92,7 @@ public class MainActivity extends AppCompatActivity implements LagerAdapter.List
             runOnUiThread(() -> {
                 Toast.makeText(this, getString(R.string.nfc_tag_gelesen, scan.code),
                         Toast.LENGTH_SHORT).show();
-                handleScan(scan);
+                scanVerarbeiten(scan);
             });
         });
     }
@@ -96,8 +111,25 @@ public class MainActivity extends AppCompatActivity implements LagerAdapter.List
 
     @Override
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
-        if (item.getItemId() == R.id.action_add_lager) {
+        int id = item.getItemId();
+        if (id == R.id.action_add_lager) {
             LagerDialog.show(this, repository, null, null);
+            return true;
+        }
+        if (id == R.id.action_suche) {
+            startActivity(new Intent(this, SucheActivity.class));
+            return true;
+        }
+        if (id == R.id.action_export_json) {
+            jsonExport.launch(Sicherung.dateiname("json"));
+            return true;
+        }
+        if (id == R.id.action_export_csv) {
+            csvExport.launch(Sicherung.dateiname("csv"));
+            return true;
+        }
+        if (id == R.id.action_import) {
+            importAuswahl.launch(new String[]{"application/json", "text/plain", "*/*"});
             return true;
         }
         return super.onOptionsItemSelected(item);
@@ -113,42 +145,44 @@ public class MainActivity extends AppCompatActivity implements LagerAdapter.List
         String[] optionen = {getString(R.string.action_edit), getString(R.string.action_delete)};
         new MaterialAlertDialogBuilder(this)
                 .setTitle(lager.name)
-                .setItems(optionen, (dialog, which) -> {
-                    if (which == 0) {
+                .setItems(optionen, (dialog, welcher) -> {
+                    if (welcher == 0) {
                         LagerDialog.show(this, repository, lager, null);
                     } else {
-                        confirmDeleteLager(lager);
+                        lagerLoeschen(lager);
                     }
                 })
                 .show();
     }
 
-    private void confirmDeleteLager(Lager lager) {
+    private void lagerLoeschen(Lager lager) {
         new MaterialAlertDialogBuilder(this)
                 .setTitle(R.string.lager_loeschen_titel)
                 .setMessage(getString(R.string.lager_loeschen_text, lager.name))
                 .setNegativeButton(R.string.action_cancel, null)
-                .setPositiveButton(R.string.action_delete, (dialog, which) -> {
+                .setPositiveButton(R.string.action_delete, (dialog, welcher) -> {
                     repository.deleteLager(lager);
                     Toast.makeText(this, R.string.lager_geloescht, Toast.LENGTH_SHORT).show();
                 })
                 .show();
     }
 
+    // --------------------------------------------------------------------- Scan
+
     /** Gescannten Code ueber alle Lager hinweg suchen. */
-    private void handleScan(ScanResult scan) {
-        repository.findByCode(scan.code, item -> {
-            if (item != null) {
-                Toast.makeText(this, getString(R.string.treffer_gefunden, item.name),
+    private void scanVerarbeiten(ScanResult scan) {
+        repository.findeZuCode(scan.werte(), treffer -> {
+            if (treffer != null) {
+                Toast.makeText(this, getString(R.string.treffer_gefunden, treffer.item.item.name),
                         Toast.LENGTH_SHORT).show();
-                startActivity(ItemEditActivity.editIntent(this, item.id));
+                startActivity(ItemEditActivity.editIntent(this, treffer.item.item.id));
             } else {
-                askCreateItem(scan);
+                artikelAnlegenFragen(scan);
             }
         });
     }
 
-    private void askCreateItem(ScanResult scan) {
+    private void artikelAnlegenFragen(ScanResult scan) {
         repository.loadAllLager(lagerListe -> {
             if (lagerListe.isEmpty()) {
                 Toast.makeText(this, R.string.treffer_kein_lager, Toast.LENGTH_LONG).show();
@@ -160,25 +194,83 @@ public class MainActivity extends AppCompatActivity implements LagerAdapter.List
                         .setTitle(R.string.treffer_nicht_gefunden_titel)
                         .setMessage(getString(R.string.treffer_nicht_gefunden_text, scan.code))
                         .setNegativeButton(R.string.action_cancel, null)
-                        .setPositiveButton(R.string.treffer_anlegen, (dialog, which) ->
+                        .setPositiveButton(R.string.treffer_anlegen, (dialog, welcher) ->
                                 startActivity(ItemEditActivity.newIntent(this, ziel.id, scan)))
                         .show();
                 return;
             }
-            showLagerAuswahl(lagerListe, scan);
+            lagerAuswahl(lagerListe, scan);
         });
     }
 
-    private void showLagerAuswahl(List<Lager> lagerListe, ScanResult scan) {
+    private void lagerAuswahl(List<Lager> lagerListe, ScanResult scan) {
         String[] namen = new String[lagerListe.size()];
         for (int i = 0; i < lagerListe.size(); i++) {
             namen[i] = lagerListe.get(i).name;
         }
         new MaterialAlertDialogBuilder(this)
                 .setTitle(R.string.lager_auswaehlen)
-                .setItems(namen, (dialog, which) ->
-                        startActivity(ItemEditActivity.newIntent(this, lagerListe.get(which).id, scan)))
+                .setItems(namen, (dialog, welcher) ->
+                        startActivity(ItemEditActivity.newIntent(this, lagerListe.get(welcher).id, scan)))
                 .setNegativeButton(R.string.action_cancel, null)
+                .show();
+    }
+
+    // ---------------------------------------------------------------- Sicherung
+
+    private void exportieren(@Nullable Uri ziel, boolean alsJson) {
+        if (ziel == null) {
+            return;
+        }
+        repository.ladeAlles(bestand -> Hintergrund.starte(
+                () -> {
+                    String inhalt = alsJson ? Sicherung.alsJson(bestand) : Sicherung.alsCsv(bestand);
+                    Sicherung.schreibe(this, ziel, inhalt);
+                    return bestand.items.size();
+                },
+                anzahl -> Toast.makeText(this, getString(R.string.export_fertig, anzahl),
+                        Toast.LENGTH_LONG).show(),
+                fehler -> Toast.makeText(this, getString(R.string.export_fehler,
+                        String.valueOf(fehler.getMessage())), Toast.LENGTH_LONG).show()));
+    }
+
+    private void importieren(@Nullable Uri quelle) {
+        if (quelle == null) {
+            return;
+        }
+        Hintergrund.starte(
+                () -> Sicherung.ausJson(Sicherung.lies(this, quelle)),
+                bestand -> {
+                    if (bestand.istLeer()) {
+                        Toast.makeText(this, R.string.import_leer, Toast.LENGTH_LONG).show();
+                        return;
+                    }
+                    importArtFragen(bestand);
+                },
+                fehler -> Toast.makeText(this, getString(R.string.import_fehler,
+                        String.valueOf(fehler.getMessage())), Toast.LENGTH_LONG).show());
+    }
+
+    private void importArtFragen(Bestand bestand) {
+        new MaterialAlertDialogBuilder(this)
+                .setTitle(R.string.import_titel)
+                .setMessage(getString(R.string.import_frage,
+                        bestand.lager.size(), bestand.items.size()))
+                .setNeutralButton(R.string.action_cancel, null)
+                .setNegativeButton(R.string.import_ergaenzen, (dialog, welcher) ->
+                        repository.ergaenzeUm(bestand, anzahl -> Toast.makeText(this,
+                                getString(R.string.import_ergaenzt, anzahl),
+                                Toast.LENGTH_LONG).show()))
+                .setPositiveButton(R.string.import_ersetzen, (dialog, welcher) ->
+                        new MaterialAlertDialogBuilder(this)
+                                .setTitle(R.string.import_ersetzen_titel)
+                                .setMessage(R.string.import_ersetzen_text)
+                                .setNegativeButton(R.string.action_cancel, null)
+                                .setPositiveButton(R.string.import_ersetzen, (d, w) ->
+                                        repository.ersetzeAlles(bestand, erfolg ->
+                                                Toast.makeText(this, R.string.import_fertig,
+                                                        Toast.LENGTH_LONG).show()))
+                                .show())
                 .show();
     }
 }

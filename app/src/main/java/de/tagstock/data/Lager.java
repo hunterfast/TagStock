@@ -26,6 +26,13 @@ public class Lager {
     @ColumnInfo(name = "erstelltAm")
     public long erstelltAm = System.currentTimeMillis();
 
+    /**
+     * Nur waehrend eines Imports belegt: die urspruengliche ID aus der Sicherung,
+     * damit die Artikel dem neu angelegten Lager zugeordnet werden koennen.
+     */
+    @androidx.room.Ignore
+    public long importId;
+
     public Lager() {
     }
 

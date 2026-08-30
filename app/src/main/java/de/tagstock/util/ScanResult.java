@@ -2,6 +2,9 @@ package de.tagstock.util;
 
 import android.content.Intent;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import de.tagstock.data.CodeType;
 
 /** Ergebnis eines Scans (Barcode, QR-Code oder NFC-Tag). */
@@ -13,13 +16,30 @@ public class ScanResult {
 
     public final String code;
     public final CodeType codeType;
-    /** Zusatzinfo, z. B. "EAN-13" oder der Textinhalt eines NFC-Tags. */
+    /** Zusatzinfo: Barcode-Format oder der Textinhalt eines NFC-Tags. */
     public final String label;
 
     public ScanResult(String code, CodeType codeType, String label) {
         this.code = code;
         this.codeType = codeType;
         this.label = label;
+    }
+
+    /**
+     * Werte, unter denen ein Artikel gesucht werden kann. Bei NFC sind das die
+     * UID und - falls beschrieben - der Tag-Inhalt, damit auch ein Tag gefunden
+     * wird, dessen UID sich nicht auslesen laesst.
+     */
+    public List<String> werte() {
+        List<String> werte = new ArrayList<>(2);
+        if (code != null && !code.isEmpty()) {
+            werte.add(code);
+        }
+        if (codeType == CodeType.NFC && label != null && !label.isEmpty()
+                && !label.equals(code)) {
+            werte.add(label);
+        }
+        return werte;
     }
 
     public Intent toIntent() {

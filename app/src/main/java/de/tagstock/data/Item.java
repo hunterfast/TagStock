@@ -7,7 +7,13 @@ import androidx.room.ForeignKey;
 import androidx.room.Index;
 import androidx.room.PrimaryKey;
 
-/** Ein Artikel, der genau einem Lager zugeordnet ist. */
+/**
+ * Ein Artikel, der genau einem Lager zugeordnet ist.
+ *
+ * <p>{@code menge} ist der Gesamtbestand. Wie viele Stuecke davon verliehen sind,
+ * ergibt sich aus den offenen Eintraegen in {@link Verleih}; {@code mengeVerloren}
+ * haelt fest, wie viele Stuecke als verloren gemeldet wurden. Vorhanden ist der Rest.
+ */
 @Entity(
         tableName = "items",
         foreignKeys = @ForeignKey(
@@ -15,7 +21,7 @@ import androidx.room.PrimaryKey;
                 parentColumns = "id",
                 childColumns = "lagerId",
                 onDelete = ForeignKey.CASCADE),
-        indices = {@Index("lagerId"), @Index("code")})
+        indices = @Index("lagerId"))
 public class Item {
 
     @PrimaryKey(autoGenerate = true)
@@ -31,27 +37,17 @@ public class Item {
     @ColumnInfo(name = "beschreibung")
     public String beschreibung;
 
-    /** Barcode-, QR- oder NFC-Kennung. Null, wenn der Artikel nur manuell gepflegt wird. */
-    @ColumnInfo(name = "code")
-    public String code;
-
-    @NonNull
-    @ColumnInfo(name = "codeType")
-    public CodeType codeType = CodeType.KEINER;
-
+    /** Gesamtbestand dieses Artikels. */
     @ColumnInfo(name = "menge")
     public int menge = 1;
 
-    @NonNull
-    @ColumnInfo(name = "status")
-    public ItemStatus status = ItemStatus.VORHANDEN;
+    /** Davon als verloren gemeldet. */
+    @ColumnInfo(name = "mengeVerloren")
+    public int mengeVerloren;
 
-    /** Nur gesetzt, wenn der Status VERLIEHEN ist. */
-    @ColumnInfo(name = "verliehenAn")
-    public String verliehenAn;
-
-    @ColumnInfo(name = "verliehenSeit")
-    public Long verliehenSeit;
+    /** Dateiname des Fotos im App-Verzeichnis, oder null. */
+    @ColumnInfo(name = "fotoPfad")
+    public String fotoPfad;
 
     @ColumnInfo(name = "notiz")
     public String notiz;
@@ -69,12 +65,9 @@ public class Item {
         copy.lagerId = lagerId;
         copy.name = name;
         copy.beschreibung = beschreibung;
-        copy.code = code;
-        copy.codeType = codeType;
         copy.menge = menge;
-        copy.status = status;
-        copy.verliehenAn = verliehenAn;
-        copy.verliehenSeit = verliehenSeit;
+        copy.mengeVerloren = mengeVerloren;
+        copy.fotoPfad = fotoPfad;
         copy.notiz = notiz;
         copy.erstelltAm = erstelltAm;
         copy.geaendertAm = geaendertAm;

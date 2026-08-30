@@ -7,6 +7,7 @@ import android.nfc.NdefRecord;
 import android.nfc.NfcAdapter;
 import android.nfc.Tag;
 import android.nfc.tech.Ndef;
+import android.nfc.tech.NdefFormatable;
 import android.os.Bundle;
 
 import androidx.annotation.Nullable;
@@ -16,6 +17,7 @@ import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
+import de.tagstock.R;
 import de.tagstock.data.CodeType;
 
 /** Kapselt das Lesen von NFC-Tags im Reader-Mode. */
@@ -139,5 +141,70 @@ public final class NfcHelper {
         }
         android.net.Uri uri = record.toUri();
         return uri != null ? uri.toString() : null;
+    }
+
+    /** Ergebnis eines Schreibversuchs auf ein NFC-Tag. */
+    public enum Schreibergebnis {
+        OK(R.string.nfc_schreiben_ok),
+        SCHREIBGESCHUETZT(R.string.nfc_schreiben_schreibgeschuetzt),
+        ZU_KLEIN(R.string.nfc_schreiben_zu_klein),
+        NICHT_UNTERSTUETZT(R.string.nfc_schreiben_nicht_unterstuetzt),
+        FEHLER(R.string.nfc_schreiben_fehler);
+
+        public final int meldungRes;
+
+        Schreibergebnis(int meldungRes) {
+            this.meldungRes = meldungRes;
+        }
+    }
+
+    /**
+     * Schreibt einen Textdatensatz auf das Tag. Leere Tags werden zuvor
+     * formatiert. Laeuft auf dem Thread des Reader-Callbacks, nicht im UI-Thread.
+     */
+    public static Schreibergebnis schreibe(Tag tag, String text) {
+        NdefMessage message = new NdefMessage(new NdefRecord[]{
+                NdefRecord.createTextRecord("de", text)});
+
+        Ndef ndef = Ndef.get(tag);
+        if (ndef != null) {
+            try {
+                ndef.connect();
+                if (!ndef.isWritable()) {
+                    return Schreibergebnis.SCHREIBGESCHUETZT;
+                }
+                if (ndef.getMaxSize() < message.getByteArrayLength()) {
+                    return Schreibergebnis.ZU_KLEIN;
+                }
+                ndef.writeNdefMessage(message);
+                return Schreibergebnis.OK;
+            } catch (IOException | android.nfc.FormatException e) {
+                return Schreibergebnis.FEHLER;
+            } finally {
+                schliessen(ndef);
+            }
+        }
+
+        NdefFormatable formatable = NdefFormatable.get(tag);
+        if (formatable == null) {
+            return Schreibergebnis.NICHT_UNTERSTUETZT;
+        }
+        try {
+            formatable.connect();
+            formatable.format(message);
+            return Schreibergebnis.OK;
+        } catch (IOException | android.nfc.FormatException e) {
+            return Schreibergebnis.FEHLER;
+        } finally {
+            schliessen(formatable);
+        }
+    }
+
+    private static void schliessen(android.nfc.tech.TagTechnology technology) {
+        try {
+            technology.close();
+        } catch (IOException ignored) {
+            // Tag wurde bereits entfernt - nicht relevant.
+        }
     }
 }

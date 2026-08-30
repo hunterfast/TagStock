@@ -25,6 +25,7 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import de.tagstock.R;
 import de.tagstock.data.Item;
 import de.tagstock.data.ItemStatus;
+import de.tagstock.data.ItemWithState;
 import de.tagstock.data.Lager;
 import de.tagstock.data.Repository;
 import de.tagstock.databinding.ActivityLagerDetailBinding;
@@ -32,7 +33,7 @@ import de.tagstock.util.Dialogs;
 import de.tagstock.util.NfcHelper;
 import de.tagstock.util.ScanResult;
 
-/** Artikelliste eines Lagers mit Suche, Statusfilter und Scanner. */
+/** Artikelliste eines Lagers mit Suche, Zustandsfilter, Scanner und Inventur. */
 public class LagerDetailActivity extends AppCompatActivity implements ItemAdapter.Listener {
 
     private static final String EXTRA_LAGER_ID = "de.tagstock.extra.LAGER_ID";
@@ -50,7 +51,7 @@ public class LagerDetailActivity extends AppCompatActivity implements ItemAdapte
                 if (result.getResultCode() == Activity.RESULT_OK) {
                     ScanResult scan = ScanResult.fromIntent(result.getData());
                     if (scan != null) {
-                        handleScan(scan);
+                        scanVerarbeiten(scan);
                     }
                 }
             });
@@ -93,13 +94,8 @@ public class LagerDetailActivity extends AppCompatActivity implements ItemAdapte
             boolean leer = items == null || items.isEmpty();
             binding.emptyView.setVisibility(leer ? View.VISIBLE : View.GONE);
             binding.recyclerItems.setVisibility(leer ? View.GONE : View.VISIBLE);
-            if (leer && viewModel.hasItems()) {
-                binding.textEmptyTitle.setText(R.string.artikel_leer_titel);
-                binding.textEmptyText.setText(R.string.artikel_leer_filter);
-            } else {
-                binding.textEmptyTitle.setText(R.string.artikel_leer_titel);
-                binding.textEmptyText.setText(R.string.artikel_leer_text);
-            }
+            binding.textEmptyText.setText(leer && viewModel.hatItems()
+                    ? R.string.artikel_leer_filter : R.string.artikel_leer_text);
         });
 
         repository.observeLager(lagerId).observe(this, geladen -> {
@@ -122,20 +118,20 @@ public class LagerDetailActivity extends AppCompatActivity implements ItemAdapte
 
             @Override
             public void afterTextChanged(Editable s) {
-                viewModel.setQuery(s == null ? "" : s.toString());
+                viewModel.setSuche(s == null ? "" : s.toString());
             }
         });
 
         binding.chipGroupStatus.setOnCheckedStateChangeListener((group, checkedIds) -> {
             int checked = group.getCheckedChipId();
             if (checked == R.id.chipVorhanden) {
-                viewModel.setStatusFilter(ItemStatus.VORHANDEN);
+                viewModel.setFilter(ItemStatus.VORHANDEN);
             } else if (checked == R.id.chipVerliehen) {
-                viewModel.setStatusFilter(ItemStatus.VERLIEHEN);
+                viewModel.setFilter(ItemStatus.VERLIEHEN);
             } else if (checked == R.id.chipVerloren) {
-                viewModel.setStatusFilter(ItemStatus.VERLOREN);
+                viewModel.setFilter(ItemStatus.VERLOREN);
             } else {
-                viewModel.setStatusFilter(null);
+                viewModel.setFilter(null);
             }
         });
     }
@@ -148,7 +144,7 @@ public class LagerDetailActivity extends AppCompatActivity implements ItemAdapte
             runOnUiThread(() -> {
                 Toast.makeText(this, getString(R.string.nfc_tag_gelesen, scan.code),
                         Toast.LENGTH_SHORT).show();
-                handleScan(scan);
+                scanVerarbeiten(scan);
             });
         });
     }
@@ -172,8 +168,12 @@ public class LagerDetailActivity extends AppCompatActivity implements ItemAdapte
             startActivity(ItemEditActivity.newIntent(this, lagerId, null));
             return true;
         }
+        if (id == R.id.action_inventur) {
+            startActivity(InventurActivity.createIntent(this, lagerId));
+            return true;
+        }
         if (id == R.id.action_edit_lager && lager != null) {
-            editLager();
+            LagerDialog.show(this, repository, lager, () -> setTitle(lager.name));
             return true;
         }
         if (id == R.id.action_delete_lager && lager != null) {
@@ -193,35 +193,39 @@ public class LagerDetailActivity extends AppCompatActivity implements ItemAdapte
         return super.onOptionsItemSelected(menuItem);
     }
 
-    private void editLager() {
-        LagerDialog.show(this, repository, lager, () -> setTitle(lager.name));
+    @Override
+    public void onItemClick(ItemWithState item) {
+        startActivity(ItemEditActivity.editIntent(this, item.item.id));
     }
 
     @Override
-    public void onItemClick(Item item) {
-        startActivity(ItemEditActivity.editIntent(this, item.id));
-    }
-
-    @Override
-    public void onItemMenu(View anchor, Item item) {
+    public void onItemMenu(View anchor, ItemWithState state) {
         PopupMenu popup = new PopupMenu(this, anchor);
-        popup.inflate(R.menu.menu_item_status);
+        popup.inflate(R.menu.menu_item_aktionen);
+        popup.getMenu().findItem(R.id.aktion_ausleihen).setVisible(state.vorhanden() > 0);
+        popup.getMenu().findItem(R.id.aktion_zurueck).setVisible(state.verliehen > 0);
+        popup.getMenu().findItem(R.id.aktion_verloren).setVisible(state.vorhanden() > 0);
+        popup.getMenu().findItem(R.id.aktion_gefunden).setVisible(state.verloren() > 0);
+
         popup.setOnMenuItemClickListener(menuItem -> {
             int id = menuItem.getItemId();
-            if (id == R.id.status_vorhanden) {
-                StatusActions.change(this, repository, item, ItemStatus.VORHANDEN);
-            } else if (id == R.id.status_verliehen) {
-                StatusActions.change(this, repository, item, ItemStatus.VERLIEHEN);
-            } else if (id == R.id.status_verloren) {
-                StatusActions.change(this, repository, item, ItemStatus.VERLOREN);
-            } else if (id == R.id.item_bearbeiten) {
-                startActivity(ItemEditActivity.editIntent(this, item.id));
-            } else if (id == R.id.item_loeschen) {
+            if (id == R.id.aktion_ausleihen) {
+                ItemAktionen.ausleihen(this, repository, state, null);
+            } else if (id == R.id.aktion_zurueck) {
+                ItemAktionen.zurueckgeben(this, repository, state.item.id, null);
+            } else if (id == R.id.aktion_verloren) {
+                ItemAktionen.verlorenMelden(this, repository, state, null);
+            } else if (id == R.id.aktion_gefunden) {
+                ItemAktionen.wiedergefunden(this, repository, state, null);
+            } else if (id == R.id.aktion_bearbeiten) {
+                startActivity(ItemEditActivity.editIntent(this, state.item.id));
+            } else if (id == R.id.aktion_loeschen) {
                 Dialogs.confirm(this, getString(R.string.artikel_loeschen_titel),
-                        getString(R.string.artikel_loeschen_text, item.name),
+                        getString(R.string.artikel_loeschen_text, state.item.name),
                         R.string.action_delete, () -> {
-                            repository.deleteItem(item);
-                            Toast.makeText(this, R.string.artikel_geloescht, Toast.LENGTH_SHORT).show();
+                            repository.deleteItem(state.item);
+                            Toast.makeText(this, R.string.artikel_geloescht,
+                                    Toast.LENGTH_SHORT).show();
                         });
             }
             return true;
@@ -230,46 +234,44 @@ public class LagerDetailActivity extends AppCompatActivity implements ItemAdapte
     }
 
     /** Gescannter Code: im Lager oeffnen, aus anderem Lager holen oder neu anlegen. */
-    private void handleScan(ScanResult scan) {
-        repository.findByCode(scan.code, item -> {
-            if (item == null) {
+    private void scanVerarbeiten(ScanResult scan) {
+        repository.findeZuCode(scan.werte(), treffer -> {
+            if (treffer == null) {
                 new MaterialAlertDialogBuilder(this)
                         .setTitle(R.string.treffer_nicht_gefunden_titel)
                         .setMessage(getString(R.string.treffer_nicht_gefunden_text, scan.code))
                         .setNegativeButton(R.string.action_cancel, null)
-                        .setPositiveButton(R.string.treffer_anlegen, (dialog, which) ->
+                        .setPositiveButton(R.string.treffer_anlegen, (dialog, welcher) ->
                                 startActivity(ItemEditActivity.newIntent(this, lagerId, scan)))
                         .show();
                 return;
             }
-            if (item.lagerId == lagerId) {
-                Toast.makeText(this, getString(R.string.treffer_gefunden, item.name),
+            if (treffer.item.item.lagerId == lagerId) {
+                Toast.makeText(this, getString(R.string.treffer_gefunden, treffer.item.item.name),
                         Toast.LENGTH_SHORT).show();
-                startActivity(ItemEditActivity.editIntent(this, item.id));
+                startActivity(ItemEditActivity.editIntent(this, treffer.item.item.id));
                 return;
             }
-            askMove(item);
+            verschiebenFragen(treffer);
         });
     }
 
-    private void askMove(Item item) {
-        repository.loadLager(item.lagerId, anderes -> {
-            String quelle = anderes == null ? "?" : anderes.name;
-            new MaterialAlertDialogBuilder(this)
-                    .setTitle(R.string.treffer_anderes_lager_titel)
-                    .setMessage(getString(R.string.treffer_anderes_lager_text, item.name, quelle))
-                    .setNegativeButton(R.string.action_cancel, null)
-                    .setNeutralButton(R.string.treffer_oeffnen, (dialog, which) ->
-                            startActivity(ItemEditActivity.editIntent(this, item.id)))
-                    .setPositiveButton(R.string.treffer_verschieben, (dialog, which) -> {
-                        Item verschoben = item.copy();
-                        verschoben.lagerId = lagerId;
-                        repository.updateItem(verschoben);
-                        String ziel = lager == null ? "" : lager.name;
-                        Toast.makeText(this, getString(R.string.treffer_verschoben, ziel),
-                                Toast.LENGTH_SHORT).show();
-                    })
-                    .show();
-        });
+    private void verschiebenFragen(Repository.Treffer treffer) {
+        String quelle = treffer.lager == null ? "?" : treffer.lager.name;
+        new MaterialAlertDialogBuilder(this)
+                .setTitle(R.string.treffer_anderes_lager_titel)
+                .setMessage(getString(R.string.treffer_anderes_lager_text,
+                        treffer.item.item.name, quelle))
+                .setNegativeButton(R.string.action_cancel, null)
+                .setNeutralButton(R.string.treffer_oeffnen, (dialog, welcher) ->
+                        startActivity(ItemEditActivity.editIntent(this, treffer.item.item.id)))
+                .setPositiveButton(R.string.treffer_verschieben, (dialog, welcher) -> {
+                    Item verschoben = treffer.item.item.copy();
+                    verschoben.lagerId = lagerId;
+                    repository.updateItem(verschoben);
+                    Toast.makeText(this, getString(R.string.treffer_verschoben,
+                            lager == null ? "" : lager.name), Toast.LENGTH_SHORT).show();
+                })
+                .show();
     }
 }

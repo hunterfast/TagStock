@@ -9,17 +9,21 @@
     <string name="action_edit">Bearbeiten</string>
     <string name="action_ok">OK</string>
     <string name="action_scan">Scannen</string>
+    <string name="aktionen">Aktionen</string>
 
-    <!-- Status -->
+    <!-- Zustände -->
     <string name="status_vorhanden">Vorhanden</string>
     <string name="status_verliehen">Verliehen</string>
     <string name="status_verloren">Verloren</string>
     <string name="status_alle">Alle</string>
-    <string name="status_label">Status</string>
-    <string name="status_geaendert">Status geändert: %1$s</string>
 
-    <!-- Code-Typen -->
-    <string name="codetype_keiner">Kein Code</string>
+    <string name="bestand_titel">Bestand</string>
+    <string name="bestand_vorhanden">%1$d vorhanden</string>
+    <string name="bestand_verliehen">%1$d verliehen</string>
+    <string name="bestand_verloren">%1$d verloren</string>
+    <string name="bestand_leer">Kein Bestand</string>
+
+    <!-- Code-Arten -->
     <string name="codetype_barcode">Barcode</string>
     <string name="codetype_qr">QR-Code</string>
     <string name="codetype_nfc">NFC-Tag</string>
@@ -38,10 +42,15 @@
     <string name="lager_gespeichert">Lager gespeichert</string>
     <string name="lager_geloescht">Lager gelöscht</string>
     <string name="lager_name_fehlt">Bitte einen Namen eingeben</string>
-    <string name="lager_artikel_anzahl">%1$d Artikel</string>
     <string name="lager_auswaehlen">Lager auswählen</string>
+    <string name="menu_lager_neu">Lager anlegen</string>
 
-    <!-- Artikelliste -->
+    <plurals name="lager_artikel_anzahl">
+        <item quantity="one">%1$d Artikel</item>
+        <item quantity="other">%1$d Artikel</item>
+    </plurals>
+
+    <!-- Artikel -->
     <string name="artikel_neu">Neuer Artikel</string>
     <string name="artikel_bearbeiten">Artikel bearbeiten</string>
     <string name="artikel_suchen">Artikel oder Code suchen</string>
@@ -56,15 +65,69 @@
     <string name="artikel_name_fehlt">Bitte eine Bezeichnung eingeben</string>
     <string name="artikel_beschreibung">Beschreibung (optional)</string>
     <string name="artikel_menge">Menge</string>
+    <string name="artikel_menge_zu_klein">Mindestens %1$d Stück sind verliehen oder verloren – die Menge kann nicht kleiner sein.</string>
     <string name="artikel_notiz">Notiz (optional)</string>
     <string name="artikel_verliehen_an">Verliehen an</string>
-    <string name="artikel_verliehen_seit">seit %1$s</string>
     <string name="artikel_code">Code</string>
     <string name="artikel_code_leer">Noch kein Code hinterlegt</string>
     <string name="artikel_code_entfernen">Code entfernen</string>
-    <string name="artikel_code_scannen">Code scannen</string>
     <string name="artikel_lager">Lager</string>
-    <string name="artikel_menge_kurz">Menge: %1$d</string>
+
+    <!-- Codes -->
+    <string name="codes_titel">Codes</string>
+    <string name="codes_eingeben">Eingeben</string>
+    <string name="code_hinzugefuegt">Code hinterlegt</string>
+    <string name="code_belegt_titel">Code schon vergeben</string>
+    <string name="code_belegt_text">%1$s gehört bereits zu „%2$s“. Ein Code kann nur einem Artikel gehören.</string>
+    <string name="code_belegt_unbekannt">Dieser Code ist bereits vergeben.</string>
+    <string name="code_belegt_uebersprungen">%1$d Code(s) waren schon vergeben und wurden ausgelassen.</string>
+
+    <plurals name="code_weitere">
+        <item quantity="one">(+%1$d weiterer)</item>
+        <item quantity="other">(+%1$d weitere)</item>
+    </plurals>
+
+    <!-- Aktionen am Artikel -->
+    <string name="aktion_ausleihen">Verleihen</string>
+    <string name="aktion_zurueck">Zurücknehmen</string>
+    <string name="aktion_verloren">Verlust melden</string>
+    <string name="aktion_gefunden">Wieder da</string>
+
+    <!-- Verleih -->
+    <string name="verleih_titel">Verleihen</string>
+    <string name="verleih_bestaetigen">Verleihen</string>
+    <string name="verleih_person_fehlt">Bitte eintragen, an wen</string>
+    <string name="verleih_max">Höchstens %1$d Stück verfügbar</string>
+    <string name="verleih_gebucht">Verliehen an %1$s</string>
+    <string name="verleih_fehlgeschlagen">Verleihen nicht möglich – Bestand reicht nicht.</string>
+    <string name="verleih_nichts_vorhanden">Nichts vorhanden, was verliehen werden könnte.</string>
+    <string name="verleih_nichts_offen">Nichts verliehen.</string>
+    <string name="verleih_zurueck">Zurück</string>
+    <string name="verleih_zurueck_titel">Welche Ausleihe?</string>
+    <string name="verleih_zurueck_gebucht">Zurück von %1$s</string>
+    <string name="verleih_stueck">%1$d Stück</string>
+    <string name="verleih_seit">seit %1$s</string>
+    <string name="verleih_zurueck_am">%1$s bis %2$s</string>
+    <string name="verleih_historie_titel">Ausleihen</string>
+    <string name="verleih_historie_leer">Noch nichts verliehen.</string>
+    <string name="verleih_eintrag_loeschen_titel">Eintrag löschen?</string>
+    <string name="verleih_eintrag_loeschen_text">Der Eintrag zu %1$s verschwindet aus der Historie.</string>
+
+    <!-- Verluste -->
+    <string name="verlust_titel">Als verloren melden</string>
+    <string name="verlust_menge">Wie viele Stück?</string>
+    <string name="verlust_gemeldet">Als verloren gemeldet</string>
+    <string name="verlust_fehlgeschlagen">Nicht möglich – so viel ist nicht vorhanden.</string>
+    <string name="verlust_nichts_vorhanden">Nichts vorhanden, was fehlen könnte.</string>
+    <string name="verlust_nichts_gemeldet">Nichts als verloren gemeldet.</string>
+    <string name="verlust_gefunden_titel">Wieder aufgetaucht</string>
+    <string name="verlust_zurueckgenommen">Wieder als vorhanden gebucht</string>
+
+    <!-- Foto -->
+    <string name="foto">Foto</string>
+    <string name="foto_aufnehmen">Foto aufnehmen</string>
+    <string name="foto_galerie">Aus Galerie</string>
+    <string name="foto_fehler">Foto konnte nicht gespeichert werden.</string>
 
     <!-- Scannen -->
     <string name="scan_titel">Code scannen</string>
@@ -72,8 +135,9 @@
     <string name="scan_hinweis_nur_nfc">Halte ein NFC-Tag an die Rückseite des Geräts.</string>
     <string name="scan_nfc_aus">NFC ist ausgeschaltet – nur Kamera-Scan möglich.</string>
     <string name="scan_kamera_verweigert">Ohne Kamerafreigabe ist nur das Lesen von NFC-Tags möglich.</string>
-    <string name="scan_taschenlampe">Taschenlampe</string>
+    <string name="scan_taschenlampe">Licht</string>
     <string name="scan_manuell">Code manuell eingeben</string>
+    <string name="scan_manuell_kurz">Eingeben</string>
     <string name="scan_manuell_titel">Code eingeben</string>
     <string name="scan_erkannt">Erkannt: %1$s</string>
 
@@ -91,10 +155,66 @@
 
     <!-- NFC -->
     <string name="nfc_tag_gelesen">NFC-Tag gelesen: %1$s</string>
+    <string name="nfc_nicht_bereit">NFC ist ausgeschaltet oder nicht verfügbar.</string>
+    <string name="nfc_schreiben_aktion">NFC-Tag beschreiben</string>
+    <string name="nfc_schreiben_titel">Tag beschreiben</string>
+    <string name="nfc_schreiben_text">Halte ein leeres NFC-Tag an die Rückseite des Geräts. Der Artikel wird als Text auf das Tag geschrieben und seine Kennung als Code hinterlegt.</string>
+    <string name="nfc_schreiben_ok">Tag beschrieben</string>
+    <string name="nfc_schreiben_schreibgeschuetzt">Das Tag ist schreibgeschützt.</string>
+    <string name="nfc_schreiben_zu_klein">Auf dem Tag ist zu wenig Platz.</string>
+    <string name="nfc_schreiben_nicht_unterstuetzt">Dieses Tag lässt sich nicht beschreiben.</string>
+    <string name="nfc_schreiben_fehler">Schreiben fehlgeschlagen – Tag zu früh entfernt?</string>
 
-    <!-- Menü -->
-    <string name="menu_lager_neu">Lager anlegen</string>
+    <!-- Inventur -->
+    <string name="inventur_titel">Inventur</string>
+    <string name="inventur_starten">Inventur starten</string>
+    <string name="inventur_hinweis">Einen Artikel nach dem anderen scannen – der Scanner bleibt offen.</string>
+    <string name="inventur_zaehler">%1$d erfasst · %2$d aus anderem Lager · %3$d unbekannt</string>
+    <string name="inventur_erfasst">erfasst</string>
+    <string name="inventur_unbekannt">Unbekannter Code</string>
+    <string name="inventur_fremdes_lager">gehört zu „%1$s“</string>
+    <string name="inventur_auswerten">Auswerten</string>
+    <string name="inventur_nichts_erfasst">Noch nichts erfasst.</string>
+    <string name="inventur_ergebnis_titel">Inventur-Ergebnis</string>
+    <string name="inventur_gefunden_anzahl">%1$d Artikel erfasst</string>
+    <string name="inventur_fehlt_titel">%1$d nicht gefunden</string>
+    <string name="inventur_nichts_fehlt">Alles gefunden.</string>
+    <string name="inventur_fremd_titel">%1$d aus anderen Lagern</string>
+    <string name="inventur_unbekannt_titel">%1$d unbekannte Codes</string>
+    <string name="inventur_als_verloren">Als verloren melden</string>
+    <string name="inventur_hierher">Hierher verschieben</string>
+    <string name="inventur_anlegen">Artikel anlegen</string>
+    <string name="inventur_anlegen_titel">Welchen Code anlegen?</string>
+    <string name="inventur_verloren_titel">Welche gelten als verloren?</string>
+    <string name="inventur_verloren_gemeldet">Als verloren gemeldet</string>
+    <string name="inventur_verschieben_titel">Welche hierher verschieben?</string>
+    <string name="inventur_verschoben">Artikel verschoben</string>
 
-    <!-- Barcode-Formate -->
-    <string name="format_unbekannt">Code</string>
+    <!-- Suche -->
+    <string name="suche_titel">Suche</string>
+    <string name="suche_hint">Artikel, Code oder Notiz</string>
+    <string name="suche_hinweis">Suchbegriff eingeben oder einen Zustand wählen – gesucht wird über alle Lager.</string>
+    <string name="suche_kein_treffer">Kein Treffer.</string>
+
+    <!-- Sicherung -->
+    <string name="export_json">Sicherung exportieren (JSON)</string>
+    <string name="export_csv">Liste exportieren (CSV)</string>
+    <string name="import_aktion">Sicherung einlesen</string>
+    <string name="export_fertig">%1$d Artikel exportiert</string>
+    <string name="export_fehler">Export fehlgeschlagen: %1$s</string>
+    <string name="import_fehler">Datei konnte nicht gelesen werden: %1$s</string>
+    <string name="import_leer">Die Datei enthält keine Daten.</string>
+    <string name="import_titel">Sicherung einlesen</string>
+    <string name="import_frage">Die Datei enthält %1$d Lager und %2$d Artikel. Sollen sie zum vorhandenen Bestand dazukommen oder ihn ersetzen?</string>
+    <string name="import_ergaenzen">Dazu</string>
+    <string name="import_ersetzen">Ersetzen</string>
+    <string name="import_ersetzen_titel">Bestand ersetzen?</string>
+    <string name="import_ersetzen_text">Alle vorhandenen Lager und Artikel werden gelöscht und durch die Sicherung ersetzt.</string>
+    <string name="import_ergaenzt">%1$d Artikel übernommen</string>
+    <string name="import_fertig">Bestand wiederhergestellt</string>
+
+    <!-- Ungespeicherte Änderungen -->
+    <string name="aenderungen_titel">Änderungen verwerfen?</string>
+    <string name="aenderungen_text">Deine Eingaben wurden noch nicht gespeichert.</string>
+    <string name="aenderungen_verwerfen">Verwerfen</string>
 </resources>

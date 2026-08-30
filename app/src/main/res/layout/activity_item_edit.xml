@@ -26,10 +26,70 @@
             android:orientation="vertical"
             android:padding="16dp">
 
+            <!-- Foto -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <com.google.android.material.imageview.ShapeableImageView
+                    android:id="@+id/imageFoto"
+                    android:layout_width="88dp"
+                    android:layout_height="88dp"
+                    android:background="?attr/colorSurfaceVariant"
+                    android:contentDescription="@string/foto"
+                    android:padding="12dp"
+                    android:scaleType="centerCrop"
+                    app:shapeAppearanceOverlay="@style/Shape.TagStock.Foto"
+                    tools:src="@drawable/ic_lager" />
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="12dp"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/buttonFotoKamera"
+                        style="@style/Widget.Material3.Button.TonalButton"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/foto_aufnehmen"
+                        app:icon="@drawable/ic_foto" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal">
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/buttonFotoGalerie"
+                            style="@style/Widget.Material3.Button.TextButton"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="@string/foto_galerie" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/buttonFotoEntfernen"
+                            style="@style/Widget.Material3.Button.TextButton"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="@string/action_delete"
+                            android:visibility="gone" />
+                    </LinearLayout>
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- Stammdaten -->
             <com.google.android.material.textfield.TextInputLayout
                 style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
                 android:hint="@string/artikel_name">
 
                 <com.google.android.material.textfield.TextInputEditText
@@ -93,7 +153,140 @@
                 </com.google.android.material.textfield.TextInputLayout>
             </LinearLayout>
 
+            <!-- Bestand und Aktionen -->
+            <LinearLayout
+                android:id="@+id/gruppeBestand"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="20dp"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/bestand_titel"
+                    android:textAppearance="?attr/textAppearanceLabelLarge" />
+
+                <TextView
+                    android:id="@+id/textBestand"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:textAppearance="?attr/textAppearanceBodyLarge"
+                    tools:text="3 vorhanden · 2 verliehen" />
+
+                <com.google.android.material.button.MaterialButtonToggleGroup
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    app:singleSelection="false">
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/buttonAusleihen"
+                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/aktion_ausleihen" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/buttonZurueck"
+                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/aktion_zurueck" />
+                </com.google.android.material.button.MaterialButtonToggleGroup>
+
+                <com.google.android.material.button.MaterialButtonToggleGroup
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    app:singleSelection="false">
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/buttonVerloren"
+                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/aktion_verloren" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/buttonGefunden"
+                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/aktion_gefunden" />
+                </com.google.android.material.button.MaterialButtonToggleGroup>
+            </LinearLayout>
+
+            <!-- Codes -->
             <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="20dp"
+                app:cardCornerRadius="14dp"
+                app:cardElevation="0dp"
+                app:strokeWidth="1dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/codes_titel"
+                        android:textAppearance="?attr/textAppearanceLabelLarge" />
+
+                    <TextView
+                        android:id="@+id/textKeineCodes"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:text="@string/artikel_code_leer"
+                        android:textAppearance="?attr/textAppearanceBodyMedium" />
+
+                    <androidx.recyclerview.widget.RecyclerView
+                        android:id="@+id/recyclerCodes"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:orientation="horizontal">
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/buttonCodeScannen"
+                            style="@style/Widget.Material3.Button.TonalButton"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/action_scan"
+                            app:icon="@drawable/ic_scan" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/buttonCodeEingeben"
+                            style="@style/Widget.Material3.Button.TextButton"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="4dp"
+                            android:text="@string/codes_eingeben" />
+                    </LinearLayout>
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/buttonNfcSchreiben"
+                        style="@style/Widget.Material3.Button.TextButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/nfc_schreiben_aktion"
+                        app:icon="@drawable/ic_nfc" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Verleih -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/gruppeVerleih"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
@@ -110,119 +303,29 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="@string/artikel_code"
+                        android:text="@string/verleih_historie_titel"
                         android:textAppearance="?attr/textAppearanceLabelLarge" />
 
                     <TextView
-                        android:id="@+id/textCode"
+                        android:id="@+id/textKeinVerleih"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="4dp"
-                        android:fontFamily="monospace"
-                        android:textAppearance="?attr/textAppearanceBodyLarge"
-                        tools:text="04E1A2B3C4D5" />
+                        android:text="@string/verleih_historie_leer"
+                        android:textAppearance="?attr/textAppearanceBodyMedium" />
 
-                    <TextView
-                        android:id="@+id/textCodeType"
+                    <androidx.recyclerview.widget.RecyclerView
+                        android:id="@+id/recyclerVerleih"
                         android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:textAppearance="?attr/textAppearanceBodySmall"
-                        tools:text="NFC-Tag" />
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        android:orientation="horizontal">
-
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/buttonScan"
-                            style="@style/Widget.Material3.Button.TonalButton"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="@string/artikel_code_scannen"
-                            app:icon="@drawable/ic_scan" />
-
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/buttonCodeEntfernen"
-                            style="@style/Widget.Material3.Button.TextButton"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginStart="4dp"
-                            android:text="@string/artikel_code_entfernen" />
-                    </LinearLayout>
+                        android:layout_height="wrap_content" />
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
-            <TextView
-                android:layout_width="wrap_content"
+            <com.google.android.material.textfield.TextInputLayout
+                style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
-                android:text="@string/status_label"
-                android:textAppearance="?attr/textAppearanceLabelLarge" />
-
-            <com.google.android.material.chip.ChipGroup
-                android:id="@+id/chipGroupStatus"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                app:selectionRequired="true"
-                app:singleSelection="true">
-
-                <com.google.android.material.chip.Chip
-                    android:id="@+id/chipVorhanden"
-                    style="@style/Widget.Material3.Chip.Filter"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:checked="true"
-                    android:text="@string/status_vorhanden" />
-
-                <com.google.android.material.chip.Chip
-                    android:id="@+id/chipVerliehen"
-                    style="@style/Widget.Material3.Chip.Filter"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/status_verliehen" />
-
-                <com.google.android.material.chip.Chip
-                    android:id="@+id/chipVerloren"
-                    style="@style/Widget.Material3.Chip.Filter"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/status_verloren" />
-            </com.google.android.material.chip.ChipGroup>
-
-            <com.google.android.material.textfield.TextInputLayout
-                android:id="@+id/inputVerliehenAn"
-                style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
-                android:hint="@string/artikel_verliehen_an"
-                android:visibility="gone">
-
-                <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/editVerliehenAn"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:inputType="textCapWords"
-                    android:maxLines="1" />
-            </com.google.android.material.textfield.TextInputLayout>
-
-            <TextView
-                android:id="@+id/textVerliehenSeit"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                android:textAppearance="?attr/textAppearanceBodySmall"
-                android:visibility="gone"
-                tools:text="seit 12.03.2026" />
-
-            <com.google.android.material.textfield.TextInputLayout
-                style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
                 android:hint="@string/artikel_notiz">
 
                 <com.google.android.material.textfield.TextInputEditText
