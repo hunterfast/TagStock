@@ -80,10 +80,9 @@ damit ein Scan sofort den passenden Artikel findet.
 - `NFC` – Geräte ohne NFC-Chip können die App trotzdem installieren
   (`uses-feature … required="false"`)
 
-## Hinweis zum Stand
+## Build-Status
 
-Die App wurde in dieser Umgebung nicht kompiliert: Der Netzwerkzugang erlaubt kein
-`dl.google.com`, von dort stammen sowohl das Android SDK als auch alle
-AndroidX-/Material-Artefakte. Geprüft wurden stattdessen alle XML-Dateien auf
-Wohlgeformtheit sowie sämtliche Ressourcen- und ViewBinding-Referenzen aus dem
-Java-Code. Der erste Build muss also lokal bzw. in Android Studio laufen.
+Der Debug-Build laeuft bei jedem Push auf GitHub Actions
+(`.github/workflows/android.yml`). Die fertige APK haengt dort am jeweiligen
+Lauf als Artefakt `tagstock-debug-apk` und kann ohne lokale
+Android-Installation heruntergeladen und auf dem Geraet installiert werden.
