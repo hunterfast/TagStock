@@ -2,6 +2,14 @@ plugins {
     id 'com.android.application'
 }
 
+// Signierschluessel nur verwenden, wenn er hinterlegt ist. Die Datei
+// keystore.properties gehoert nicht ins Repository (siehe .gitignore).
+def keystoreDatei = rootProject.file('keystore.properties')
+def keystore = new Properties()
+if (keystoreDatei.exists()) {
+    keystore.load(new FileInputStream(keystoreDatei))
+}
+
 android {
     namespace 'de.tagstock'
     compileSdk 35
@@ -21,10 +29,31 @@ android {
         }
     }
 
+    signingConfigs {
+        release {
+            if (keystoreDatei.exists()) {
+                storeFile file(keystore['storeFile'])
+                storePassword keystore['storePassword']
+                keyAlias keystore['keyAlias']
+                keyPassword keystore['keyPassword']
+            }
+        }
+    }
+
     buildTypes {
         release {
-            minifyEnabled false
+            minifyEnabled true
+            shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            if (keystoreDatei.exists()) {
+                signingConfig signingConfigs.release
+            }
+        }
+    }
+
+    testOptions {
+        unitTests {
+            includeAndroidResources = true
         }
     }
 
@@ -61,4 +90,9 @@ dependencies {
 
     // ML Kit Barcode Scanning (gebuendelt, funktioniert offline)
     implementation 'com.google.mlkit:barcode-scanning:17.3.0'
+
+    // Tests laufen auf der JVM; Robolectric stellt Android und SQLite bereit.
+    testImplementation 'junit:junit:4.13.2'
+    testImplementation 'org.robolectric:robolectric:4.14.1'
+    testImplementation 'androidx.test:core:1.6.1'
 }

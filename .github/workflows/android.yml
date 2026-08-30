@@ -9,7 +9,7 @@ on:
 
 jobs:
   build:
-    name: Debug-APK bauen
+    name: Tests und APK
     runs-on: ubuntu-latest
 
     steps:
@@ -28,8 +28,17 @@ jobs:
       - name: Gradle-Wrapper ausfuehrbar machen
         run: chmod +x ./gradlew
 
+      - name: Unit-Tests
+        run: ./gradlew --no-daemon --stacktrace testDebugUnitTest
+
+      - name: Lint
+        run: ./gradlew --no-daemon lintDebug
+
       - name: Debug-APK bauen
         run: ./gradlew --no-daemon --stacktrace assembleDebug
+
+      - name: Release-APK bauen (R8)
+        run: ./gradlew --no-daemon --stacktrace assembleRelease
 
       - name: APK als Artefakt hochladen
         uses: actions/upload-artifact@v4
@@ -37,3 +46,13 @@ jobs:
           name: tagstock-debug-apk
           path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
+
+      - name: Testberichte hochladen
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: testberichte
+          path: |
+            app/build/reports/tests/
+            app/build/reports/lint-results-debug.html
+          if-no-files-found: ignore
