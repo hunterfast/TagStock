@@ -328,12 +328,14 @@ public class Repository {
     public void ergaenzeUm(Bestand bestand, Callback<Integer> callback) {
         run(() -> {
             final int[] neu = {0};
+            final java.util.Set<Long> erledigt = new java.util.HashSet<>();
             db.runInTransaction(() -> {
                 for (Lager lager : bestand.lager) {
+                    long importId = lager.importId;
                     lager.id = 0;
                     long lagerId = lagerDao.insert(lager);
                     for (Item item : bestand.items) {
-                        if (item.lagerId != lager.importId) {
+                        if (item.lagerId != importId || !erledigt.add(item.id)) {
                             continue;
                         }
                         long alteId = item.id;

@@ -40,6 +40,7 @@ public class InventurErgebnisActivity extends AppCompatActivity {
 
     private long lagerId;
     private Set<Long> gefunden;
+    private final Set<Long> fremdeIds = new HashSet<>();
     private final List<ItemWithState> fehlend = new ArrayList<>();
     private final List<ItemWithState> fremd = new ArrayList<>();
     private final List<String> unbekannt = new ArrayList<>();
@@ -85,28 +86,23 @@ public class InventurErgebnisActivity extends AppCompatActivity {
         binding.buttonVerschieben.setOnClickListener(v -> verschieben());
         binding.buttonAnlegen.setOnClickListener(v -> anlegen());
 
-        laden(getIntent().getLongArrayExtra(EXTRA_FREMD));
+        long[] fremdAusScan = getIntent().getLongArrayExtra(EXTRA_FREMD);
+        if (fremdAusScan != null) {
+            for (long id : fremdAusScan) {
+                fremdeIds.add(id);
+            }
+        }
+        laden();
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        laden(null);
+        laden();
     }
 
     /** Liest den aktuellen Bestand und teilt ihn in gefunden, fehlend und fremd auf. */
-    private void laden(@Nullable long[] fremdIds) {
-        Set<Long> fremdeIds = new HashSet<>();
-        if (fremdIds != null) {
-            for (long id : fremdIds) {
-                fremdeIds.add(id);
-            }
-        } else {
-            for (ItemWithState state : fremd) {
-                fremdeIds.add(state.item.id);
-            }
-        }
-
+    private void laden() {
         repository.ladeAlleZustaende(alle -> {
             fehlend.clear();
             fremd.clear();
@@ -181,12 +177,12 @@ public class InventurErgebnisActivity extends AppCompatActivity {
                     if (--offen[0] <= 0) {
                         Toast.makeText(this, R.string.inventur_verloren_gemeldet,
                                 Toast.LENGTH_SHORT).show();
-                        laden(null);
+                        laden();
                     }
                 });
             }
             if (offen[0] == 0) {
-                laden(null);
+                laden();
             }
         });
     }
@@ -202,7 +198,7 @@ public class InventurErgebnisActivity extends AppCompatActivity {
                 repository.updateItem(item);
             }
             Toast.makeText(this, R.string.inventur_verschoben, Toast.LENGTH_SHORT).show();
-            laden(null);
+            laden();
         });
     }
 
