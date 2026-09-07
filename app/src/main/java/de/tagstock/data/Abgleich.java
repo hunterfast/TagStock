@@ -12,11 +12,14 @@ import java.util.ArrayList;
 import java.util.List;
 
 import de.tagstock.util.Einstellungen;
+import de.tagstock.util.Fotos;
 import de.tagstock.util.ServerClient;
+import de.tagstock.util.Serverbilder;
 
 /**
  * Abgleich zwischen App und Server: eigene Aenderungen hochladen, fremde
- * uebernehmen. Fotos bleiben auf dem Geraet, das sie aufgenommen hat.
+ * uebernehmen. Auch die Artikelbilder gehen dabei auf den Server; auf dem
+ * Geraet bleibt nur ein Zwischenspeicher.
  */
 public final class Abgleich {
 
@@ -26,6 +29,7 @@ public final class Abgleich {
         public int abgelehnt;
         public int uebernommen;
         public int geloescht;
+        public int bilder;
         @Nullable
         public String fehler;
         public boolean abgemeldet;
@@ -57,6 +61,10 @@ public final class Abgleich {
 
         repository.imHintergrund((artikelDao, kategorieDao, protokollDao) -> {
             try {
+                // Zuerst die Bilder der bereits bekannten Artikel, damit die
+                // Adresse gleich mit hochgeht.
+                bilderHochladen(context, client, teamId, artikelDao, ergebnis);
+
                 JSONArray offeneArtikel = new JSONArray();
                 List<Artikel> offene = artikelDao.offene();
                 for (Artikel artikel : offene) {
@@ -76,11 +84,15 @@ public final class Abgleich {
                 zuordnungenAnwenden(antwort.optJSONArray("zuordnungen"), artikelDao, ergebnis);
                 serverstandUebernehmen(antwort.optJSONArray("artikel"), teamId, artikelDao,
                         ergebnis);
-                kategorienUebernehmen(antwort.optJSONArray("kategorien"), kategorieDao);
+                kategorienUebernehmen(antwort.optJSONArray("kategorien"), teamId, kategorieDao);
 
                 if (!gesendeteEintraege.isEmpty()) {
                     protokollDao.alsGesendetMarkieren(gesendeteEintraege);
                 }
+
+                // Neu angelegte Artikel haben jetzt eine Server-Kennung - ihre
+                // Bilder koennen nachgereicht werden.
+                bilderHochladen(context, client, teamId, artikelDao, ergebnis);
 
                 long stand = antwort.optLong("stand", System.currentTimeMillis());
                 Einstellungen.setzeLetztenSync(context, stand);
@@ -108,6 +120,7 @@ public final class Abgleich {
         o.put("kategorie", artikel.kategorie);
         o.put("standort", artikel.standort);
         o.put("lagerort", artikel.lagerort);
+        o.put("bildUrl", artikel.bildUrl);
         o.put("rfidUid", artikel.rfidUid);
         o.put("status", artikel.status.schluessel);
         o.put("verliehenAn", artikel.verliehenAn);
@@ -133,6 +146,54 @@ public final class Abgleich {
         o.put("nutzer", eintrag.nutzer);
         o.put("zeitpunkt", eintrag.zeitpunkt);
         return o;
+    }
+
+    // ------------------------------------------------------------------ Bilder
+
+    /**
+     * Schickt Aufnahmen, die noch nur auf dem Geraet liegen, an den Server und
+     * merkt sich die Adresse. Danach ist die Datei im Zwischenspeicher; das
+     * Original im App-Verzeichnis wird nicht mehr gebraucht.
+     */
+    private static void bilderHochladen(Context context, ServerClient client, String teamId,
+                                        ArtikelDao artikelDao, Ergebnis ergebnis) {
+        for (Artikel artikel : artikelDao.mitOffenemBild()) {
+            byte[] daten = Serverbilder.zumHochladen(context, artikel.fotoPfad);
+            if (daten == null) {
+                // Die Datei ist weg - dann auch den Verweis loeschen.
+                artikel.fotoPfad = null;
+                artikelDao.update(artikel);
+                continue;
+            }
+            try {
+                JSONObject antwort = client.bildHochladen(teamId, artikel.serverId, daten,
+                        "image/jpeg");
+                String adresse = antwort.optString("bildUrl", "");
+                if (adresse.isEmpty()) {
+                    continue;
+                }
+                Serverbilder.uebernehmen(context, daten, adresse);
+                Fotos.loeschen(context, artikel.fotoPfad);
+
+                Artikel frisch = artikelDao.nachId(artikel.id);
+                if (frisch == null) {
+                    continue;
+                }
+                frisch.bildUrl = adresse;
+                frisch.fotoPfad = null;
+                // Der Server hat den Artikel beim Ablegen angefasst; ohne diesen
+                // Stand wuerde er unsere eigenen Aenderungen gleich abweisen.
+                long stand = antwort.optLong("geaendertAm", 0L);
+                if (stand > frisch.geaendertAm) {
+                    frisch.geaendertAm = stand;
+                }
+                artikelDao.update(frisch);
+                ergebnis.bilder++;
+            } catch (Exception fehler) {
+                // Beim naechsten Abgleich noch einmal versuchen.
+                return;
+            }
+        }
     }
 
     // ---------------------------------------------------------------- Annehmen
@@ -218,6 +279,7 @@ public final class Abgleich {
             ziel.kategorie = leer(o.optString("kategorie", null));
             ziel.standort = leer(o.optString("standort", null));
             ziel.lagerort = leer(o.optString("lagerort", null));
+            ziel.bildUrl = leer(o.optString("bildUrl", null));
             ziel.status = ArtikelStatus.vonSchluessel(o.optString("status"));
             ziel.verliehenAn = leer(o.optString("verliehenAn", null));
             ziel.rueckgabeDatum = o.isNull("rueckgabeDatum") ? null : o.optLong("rueckgabeDatum");
@@ -236,26 +298,61 @@ public final class Abgleich {
         }
     }
 
-    private static void kategorienUebernehmen(@Nullable JSONArray kategorien,
+    /**
+     * Uebernimmt die Kategorien des Teams: neue kommen dazu, umbenannte werden
+     * nachgezogen, geloeschte verschwinden auch hier.
+     */
+    private static void kategorienUebernehmen(@Nullable JSONArray kategorien, String teamId,
                                               KategorieDao kategorieDao) {
         if (kategorien == null) {
             return;
         }
-        List<String> vorhandene = new ArrayList<>();
-        for (Kategorie kategorie : kategorieDao.alle()) {
-            vorhandene.add(kategorie.name.toLowerCase());
-        }
         for (int i = 0; i < kategorien.length(); i++) {
             JSONObject o = kategorien.optJSONObject(i);
-            if (o == null || o.optBoolean("geloescht")) {
+            if (o == null) {
                 continue;
             }
+            String serverId = o.optString("id", "");
             String name = o.optString("name", "");
-            if (name.isEmpty() || vorhandene.contains(name.toLowerCase())) {
+            if (serverId.isEmpty() || name.isEmpty()) {
                 continue;
             }
-            kategorieDao.insert(new Kategorie(name, o.optInt("reihenfolge", vorhandene.size())));
-            vorhandene.add(name.toLowerCase());
+
+            List<Kategorie> alle = kategorieDao.alle();
+            Kategorie treffer = null;
+            for (Kategorie kategorie : alle) {
+                if (serverId.equals(kategorie.serverId)
+                        || (kategorie.serverId == null && kategorie.name.equalsIgnoreCase(name))) {
+                    treffer = kategorie;
+                    break;
+                }
+            }
+
+            if (o.optBoolean("geloescht")) {
+                if (treffer != null) {
+                    kategorieDao.delete(treffer);
+                }
+                continue;
+            }
+
+            int reihenfolge = o.optInt("reihenfolge", alle.size());
+            try {
+                if (treffer == null) {
+                    Kategorie neue = new Kategorie(name, reihenfolge);
+                    neue.serverId = serverId;
+                    neue.teamId = teamId;
+                    kategorieDao.insert(neue);
+                    continue;
+                }
+                treffer.serverId = serverId;
+                treffer.teamId = teamId;
+                treffer.name = name;
+                treffer.reihenfolge = reihenfolge;
+                kategorieDao.update(treffer);
+            } catch (RuntimeException doppelt) {
+                // Den Namen gibt es hier schon - dann bleibt es bei der eigenen Fassung.
+                continue;
+            }
         }
     }
 

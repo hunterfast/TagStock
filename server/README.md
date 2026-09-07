@@ -7,6 +7,9 @@ auf jedem Docker-Host.
 
 Ein Container, eine SQLite-Datei, keine zusätzliche Datenbank.
 
+> **Schritt für Schritt:** Eine ausführliche Anleitung mit allen Klicks, Feldern
+> und Prüfungen steht in [INSTALL-UNRAID.md](INSTALL-UNRAID.md).
+
 ## Auf Unraid einrichten
 
 **Mit Docker Compose** (Plugin „Docker Compose Manager"):
@@ -49,6 +52,8 @@ curl http://<server-ip>:8080/api/v1/status
 | Variable | Bedeutung | Standard |
 |---|---|---|
 | `TAGSTOCK_DB` | Pfad der Datenbankdatei | `/data/tagstock.db` |
+| `TAGSTOCK_BILDER` | Ordner für die Artikelbilder | `/data/bilder` |
+| `TAGSTOCK_BILD_MAX_MB` | Größtes erlaubtes Bild in MB | `8` |
 | `TAGSTOCK_PORT` | Port im Container | `8080` |
 | `TAGSTOCK_REGISTRIERUNGSCODE` | Wenn gesetzt, braucht jede Registrierung nach der ersten diesen Code | leer |
 | `TAGSTOCK_TOKEN_TAGE` | Gültigkeit einer Anmeldung in Tagen | `180` |
@@ -59,8 +64,9 @@ ihn also, sobald der Server aus dem Heimnetz heraus erreichbar ist.
 
 ## Sicherung
 
-Alles liegt in einer Datei: `/mnt/user/appdata/tagstock/tagstock.db`. Für ein
-Backup den Container kurz stoppen und die Datei kopieren.
+Alles liegt unter `/mnt/user/appdata/tagstock`: die Datenbank `tagstock.db` und
+der Ordner `bilder`. Für ein Backup den Container kurz stoppen und den Ordner
+kopieren.
 
 ## Rollen
 
@@ -92,8 +98,25 @@ Alle Antworten sind JSON, die Anmeldung läuft über
 | `GET/POST/PUT/DELETE` | `/api/v1/teams/{id}/artikel/…` | Bestand |
 | `GET` | `/api/v1/teams/{id}/artikel/suche?kennung=…` | Artikel zu einem Scan |
 | `GET/POST/PUT/DELETE` | `/api/v1/teams/{id}/kategorien/…` | Kategorien |
+| `POST/DELETE` | `/api/v1/teams/{id}/artikel/{id}/bild` | Artikelbild ablegen oder entfernen |
+| `GET` | `/api/v1/teams/{id}/bilder/{id}` | Artikelbild abholen |
 | `GET/POST` | `/api/v1/teams/{id}/sync` | Abgleich mit der App |
 | `GET/POST` | `/api/v1/teams/{id}/anfragen/…` | Leih-Anfragen |
+
+### Artikelbilder
+
+Bilder liegen auf dem Server, nicht auf dem Gerät. Die App schickt die Aufnahme
+als Körper der Anfrage (`Content-Type: image/jpeg`) an
+`POST /api/v1/teams/{id}/artikel/{artikelId}/bild` und bekommt die Adresse
+zurück, die dann am Artikel hängt:
+
+```json
+{"id":"…","bildUrl":"/api/v1/teams/…/bilder/…","typ":"image/jpeg","groesse":184320}
+```
+
+Ein neues Bild ersetzt das vorherige, und mit dem Artikel verschwindet auch
+seine Datei. Auf den Geräten bleibt nur ein Zwischenspeicher, den Android
+jederzeit leeren darf.
 
 ### Abgleich
 
@@ -126,4 +149,6 @@ durch: Konto, Team, Bestand, Abgleich mit Konflikten, Rollen und Anfragen.
   Nginx Proxy Manager oder SWAG).
 - **Keine E-Mails.** Benachrichtigungen über neue Anfragen gibt es nicht; die App
   zeigt offene Anfragen beim Abgleich.
-- **Keine Bilder.** Fotos bleiben auf dem Gerät, das sie aufgenommen hat.
+- **Keine Bildbearbeitung.** Der Server nimmt JPEG, PNG und WebP entgegen, prüft
+  den Inhalt und legt die Datei ab – mehr nicht. Die App verkleinert Aufnahmen
+  vor dem Hochladen auf 1600 Pixel Kantenlänge.

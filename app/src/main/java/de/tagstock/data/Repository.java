@@ -310,6 +310,12 @@ public class Repository {
     // -------------------------------------------------------------- Kategorien
 
     public void kategorieAnlegen(String name, Callback<Boolean> callback) {
+        kategorieAnlegen(name, null, callback);
+    }
+
+    /** Legt eine Kategorie an; mit Server-Kennung, wenn sie dort schon liegt. */
+    public void kategorieAnlegen(String name, @Nullable String serverId,
+                                 Callback<Boolean> callback) {
         starte(() -> {
             List<Kategorie> vorhandene = kategorieDao.alle();
             for (Kategorie kategorie : vorhandene) {
@@ -317,8 +323,21 @@ public class Repository {
                     return false;
                 }
             }
-            return kategorieDao.insert(new Kategorie(name, vorhandene.size())) > 0;
+            Kategorie neue = new Kategorie(name, vorhandene.size());
+            neue.serverId = serverId;
+            neue.teamId = kategorieTeam(vorhandene);
+            return kategorieDao.insert(neue) > 0;
         }, callback);
+    }
+
+    @Nullable
+    private String kategorieTeam(List<Kategorie> vorhandene) {
+        for (Kategorie kategorie : vorhandene) {
+            if (kategorie.teamId != null) {
+                return kategorie.teamId;
+            }
+        }
+        return null;
     }
 
     public void kategorieUmbenennen(Kategorie kategorie, String name) {

@@ -66,6 +66,16 @@
                         android:text="@string/action_delete"
                         android:visibility="gone" />
                 </LinearLayout>
+
+                <TextView
+                    android:id="@+id/textFotoHinweis"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/foto_server_hinweis"
+                    android:textAppearance="?attr/textAppearanceBodySmall"
+                    android:textColor="?attr/colorOnSurfaceVariant"
+                    android:visibility="gone"
+                    tools:visibility="visible" />
             </LinearLayout>
         </LinearLayout>
 

@@ -263,9 +263,12 @@ public class ServerActivity extends AppCompatActivity {
                 }
                 return;
             }
-            Toast.makeText(this, getString(R.string.server_abgleich_fertig,
-                            ergebnis.hochgeladen, ergebnis.uebernommen, ergebnis.abgelehnt),
-                    Toast.LENGTH_LONG).show();
+            String meldung = getString(R.string.server_abgleich_fertig,
+                    ergebnis.hochgeladen, ergebnis.uebernommen, ergebnis.abgelehnt);
+            if (ergebnis.bilder > 0) {
+                meldung += getString(R.string.server_abgleich_bilder, ergebnis.bilder);
+            }
+            Toast.makeText(this, meldung, Toast.LENGTH_LONG).show();
         });
     }
 

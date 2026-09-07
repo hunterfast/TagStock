@@ -1,6 +1,7 @@
 package de.tagstock.server.api;
 
 import de.tagstock.server.daten.ArtikelDaten;
+import de.tagstock.server.daten.Bilderdienst;
 import de.tagstock.server.daten.KategorieDaten;
 import de.tagstock.server.daten.ProtokollDaten;
 import de.tagstock.server.modell.Artikel;
@@ -31,13 +32,16 @@ public class ArtikelController {
     private final ArtikelDaten artikelDaten;
     private final KategorieDaten kategorieDaten;
     private final ProtokollDaten protokollDaten;
+    private final Bilderdienst bilder;
     private final Zugriff zugriff;
 
     public ArtikelController(ArtikelDaten artikelDaten, KategorieDaten kategorieDaten,
-                             ProtokollDaten protokollDaten, Zugriff zugriff) {
+                             ProtokollDaten protokollDaten, Bilderdienst bilder,
+                             Zugriff zugriff) {
         this.artikelDaten = artikelDaten;
         this.kategorieDaten = kategorieDaten;
         this.protokollDaten = protokollDaten;
+        this.bilder = bilder;
         this.zugriff = zugriff;
     }
 
@@ -104,6 +108,7 @@ public class ArtikelController {
         if (vorher == null) {
             throw ApiFehler.nichtGefunden("Artikel nicht gefunden");
         }
+        bilder.entfernen(teamId, artikelId);
         artikelDaten.loeschen(teamId, artikelId);
         protokoll(teamId, vorher, "Artikel gelöscht", vorher.name, null, benutzer.name);
         return Map.of("geloescht", true);

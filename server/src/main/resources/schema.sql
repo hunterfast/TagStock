@@ -75,6 +75,19 @@ CREATE INDEX IF NOT EXISTS idx_artikel_geaendert ON artikel (team_id, geaendert_
 CREATE UNIQUE INDEX IF NOT EXISTS idx_artikel_kennung ON artikel (team_id, rfid_uid)
     WHERE rfid_uid IS NOT NULL AND geloescht = 0;
 
+-- Artikelbilder liegen als Datei im Bilderordner; hier stehen nur die Angaben dazu.
+CREATE TABLE IF NOT EXISTS bilder (
+    id              TEXT PRIMARY KEY,
+    team_id         TEXT NOT NULL,
+    artikel_id      TEXT NOT NULL,
+    datei           TEXT NOT NULL,
+    typ             TEXT NOT NULL,
+    groesse         INTEGER NOT NULL,
+    hochgeladen_von TEXT,
+    erstellt_am     INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_bilder_artikel ON bilder (team_id, artikel_id);
+
 CREATE TABLE IF NOT EXISTS protokoll (
     id           TEXT PRIMARY KEY,
     team_id      TEXT NOT NULL,

@@ -61,7 +61,8 @@ im Regal gar nicht liegen.
 - **JSON-Export** über den System-Dateidialog: vollständiger Bestand, wieder
   einlesbar (wahlweise ergänzend oder ersetzend).
 - **CSV-Export** für die Tabellenkalkulation, mit Stückzahlen je Zustand.
-- Fotos bleiben außen vor, sie liegen nur auf dem Gerät.
+- Bilder bleiben außen vor: ohne Server liegen sie nur auf dem Gerät, mit Server
+  auf ebendiesem (`server/`, siehe dessen README).
 
 ## Bauen
 
@@ -132,4 +133,6 @@ app/src/main/java/de/tagstock/
   NFC-Scan nutzbar.
 - `NFC` – Geräte ohne NFC-Chip können die App trotzdem installieren.
 - Für Sicherung und Fotos werden keine Speicherberechtigungen gebraucht: Dateien
-  laufen über den System-Dateidialog, Fotos liegen im privaten App-Verzeichnis.
+  laufen über den System-Dateidialog, Aufnahmen liegen im privaten
+  App-Verzeichnis. Mit eingerichtetem Server wandern Artikelbilder beim Abgleich
+  dorthin; auf dem Gerät bleibt nur ein Zwischenspeicher.

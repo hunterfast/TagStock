@@ -19,6 +19,10 @@ spring:
       platform: sqlite
 
 tagstock:
+  # Artikelbilder liegen als Dateien hier; im Docker-Abbild im Volume /data.
+  bilder-ordner: ${TAGSTOCK_BILDER:/data/bilder}
+  # Groesste erlaubte Bilddatei in MB.
+  bild-max-mb: ${TAGSTOCK_BILD_MAX_MB:8}
   # Token laufen nach dieser Zeit ab (Tage).
   token-gueltigkeit-tage: ${TAGSTOCK_TOKEN_TAGE:180}
   # Wenn gesetzt, koennen sich nur Personen mit diesem Code registrieren.

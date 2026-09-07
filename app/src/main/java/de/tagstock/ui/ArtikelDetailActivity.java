@@ -35,6 +35,7 @@ import de.tagstock.util.Einstellungen;
 import de.tagstock.util.Formatter;
 import de.tagstock.util.FotoLader;
 import de.tagstock.util.Fotos;
+import de.tagstock.util.Serverbilder;
 import de.tagstock.util.Hintergrund;
 import de.tagstock.util.NfcHelper;
 import de.tagstock.util.PdfErzeuger;
@@ -129,7 +130,7 @@ public class ArtikelDetailActivity extends AppCompatActivity {
         setTitle(artikel.name);
         binding.textName.setText(artikel.name);
 
-        FotoLader.laden(binding.imageFoto, artikel.fotoPfad, R.drawable.ic_artikel);
+        FotoLader.laden(binding.imageFoto, artikel.fotoPfad, artikel.bildUrl, R.drawable.ic_artikel);
 
         Formatter.statusPlakette(binding.chipStatus, artikel.status);
 
@@ -351,6 +352,7 @@ public class ArtikelDetailActivity extends AppCompatActivity {
                     getString(R.string.artikel_loeschen_text, artikel.name),
                     R.string.action_delete, () -> {
                         Fotos.loeschen(this, artikel.fotoPfad);
+                        Serverbilder.entfernen(this, artikel.bildUrl);
                         repository.loeschen(artikel);
                         Toast.makeText(this, R.string.artikel_geloescht, Toast.LENGTH_SHORT).show();
                         finish();

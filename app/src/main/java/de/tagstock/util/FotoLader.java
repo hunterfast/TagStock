@@ -26,23 +26,29 @@ public final class FotoLader {
         }
     };
 
-    private static final ExecutorService EXECUTOR = Executors.newSingleThreadExecutor();
+    // Mehrere Threads, damit ein langsamer Serverabruf die Liste nicht aufhaelt.
+    private static final ExecutorService EXECUTOR = Executors.newFixedThreadPool(3);
     private static final Handler MAIN = new Handler(Looper.getMainLooper());
 
     private FotoLader() {
     }
 
     /**
-     * Zeigt das Foto an oder das Ersatzsymbol, wenn keines hinterlegt ist.
-     * Recycelte Views werden ueber das Tag abgesichert.
+     * Zeigt das Bild eines Artikels an oder das Ersatzsymbol, wenn keines
+     * hinterlegt ist. Liegt das Bild auf dem Server, wird es beim ersten Mal
+     * geholt und danach aus dem Zwischenspeicher genommen. Recycelte Views
+     * werden ueber das Tag abgesichert.
      */
-    public static void laden(ImageView view, @Nullable String name, int ersatzRes) {
-        view.setTag(name);
-        if (name == null || name.isEmpty()) {
+    public static void laden(ImageView view, @Nullable String fotoPfad, @Nullable String bildUrl,
+                             int ersatzRes) {
+        boolean vomServer = bildUrl != null && !bildUrl.isEmpty();
+        String schluessel = vomServer ? bildUrl : fotoPfad;
+        view.setTag(schluessel);
+        if (schluessel == null || schluessel.isEmpty()) {
             view.setImageResource(ersatzRes);
             return;
         }
-        Bitmap gecacht = CACHE.get(name);
+        Bitmap gecacht = CACHE.get(schluessel);
         if (gecacht != null) {
             view.setImageBitmap(gecacht);
             return;
@@ -50,17 +56,24 @@ public final class FotoLader {
         view.setImageResource(ersatzRes);
         Context context = view.getContext().getApplicationContext();
         EXECUTOR.execute(() -> {
-            Bitmap bitmap = Fotos.laden(context, name, MAX_KANTE_PX);
+            Bitmap bitmap = vomServer
+                    ? Serverbilder.anzeigen(context, schluessel, MAX_KANTE_PX)
+                    : Fotos.laden(context, schluessel, MAX_KANTE_PX);
             if (bitmap == null) {
                 return;
             }
-            CACHE.put(name, bitmap);
+            CACHE.put(schluessel, bitmap);
             MAIN.post(() -> {
-                if (name.equals(view.getTag())) {
+                if (schluessel.equals(view.getTag())) {
                     view.setImageBitmap(bitmap);
                 }
             });
         });
+    }
+
+    /** Kurzform fuer Bilder, die nur auf dem Geraet liegen. */
+    public static void laden(ImageView view, @Nullable String fotoPfad, int ersatzRes) {
+        laden(view, fotoPfad, null, ersatzRes);
     }
 
     /** Nach dem Austauschen eines Fotos den alten Eintrag verwerfen. */

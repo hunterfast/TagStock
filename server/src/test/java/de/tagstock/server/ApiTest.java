@@ -1,6 +1,8 @@
 package de.tagstock.server;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -28,6 +30,7 @@ import java.util.UUID;
 /** Durchlauf durch die API: Konto, Team, Bestand, Abgleich, Anfragen. */
 @SpringBootTest(properties = {
         "spring.datasource.url=jdbc:sqlite:build/tmp/api-test.db",
+        "tagstock.bilder-ordner=build/tmp/api-test-bilder",
         "tagstock.registrierungs-code="})
 @AutoConfigureMockMvc
 class ApiTest {
@@ -39,12 +42,24 @@ class ApiTest {
 
     @BeforeAll
     static void datenbankLeeren() {
+        bilderordnerLeeren(new File("build/tmp/api-test-bilder"));
         File datei = new File("build/tmp/api-test.db");
         if (datei.exists() && !datei.delete()) {
             throw new IllegalStateException("Testdatenbank nicht loeschbar");
         }
         //noinspection ResultOfMethodCallIgnored
         datei.getParentFile().mkdirs();
+    }
+
+    private static void bilderordnerLeeren(File ordner) {
+        File[] inhalt = ordner.listFiles();
+        if (inhalt != null) {
+            for (File eintrag : inhalt) {
+                bilderordnerLeeren(eintrag);
+            }
+        }
+        //noinspection ResultOfMethodCallIgnored
+        ordner.delete();
     }
 
     private JsonNode senden(MockHttpServletRequestBuilder anfrage, int erwarteterStatus)
@@ -87,6 +102,18 @@ class ApiTest {
         JsonNode artikel = senden(mitToken(post("/api/v1/teams/" + teamId + "/artikel"), token)
                 .contentType(MediaType.APPLICATION_JSON).content(koerper), 200);
         return artikel.get("id").asText();
+    }
+
+    /** Kleinstes JPEG, das dem Server als Bild durchgeht. */
+    private byte[] jpeg(byte fuellung) {
+        byte[] daten = new byte[64];
+        daten[0] = (byte) 0xFF;
+        daten[1] = (byte) 0xD8;
+        daten[2] = (byte) 0xFF;
+        for (int i = 3; i < daten.length; i++) {
+            daten[i] = fuellung;
+        }
+        return daten;
     }
 
     private String email() {
@@ -342,5 +369,91 @@ class ApiTest {
 
         // Die Kennung ist danach wieder frei.
         neuerArtikel(token, teamId, "Neue Lampe", "LAMP1");
+    }
+
+    @Test
+    void bildLiegtAufDemServerUndKommtZurueck() throws Exception {
+        String token = neuesKonto(email());
+        String teamId = neuesTeam(token, "Werkstatt");
+        String artikelId = neuerArtikel(token, teamId, "Bohrmaschine", null);
+
+        byte[] inhalt = jpeg((byte) 7);
+        JsonNode abgelegt = senden(mitToken(
+                post("/api/v1/teams/" + teamId + "/artikel/" + artikelId + "/bild"), token)
+                .contentType(MediaType.IMAGE_JPEG).content(inhalt), 200);
+        String bildUrl = abgelegt.get("bildUrl").asText();
+        assertTrue(bildUrl.startsWith("/api/v1/teams/" + teamId + "/bilder/"), bildUrl);
+
+        // Der Artikel zeigt jetzt auf das Bild - so findet es jedes Geraet.
+        JsonNode liste = senden(mitToken(get("/api/v1/teams/" + teamId + "/artikel"), token), 200);
+        assertEquals(bildUrl, liste.get(0).get("bildUrl").asText());
+
+        MvcResult bild = mockMvc.perform(mitToken(get(bildUrl), token)).andReturn();
+        assertEquals(200, bild.getResponse().getStatus());
+        assertEquals(MediaType.IMAGE_JPEG_VALUE, bild.getResponse().getContentType());
+        assertArrayEquals(inhalt, bild.getResponse().getContentAsByteArray());
+
+        // Ohne Anmeldung gibt der Server das Bild nicht heraus.
+        assertEquals(401, mockMvc.perform(get(bildUrl)).andReturn().getResponse().getStatus());
+    }
+
+    @Test
+    void neuesBildErsetztDasAlteUndLoeschenRaeumtAuf() throws Exception {
+        String token = neuesKonto(email());
+        String teamId = neuesTeam(token, "Halle");
+        String artikelId = neuerArtikel(token, teamId, "Leiter", null);
+        String pfad = "/api/v1/teams/" + teamId + "/artikel/" + artikelId + "/bild";
+
+        String erstes = senden(mitToken(post(pfad), token)
+                .contentType(MediaType.IMAGE_JPEG).content(jpeg((byte) 1)), 200)
+                .get("bildUrl").asText();
+        String zweites = senden(mitToken(post(pfad), token)
+                .contentType(MediaType.IMAGE_JPEG).content(jpeg((byte) 2)), 200)
+                .get("bildUrl").asText();
+
+        assertNotEquals(erstes, zweites);
+        assertEquals(404, mockMvc.perform(mitToken(get(erstes), token))
+                .andReturn().getResponse().getStatus());
+
+        senden(mitToken(delete(pfad), token), 200);
+        assertEquals(404, mockMvc.perform(mitToken(get(zweites), token))
+                .andReturn().getResponse().getStatus());
+        JsonNode liste = senden(mitToken(get("/api/v1/teams/" + teamId + "/artikel"), token), 200);
+        assertTrue(liste.get(0).get("bildUrl").isNull());
+    }
+
+    @Test
+    void andereDateienNimmtDerServerNichtAn() throws Exception {
+        String token = neuesKonto(email());
+        String teamId = neuesTeam(token, "Lager Süd");
+        String artikelId = neuerArtikel(token, teamId, "Kabeltrommel", null);
+
+        senden(mitToken(post("/api/v1/teams/" + teamId + "/artikel/" + artikelId + "/bild"), token)
+                .contentType(MediaType.IMAGE_JPEG)
+                .content("kein Bild, nur Text".getBytes(StandardCharsets.UTF_8)), 400);
+    }
+
+    @Test
+    void mitgliederDuerfenBilderSehenAberNichtAendern() throws Exception {
+        String adminToken = neuesKonto(email());
+        String teamId = neuesTeam(adminToken, "Bühne");
+        String artikelId = neuerArtikel(adminToken, teamId, "Stativ", null);
+        String bildUrl = senden(mitToken(
+                post("/api/v1/teams/" + teamId + "/artikel/" + artikelId + "/bild"), adminToken)
+                .contentType(MediaType.IMAGE_JPEG).content(jpeg((byte) 3)), 200)
+                .get("bildUrl").asText();
+
+        String code = senden(mitToken(post("/api/v1/teams/" + teamId + "/einladung"), adminToken)
+                .contentType(MediaType.APPLICATION_JSON).content("{\"rolle\":\"mitglied\"}"), 200)
+                .get("code").asText();
+        String gastToken = neuesKonto(email());
+        senden(mitToken(post("/api/v1/teams/beitreten"), gastToken)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"code\":\"" + code + "\"}"), 200);
+
+        assertEquals(200, mockMvc.perform(mitToken(get(bildUrl), gastToken))
+                .andReturn().getResponse().getStatus());
+        senden(mitToken(post("/api/v1/teams/" + teamId + "/artikel/" + artikelId + "/bild"),
+                gastToken).contentType(MediaType.IMAGE_JPEG).content(jpeg((byte) 4)), 403);
     }
 }

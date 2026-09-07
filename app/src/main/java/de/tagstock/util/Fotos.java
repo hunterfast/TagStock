@@ -75,7 +75,12 @@ public final class Fotos {
         if (name == null || name.isEmpty()) {
             return null;
         }
-        File file = datei(context, name);
+        return ausDatei(datei(context, name), maxKante);
+    }
+
+    /** Dasselbe fuer eine beliebige Datei - etwa aus dem Zwischenspeicher der Serverbilder. */
+    @Nullable
+    public static Bitmap ausDatei(File file, int maxKante) {
         if (!file.exists() || file.length() == 0) {
             return null;
         }

@@ -249,6 +249,8 @@
     <string name="server_pruefen">Verbindung prüfen</string>
     <string name="server_erreichbar">Server erreichbar (Schnittstelle %1$d)</string>
     <string name="server_nicht_erreichbar">Server nicht erreichbar</string>
+    <string name="server_nicht_eingerichtet">Kein Server eingerichtet</string>
+    <string name="kategorien_nur_lesen">Kategorien ändern dürfen nur Admins und Lageristen.</string>
     <string name="server_anmeldung">Anmeldung</string>
     <string name="server_email">E-Mail</string>
     <string name="server_passwort">Passwort</string>
@@ -284,6 +286,8 @@
     <string name="server_letzter_abgleich">Zuletzt abgeglichen: %1$s</string>
     <string name="server_jetzt_abgleichen">Jetzt abgleichen</string>
     <string name="server_abgleich_fertig">%1$d gesendet, %2$d übernommen, %3$d abgelehnt</string>
+    <string name="server_abgleich_bilder">, %1$d Bilder</string>
+    <string name="foto_server_hinweis">Wird beim nächsten Abgleich auf den Server geladen.</string>
 
     <!-- Anfragen -->
     <string name="anfragen_leer">Keine Anfragen.</string>

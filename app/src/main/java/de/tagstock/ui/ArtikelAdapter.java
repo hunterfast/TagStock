@@ -104,7 +104,7 @@ public class ArtikelAdapter extends ListAdapter<Artikel, ArtikelAdapter.ArtikelH
             Context context = binding.getRoot().getContext();
             binding.textName.setText(artikel.name);
 
-            FotoLader.laden(binding.imageFoto, artikel.fotoPfad, R.drawable.ic_artikel);
+            FotoLader.laden(binding.imageFoto, artikel.fotoPfad, artikel.bildUrl, R.drawable.ic_artikel);
             Formatter.statusPlakette(binding.textStatus, artikel.status);
 
             String zeile = Formatter.zeile(context, artikel);

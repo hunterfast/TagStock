@@ -7,6 +7,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -40,6 +41,7 @@ public class ServerClient {
     private static final int VERBINDUNG_MS = 8000;
     private static final int LESEN_MS = 20000;
 
+    private final String wurzel;
     private final String basis;
     @Nullable
     private final String token;
@@ -49,6 +51,7 @@ public class ServerClient {
         while (bereinigt.endsWith("/")) {
             bereinigt = bereinigt.substring(0, bereinigt.length() - 1);
         }
+        this.wurzel = bereinigt;
         this.basis = bereinigt + "/api/v1";
         this.token = token;
     }
@@ -128,6 +131,83 @@ public class ServerClient {
         return objekt(hole("POST", "/teams/" + teamId + "/sync?seit=" + seit, koerper));
     }
 
+    // -------------------------------------------------------------- Kategorien
+
+    public JSONArray kategorien(String teamId) throws IOException, JSONException {
+        return feld(hole("GET", "/teams/" + teamId + "/kategorien", null));
+    }
+
+    public JSONObject kategorieAnlegen(String teamId, String name, int reihenfolge)
+            throws IOException, JSONException {
+        JSONObject koerper = new JSONObject();
+        koerper.put("name", name);
+        koerper.put("reihenfolge", reihenfolge);
+        return objekt(hole("POST", "/teams/" + teamId + "/kategorien", koerper));
+    }
+
+    public JSONObject kategorieAendern(String teamId, String kategorieId, String name,
+                                       int reihenfolge) throws IOException, JSONException {
+        JSONObject koerper = new JSONObject();
+        koerper.put("name", name);
+        koerper.put("reihenfolge", reihenfolge);
+        return objekt(hole("PUT", "/teams/" + teamId + "/kategorien/" + kategorieId, koerper));
+    }
+
+    public void kategorieLoeschen(String teamId, String kategorieId) throws IOException {
+        hole("DELETE", "/teams/" + teamId + "/kategorien/" + kategorieId, null);
+    }
+
+    // ------------------------------------------------------------------ Bilder
+
+    /**
+     * Legt das Bild eines Artikels auf dem Server ab und gibt dessen Adresse
+     * zurueck. Ein vorheriges Bild ersetzt der Server dabei.
+     */
+    public JSONObject bildHochladen(String teamId, String artikelServerId, byte[] daten,
+                                    String typ) throws IOException, JSONException {
+        HttpURLConnection verbindung = verbinden(new URL(
+                basis + "/teams/" + teamId + "/artikel/" + artikelServerId + "/bild"), "POST");
+        try {
+            verbindung.setDoOutput(true);
+            verbindung.setFixedLengthStreamingMode(daten.length);
+            verbindung.setRequestProperty("Content-Type", typ);
+            try (OutputStream aus = verbindung.getOutputStream()) {
+                aus.write(daten);
+            }
+            int status = verbindung.getResponseCode();
+            String antwort = lies(status >= 400
+                    ? verbindung.getErrorStream() : verbindung.getInputStream());
+            if (status >= 400) {
+                throw new ServerFehler(status, meldung(antwort, status));
+            }
+            return objekt(antwort);
+        } finally {
+            verbindung.disconnect();
+        }
+    }
+
+    /** Holt ein Bild. Die Adresse kommt vom Server und beginnt mit /api/v1. */
+    public byte[] bildHolen(String bildUrl) throws IOException {
+        HttpURLConnection verbindung = verbinden(new URL(wurzel + bildUrl), "GET");
+        try {
+            int status = verbindung.getResponseCode();
+            if (status >= 400) {
+                throw new ServerFehler(status, meldung(lies(verbindung.getErrorStream()), status));
+            }
+            try (InputStream ein = verbindung.getInputStream();
+                 ByteArrayOutputStream aus = new ByteArrayOutputStream()) {
+                byte[] puffer = new byte[8192];
+                int gelesen;
+                while ((gelesen = ein.read(puffer)) != -1) {
+                    aus.write(puffer, 0, gelesen);
+                }
+                return aus.toByteArray();
+            }
+        } finally {
+            verbindung.disconnect();
+        }
+    }
+
     // ---------------------------------------------------------------- Anfragen
 
     public JSONArray anfragen(String teamId) throws IOException, JSONException {
@@ -156,17 +236,22 @@ public class ServerClient {
 
     // ------------------------------------------------------------------ Technik
 
+    private HttpURLConnection verbinden(URL adresse, String verfahren) throws IOException {
+        HttpURLConnection verbindung = (HttpURLConnection) adresse.openConnection();
+        verbindung.setRequestMethod(verfahren);
+        verbindung.setConnectTimeout(VERBINDUNG_MS);
+        verbindung.setReadTimeout(LESEN_MS);
+        if (token != null && !token.isEmpty()) {
+            verbindung.setRequestProperty("Authorization", "Bearer " + token);
+        }
+        return verbindung;
+    }
+
     private String hole(String verfahren, String pfad, @Nullable JSONObject koerper)
             throws IOException {
-        HttpURLConnection verbindung = (HttpURLConnection) new URL(basis + pfad).openConnection();
+        HttpURLConnection verbindung = verbinden(new URL(basis + pfad), verfahren);
         try {
-            verbindung.setRequestMethod(verfahren);
-            verbindung.setConnectTimeout(VERBINDUNG_MS);
-            verbindung.setReadTimeout(LESEN_MS);
             verbindung.setRequestProperty("Accept", "application/json; charset=utf-8");
-            if (token != null && !token.isEmpty()) {
-                verbindung.setRequestProperty("Authorization", "Bearer " + token);
-            }
             if (koerper != null) {
                 verbindung.setDoOutput(true);
                 verbindung.setRequestProperty("Content-Type", "application/json; charset=utf-8");

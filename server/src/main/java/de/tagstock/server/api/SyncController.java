@@ -2,6 +2,7 @@ package de.tagstock.server.api;
 
 import de.tagstock.server.daten.AnfrageDaten;
 import de.tagstock.server.daten.ArtikelDaten;
+import de.tagstock.server.daten.Bilderdienst;
 import de.tagstock.server.daten.KategorieDaten;
 import de.tagstock.server.daten.ProtokollDaten;
 import de.tagstock.server.modell.Artikel;
@@ -58,15 +59,17 @@ public class SyncController {
     private final KategorieDaten kategorieDaten;
     private final ProtokollDaten protokollDaten;
     private final AnfrageDaten anfrageDaten;
+    private final Bilderdienst bilder;
     private final Zugriff zugriff;
 
     public SyncController(ArtikelDaten artikelDaten, KategorieDaten kategorieDaten,
                           ProtokollDaten protokollDaten, AnfrageDaten anfrageDaten,
-                          Zugriff zugriff) {
+                          Bilderdienst bilder, Zugriff zugriff) {
         this.artikelDaten = artikelDaten;
         this.kategorieDaten = kategorieDaten;
         this.protokollDaten = protokollDaten;
         this.anfrageDaten = anfrageDaten;
+        this.bilder = bilder;
         this.zugriff = zugriff;
     }
 
@@ -145,6 +148,10 @@ public class SyncController {
         }
 
         artikel.erstelltAm = server.erstelltAm;
+        if (server.bildUrl != null && (artikel.bildUrl == null || artikel.bildUrl.isEmpty())) {
+            // Das Geraet hat das Bild entfernt - dann muss es auch hier weg.
+            bilder.entfernen(teamId, artikel.id);
+        }
         artikelDaten.aktualisieren(artikel);
         return new Zuordnung(artikel.lokaleId, artikel.id, true, null);
     }

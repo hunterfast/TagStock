@@ -51,6 +51,11 @@ public interface ArtikelDao {
     @Query("SELECT * FROM artikel WHERE offen = 1")
     List<Artikel> offene();
 
+    /** Artikel mit einer Aufnahme, die noch auf den Server gehoert. */
+    @Query("SELECT * FROM artikel WHERE fotoPfad IS NOT NULL AND fotoPfad != ''"
+            + " AND (bildUrl IS NULL OR bildUrl = '') AND serverId IS NOT NULL")
+    List<Artikel> mitOffenemBild();
+
     @Query("DELETE FROM artikel")
     void alleLoeschen();
 }

@@ -24,6 +24,7 @@ import java.util.Calendar;
 import java.util.List;
 
 import de.tagstock.R;
+import de.tagstock.data.Abgleich;
 import de.tagstock.data.Artikel;
 import de.tagstock.data.ArtikelStatus;
 import de.tagstock.data.Kategorie;
@@ -56,6 +57,7 @@ public class ArtikelFormFragment extends Fragment {
     @Nullable
     private Artikel original;
     private String fotoPfad;
+    private String bildUrl;
     private String aufnahmeName;
     private final List<String> neueFotos = new ArrayList<>();
     private Long rueckgabeDatum;
@@ -124,6 +126,7 @@ public class ArtikelFormFragment extends Fragment {
         binding.buttonFotoGalerie.setOnClickListener(v -> galerieLauncher.launch("image/*"));
         binding.buttonFotoEntfernen.setOnClickListener(v -> {
             fotoPfad = null;
+            bildUrl = null;
             fotoAnzeigen();
         });
         binding.buttonKennungScannen.setOnClickListener(v ->
@@ -223,6 +226,7 @@ public class ArtikelFormFragment extends Fragment {
         binding.editRueckgabe.setText(rueckgabeDatum == null
                 ? "" : Formatter.datum(requireContext(), rueckgabeDatum));
         fotoPfad = artikel.fotoPfad;
+        bildUrl = artikel.bildUrl;
         statusSetzen(artikel.status);
         warnungSetzen(artikel.scanWarnung);
         verleihFelder();
@@ -284,14 +288,22 @@ public class ArtikelFormFragment extends Fragment {
     private void fotoUebernehmen(String name) {
         neueFotos.add(name);
         fotoPfad = name;
+        // Eine neue Aufnahme ersetzt das Bild auf dem Server beim naechsten Abgleich.
+        bildUrl = null;
         FotoLader.vergessen(name);
         fotoAnzeigen();
     }
 
     private void fotoAnzeigen() {
-        boolean vorhanden = Fotos.existiert(requireContext(), fotoPfad);
-        FotoLader.laden(binding.imageFoto, vorhanden ? fotoPfad : null, R.drawable.ic_artikel);
-        binding.buttonFotoEntfernen.setVisibility(vorhanden ? View.VISIBLE : View.GONE);
+        boolean aufDemGeraet = Fotos.existiert(requireContext(), fotoPfad);
+        boolean aufDemServer = bildUrl != null && !bildUrl.isEmpty();
+        FotoLader.laden(binding.imageFoto, aufDemGeraet ? fotoPfad : null,
+                aufDemServer ? bildUrl : null, R.drawable.ic_artikel);
+        binding.buttonFotoEntfernen.setVisibility(
+                aufDemGeraet || aufDemServer ? View.VISIBLE : View.GONE);
+        binding.textFotoHinweis.setVisibility(
+                aufDemGeraet && Einstellungen.serverAktiv(requireContext())
+                        ? View.VISIBLE : View.GONE);
     }
 
     // --------------------------------------------------------------- Speichern
@@ -314,6 +326,7 @@ public class ArtikelFormFragment extends Fragment {
         ziel.status = status();
         ziel.scanWarnung = warnung();
         ziel.fotoPfad = fotoPfad;
+        ziel.bildUrl = bildUrl;
         if (ziel.status == ArtikelStatus.VERLIEHEN) {
             ziel.verliehenAn = Formatter.leerZuNull(text(binding.editVerliehenAn.getText()));
             ziel.rueckgabeDatum = rueckgabeDatum;
@@ -335,6 +348,11 @@ public class ArtikelFormFragment extends Fragment {
             aufraeumen(ziel.fotoPfad);
             Toast.makeText(requireContext(), R.string.artikel_gespeichert,
                     Toast.LENGTH_SHORT).show();
+            if (Einstellungen.serverAktiv(requireContext())) {
+                // Im Hintergrund weiterreichen, damit vor allem das Bild
+                // zeitnah auf dem Server landet.
+                Abgleich.ausfuehren(requireContext().getApplicationContext(), unwichtig -> { });
+            }
             if (getActivity() instanceof ArtikelDetailActivity) {
                 ((ArtikelDetailActivity) getActivity()).bearbeitenBeenden();
             } else {
@@ -375,6 +393,7 @@ public class ArtikelFormFragment extends Fragment {
         original = null;
         artikelId = 0L;
         fotoPfad = null;
+        bildUrl = null;
         rueckgabeDatum = null;
         binding.editName.setText("");
         binding.editBeschreibung.setText("");
