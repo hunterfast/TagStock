@@ -69,6 +69,8 @@ public class EinstellungenActivity extends AppCompatActivity {
 
         binding.buttonKategorien.setOnClickListener(v ->
                 startActivity(new Intent(this, KategorienActivity.class)));
+        binding.buttonServer.setOnClickListener(v ->
+                startActivity(new Intent(this, ServerActivity.class)));
 
         binding.buttonExportJson.setOnClickListener(v ->
                 jsonExport.launch(Sicherung.dateiname("json")));

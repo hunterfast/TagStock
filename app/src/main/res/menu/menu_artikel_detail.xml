@@ -15,6 +15,10 @@
         android:title="@string/detail_leihbeleg"
         app:showAsAction="never" />
     <item
+        android:id="@+id/action_anfragen"
+        android:title="@string/anfrage_stellen"
+        app:showAsAction="never" />
+    <item
         android:id="@+id/action_nfc"
         android:title="@string/nfc_schreiben_aktion"
         app:showAsAction="never" />

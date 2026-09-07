@@ -28,6 +28,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import de.tagstock.R;
+import de.tagstock.data.Abgleich;
 import de.tagstock.data.Artikel;
 import de.tagstock.data.ArtikelStatus;
 import de.tagstock.data.Repository;
@@ -127,12 +128,7 @@ public class BestandFragment extends Fragment implements ArtikelAdapter.Listener
         binding.buttonAuswahlStandort.setOnClickListener(v -> standortFuerAuswahl());
         binding.buttonAuswahlEtiketten.setOnClickListener(v -> etikettenDrucken());
 
-        binding.swipeRefresh.setOnRefreshListener(() -> {
-            binding.swipeRefresh.setRefreshing(false);
-            if (!Einstellungen.serverAktiv(requireContext())) {
-                Toast.makeText(requireContext(), R.string.sync_kein_server, Toast.LENGTH_SHORT).show();
-            }
-        });
+        binding.swipeRefresh.setOnRefreshListener(this::abgleichen);
 
         viewModel.getGefiltert().observe(getViewLifecycleOwner(), artikel -> {
             adapter.submitList(artikel);
@@ -160,6 +156,29 @@ public class BestandFragment extends Fragment implements ArtikelAdapter.Listener
 
         binding.buttonAuswahl.setVisibility(
                 Einstellungen.darfBearbeiten(requireContext()) ? View.VISIBLE : View.GONE);
+    }
+
+    /** Ziehen zum Abgleichen - ohne Server nur ein Hinweis. */
+    private void abgleichen() {
+        if (!Einstellungen.serverAktiv(requireContext())
+                || Einstellungen.teamId(requireContext()) == null) {
+            binding.swipeRefresh.setRefreshing(false);
+            Toast.makeText(requireContext(), R.string.sync_kein_server, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        Abgleich.ausfuehren(requireContext(), ergebnis -> {
+            if (binding == null) {
+                return;
+            }
+            binding.swipeRefresh.setRefreshing(false);
+            if (!ergebnis.erfolgreich()) {
+                Toast.makeText(requireContext(), ergebnis.fehler, Toast.LENGTH_LONG).show();
+                return;
+            }
+            Toast.makeText(requireContext(), getString(R.string.sync_fertig,
+                            ergebnis.hochgeladen, ergebnis.uebernommen),
+                    Toast.LENGTH_SHORT).show();
+        });
     }
 
     // ------------------------------------------------------------------ Filter

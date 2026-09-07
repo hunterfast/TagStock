@@ -63,6 +63,20 @@ public class Repository {
         return instance;
     }
 
+    /** Arbeitsschritt, der direkt auf den Tabellen arbeitet. */
+    public interface Arbeit<T> {
+        T mache(ArtikelDao artikel, KategorieDao kategorien, ProtokollDao protokoll)
+                throws Exception;
+    }
+
+    /**
+     * Fuehrt eine zusammenhaengende Aufgabe im Hintergrund aus - benutzt der
+     * Abgleich, der Datenbank und Server in einem Rutsch braucht.
+     */
+    public <T> void imHintergrund(Arbeit<T> arbeit, Callback<T> callback) {
+        starte(() -> arbeit.mache(artikelDao, kategorieDao, protokollDao), callback);
+    }
+
     // ---------------------------------------------------------------- Abfragen
 
     public LiveData<List<Artikel>> beobachteArtikel() {

@@ -41,6 +41,12 @@
             android:parentActivityName=".ui.MainActivity" />
 
         <activity
+            android:name=".ui.ServerActivity"
+            android:exported="false"
+            android:parentActivityName=".ui.EinstellungenActivity"
+            android:windowSoftInputMode="adjustResize" />
+
+        <activity
             android:name=".ui.KategorienActivity"
             android:exported="false"
             android:parentActivityName=".ui.EinstellungenActivity" />

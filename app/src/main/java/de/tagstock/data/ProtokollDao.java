@@ -25,6 +25,9 @@ public interface ProtokollDao {
     @Query("SELECT * FROM protokoll WHERE offen = 1")
     List<Protokoll> offene();
 
+    @Query("UPDATE protokoll SET offen = 0 WHERE id IN (:ids)")
+    void alsGesendetMarkieren(java.util.List<Long> ids);
+
     @Query("DELETE FROM protokoll")
     void alleLoeschen();
 }

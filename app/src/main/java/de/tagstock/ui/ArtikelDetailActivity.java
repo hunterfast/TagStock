@@ -330,6 +330,8 @@ public class ArtikelDetailActivity extends AppCompatActivity {
         menu.findItem(R.id.action_etikett).setVisible(!bearbeitet);
         menu.findItem(R.id.action_nfc).setVisible(
                 darf && !bearbeitet && NfcHelper.hasHardware(this));
+        menu.findItem(R.id.action_anfragen).setVisible(!bearbeitet && artikel != null
+                && artikel.serverId != null && Einstellungen.serverAktiv(this));
         return super.onPrepareOptionsMenu(menu);
     }
 
@@ -367,6 +369,10 @@ public class ArtikelDetailActivity extends AppCompatActivity {
             nfcSchreiben();
             return true;
         }
+        if (id == R.id.action_anfragen) {
+            anfrageStellen();
+            return true;
+        }
         return super.onOptionsItemSelected(item);
     }
 
@@ -398,6 +404,28 @@ public class ArtikelDetailActivity extends AppCompatActivity {
             return;
         }
         finish();
+    }
+
+    // --------------------------------------------------------------- Anfrage
+
+    /** Fragt beim Team an, ob man den Artikel ausleihen darf. */
+    private void anfrageStellen() {
+        String url = Einstellungen.serverUrl(this);
+        String token = Einstellungen.token(this);
+        String teamId = Einstellungen.teamId(this);
+        if (artikel == null || url == null || token == null || teamId == null) {
+            return;
+        }
+        String serverId = artikel.serverId;
+        Dialogs.textInput(this, getString(R.string.anfrage_stellen),
+                getString(R.string.anfrage_nachricht), null,
+                nachricht -> de.tagstock.util.Hintergrund.starte(
+                        () -> new de.tagstock.util.ServerClient(url, token)
+                                .anfrageStellen(teamId, serverId, nachricht, null),
+                        ergebnis -> Toast.makeText(this, R.string.anfrage_gestellt,
+                                Toast.LENGTH_SHORT).show(),
+                        fehler -> Toast.makeText(this, String.valueOf(fehler.getMessage()),
+                                Toast.LENGTH_LONG).show()));
     }
 
     // -------------------------------------------------------------------- NFC
