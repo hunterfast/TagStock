@@ -13,7 +13,8 @@ services:
     ports:
       - "8080:8080"
     volumes:
-      # Auf Unraid ueblich: /mnt/user/appdata/<name>
+      # Auf Unraid ueblich: /mnt/user/appdata/<name>. Der Container laeuft als
+      # 99:100 (nobody:users) und darf dort daher schreiben.
       - /mnt/user/appdata/tagstock:/data
     environment:
       # Leer: jeder, der den Server erreicht, darf sich registrieren.

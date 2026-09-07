@@ -12,8 +12,11 @@ LABEL org.opencontainers.image.title="TagStock-Server" \
       org.opencontainers.image.description="Bestand, Teams und Leih-Anfragen fuer die TagStock-App" \
       org.opencontainers.image.source="https://github.com/hunterfast/TagStock"
 
-# Nicht als root laufen lassen.
-RUN useradd --system --uid 1000 --create-home tagstock
+# Nicht als root laufen lassen. 99:100 ist auf Unraid "nobody:users", damit der
+# Server in /mnt/user/appdata schreiben darf. Ist die Kennung im Basis-Abbild
+# schon vergeben, vergibt useradd die naechste freie.
+RUN useradd --system --uid 99 --gid 100 --create-home tagstock \
+    || useradd --system --create-home tagstock
 WORKDIR /app
 COPY --from=bau /bau/build/libs/tagstock-server.jar app.jar
 
