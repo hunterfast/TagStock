@@ -1,74 +1,88 @@
 # TagStock
 
-Native Android-App (Java) zur Lagerverwaltung mit Barcode-, QR-Code- und NFC-Erfassung.
-Kein WebView, keine Webanwendung – reines Android-SDK mit Views, Room und CameraX.
+Native Android-App (Java) zur Lagerverwaltung mit Barcode-, QR-Code- und
+NFC-Erfassung. Kein WebView, keine Webanwendung – reines Android-SDK mit Views,
+Room und CameraX.
+
+Dazu gehört ein **optionaler Server** (`server/`) für mehrere Geräte: gemeinsamer
+Bestand, Teams mit Rollen, Leih-Anfragen und die Artikelbilder. Ohne ihn läuft
+die App vollständig allein auf dem Gerät.
 
 ## Funktionen
 
-### Lager und Artikel
-- Beliebig viele Lager mit Name, Ort und Beschreibung. Die Übersicht zeigt je Lager
-  die Stückzahlen nach Zustand.
-- Artikel mit Bezeichnung, Beschreibung, Menge, Notiz und Foto.
-- **Suche über alle Lager** hinweg: Bezeichnung, Beschreibung, Notiz und Codes,
-  kombinierbar mit einem Zustandsfilter.
+### Bestand
+- Ein Artikel hat **genau einen Status**: vorhanden, nicht vorhanden, verliehen,
+  verbraucht oder ausgelagert. Keine Stückzahlen.
+- Felder: Bezeichnung, Beschreibung, Kategorie, **Standort** und **Lagerort**
+  (Regal, Fach, Kiste), Kennung, Bild, Rückgabedatum und Scan-Warnung.
+- Die Zahlenleiste oben zeigt die Verteilung nach Status und filtert auf
+  Fingertipp. Dazu Suche, Kategorie- und Standortfilter, kombinierbar.
+- Banner für **überfällige** Ausleihen und für Artikel, die zu lange nicht
+  gescannt wurden (Warnschwelle je Artikel: halbjährlich, jährlich, alle zwei
+  Jahre oder nie).
+- **Mehrfachauswahl**: Status setzen, Standort ändern, Etikettenbogen als PDF.
 
-### Zustände mit Mengen
-Der Zustand hängt nicht am ganzen Artikel, sondern an Stückzahlen:
-
-```
-vorhanden = Menge − verliehen − verloren
-```
-
-Fünf Bohrer, zwei davon verliehen, einer verloren: die App zeigt
-„2 vorhanden · 2 verliehen · 1 verloren“. Die Filter *Vorhanden*, *Verliehen* und
-*Verloren* greifen, sobald mindestens ein Stück im jeweiligen Zustand ist.
-
-### Verleih mit Historie
-Jede Ausleihe ist ein eigener Vorgang mit Person, Stückzahl, Ausleih- und
-Rückgabedatum. Zurückgegebene Vorgänge bleiben als Historie am Artikel stehen –
-so lässt sich nachvollziehen, wer etwas zuletzt hatte.
-
-### Codes
-- Ein Artikel kann **mehrere Codes** haben, etwa den Herstellerbarcode *und* einen
-  selbst aufgeklebten NFC-Tag.
-- Codes sind **geräteweit eindeutig**: Ein bereits vergebener Code wird abgelehnt,
-  und die App zeigt, zu welchem Artikel er gehört.
-- **NFC-Tags beschreiben**: Artikelname und Nummer werden als Text auf leere Tags
-  geschrieben, die Tag-Kennung wird als Code hinterlegt.
-
-### Scannen
+### Kennungen und Scannen
+- Je Artikel eine Kennung – NFC-Tag oder Barcode/QR –, **eindeutig** im Bestand.
+  Ist sie vergeben, zeigt die App, zu welchem Artikel sie gehört.
 - **Barcodes** (EAN-8/13, UPC-A/E, Code 39/128, ITF, PDF417, Aztec, Data Matrix …)
-  und **QR-Codes** über die Kamera (CameraX + ML Kit, funktioniert offline).
+  und **QR-Codes** über die Kamera (CameraX + ML Kit, arbeitet offline).
 - **NFC-Tags** parallel über den Reader-Mode: gelesen werden Tag-UID und, falls
-  vorhanden, der NDEF-Inhalt. Beides wird beim Suchen berücksichtigt.
-- Ein gescannter Code wird über alle Lager gesucht: bekannt → Artikel öffnen;
-  in einem anderen Lager → „öffnen oder hierher verschieben?“; unbekannt →
-  direkt mit diesem Code anlegen.
-- Taschenlampe und manuelle Eingabe als Rückfallebene.
+  vorhanden, der NDEF-Inhalt. Leere Tags lassen sich aus der Detailansicht
+  beschreiben.
+- Drei Betriebsarten: **einzeln** (Treffer öffnen), **sammeln** (Liste aufbauen
+  und gemeinsam buchen) und **Dauerscan** (jeder Treffer wird sofort als gesehen
+  gebucht). Taschenlampe und manuelle Eingabe als Rückfallebene.
+- Ein unbekannter Code führt direkt ins Formular – mit der Kennung schon drin.
 
-### Inventur
-Dauerscan: Der Scanner bleibt offen, jeder Treffer wandert in eine Liste.
-Die Auswertung zeigt danach
+### Detailansicht
+Status und Standort in einem Schritt wechseln, QR-Code des Artikels, die
+Standort-Historie und das vollständige Änderungsprotokoll mit Namen. Aus dem Menü:
+bearbeiten, **Etikett** und **Leihbeleg** als PDF, NFC-Tag beschreiben, mit
+Server eine **Ausleihe anfragen**, löschen.
 
-- **nicht gefunden** – auswählbar als verloren melden,
-- **aus anderem Lager** – auswählbar hierher verschieben,
-- **unbekannte Codes** – direkt als neuen Artikel anlegen.
-
-Vollständig verliehene oder verlorene Stücke zählen nicht als „fehlend“, sie können
-im Regal gar nicht liegen.
+### Kategorien
+Frei pflegbar, mit eigener Reihenfolge; ein neues Team startet mit acht
+Vorgaben. Hängt die App an einem Server, ändern nur **Admins und Lageristen**
+die Liste – und zwar dort, damit alle Geräte dieselbe haben.
 
 ### Sicherung
-- **JSON-Export** über den System-Dateidialog: vollständiger Bestand, wieder
-  einlesbar (wahlweise ergänzend oder ersetzend).
-- **CSV-Export** für die Tabellenkalkulation, mit Stückzahlen je Zustand.
-- Bilder bleiben außen vor: ohne Server liegen sie nur auf dem Gerät, mit Server
-  auf ebendiesem (`server/`, siehe dessen README).
+- **JSON-Export** über den System-Dateidialog: vollständiger Bestand samt
+  Kategorien und Protokoll, wieder einlesbar (ergänzend oder ersetzend).
+- **CSV-Export** für die Tabellenkalkulation.
+- Bilder bleiben außen vor: ohne Server liegen sie auf dem Gerät, mit Server auf
+  ebendiesem.
+
+### Mit Server: Team, Rollen, Abgleich
+Unter *Einstellungen → Server* trägst du die Adresse ein, meldest dich an und
+legst ein Team an oder trittst per Einladungscode einem bei.
+
+| Rolle | Darf |
+|---|---|
+| `admin` | alles, dazu Mitglieder und Rollen verwalten |
+| `lagerist` | Bestand und Kategorien pflegen, Anfragen entscheiden |
+| `mitglied` | lesen und Ausleihen anfragen |
+
+- **Abgleich** per Ziehen in der Bestandsliste oder auf Knopfdruck: eigene
+  Änderungen hoch, fremde herunter. Bei Doppeländerungen gewinnt der jüngere
+  Zeitstempel; Löschungen kommen als Merkmal mit.
+- **Artikelbilder** liegen auf dem Server. Die App verkleinert eine Aufnahme,
+  lädt sie beim Abgleich hoch und hält auf dem Gerät nur einen
+  Zwischenspeicher.
+- **Anfragen**: Mitglieder fragen eine Ausleihe an, Lageristen entscheiden; eine
+  Zusage setzt den Artikel auf verliehen.
+- **Mitglieder**: Admins sehen alle Konten des Teams, ändern Rollen und
+  entfernen Konten. Wer selbst gehen will, verlässt das Team an derselben Stelle.
+
+Einrichtung des Servers: [`server/README.md`](server/README.md), Schritt für
+Schritt für Unraid: [`server/INSTALL-UNRAID.md`](server/INSTALL-UNRAID.md).
 
 ## Bauen
 
-Der Debug-Build läuft bei jedem Push auf GitHub Actions
-(`.github/workflows/android.yml`) und legt die APK als Artefakt `tagstock-debug-apk`
-am jeweiligen Lauf ab – ohne lokale Android-Installation.
+Der Build läuft bei jedem Push auf GitHub Actions
+(`.github/workflows/android.yml`) und legt die APK als Artefakt
+`tagstock-debug-apk` am jeweiligen Lauf ab – ohne lokale Android-Installation.
+Derselbe Lauf baut und testet den Server.
 
 Lokal, mit JDK 17 und Android SDK (API 35):
 
@@ -98,33 +112,42 @@ Ohne diese Datei entsteht ein unsigniertes Release-APK.
 
 `app/src/test` läuft mit Robolectric auf der JVM:
 
-- **MigrationTest** legt eine echte Datenbank im Format von Version 1 an, führt die
-  Migration aus und prüft, dass Codes, Ausleihen und Verluste korrekt übernommen
-  werden. Room prüft dabei zusätzlich, ob das Schema exakt zu den Entities passt.
-- **BestandsLogikTest** rechnet Bestand, Zustand und Filter nach.
+- **MigrationTest** legt echte Datenbanken im Format von Version 1 und 2 an,
+  führt die Migrationen aus und prüft das Ergebnis: aus dem Lager wird der
+  Standort, aus der Ausleih-Historie das Protokoll, der erste Code wird zur
+  Kennung. Room prüft dabei, ob das Schema exakt zu den Entities passt.
+- **ArtikelLogikTest** rechnet Warnungen, Überfälligkeit, Suche und Filter nach.
 - **SicherungTest** prüft JSON im Rundlauf und die CSV-Ausgabe samt Maskierung.
+
+Der Server hat eigene Tests unter `server/src/test`, die ihn hochfahren und die
+Schnittstelle durchgehen (`cd server && ./gradlew test`).
 
 ## Datenmodell
 
+Room, aktuell Version 3; Migrationen aus 1 und 2 sind hinterlegt, damit ein
+Update den Bestand nicht verliert.
+
 ```
-lager   (id, name, beschreibung, ort, erstelltAm)
-  └── items    (id, lagerId, name, beschreibung, menge, mengeVerloren,
-                fotoPfad, notiz, erstelltAm, geaendertAm)
-        ├── codes   (id, itemId, wert UNIQUE, typ, erfasstAm)
-        └── verleih (id, itemId, person, menge, ausgeliehenAm, zurueckAm, notiz)
+artikel    (id, serverId, teamId, rfidUid UNIQUE, name, beschreibung, kategorie,
+            standort, lagerort, fotoPfad, bildUrl, status, verliehenAn,
+            rueckgabeDatum, zuletztGescannt, scanWarnung, erstelltAm,
+            geaendertAm, offen)
+kategorien (id, serverId, teamId, name UNIQUE, reihenfolge)
+protokoll  (id, serverId, artikelId, artikelName, aktion, alterWert, neuerWert,
+            nutzer, zeitpunkt, offen)
 ```
 
-Alles hängt per Fremdschlüssel mit `ON DELETE CASCADE` zusammen. Schemaänderungen
-laufen über echte Room-Migrationen (aktuell Version 2), damit ein Update den
-Bestand nicht verliert.
+`serverId` verbindet einen Datensatz mit dem Server, `offen` merkt sich, was noch
+hochgeladen werden muss. Ohne Server bleiben beide leer.
 
 ## Projektstruktur
 
 ```
 app/src/main/java/de/tagstock/
-├── data/     Entities, DAOs, Migration, Repository
-├── ui/       Activities, Adapter, ViewModels, Dialoge
-└── util/     NFC, Fotos, Sicherung, Formatierung
+├── data/     Entities, DAOs, Migrationen, Repository, Abgleich
+├── ui/       Activities, Fragmente, Adapter, ViewModel
+└── util/     Scanner, NFC, Bilder, PDF, Sicherung, Serverzugriff
+server/       Eigenständige Serveranwendung (Spring Boot, SQLite, Docker)
 ```
 
 ## Berechtigungen
@@ -132,7 +155,8 @@ app/src/main/java/de/tagstock/
 - `CAMERA` – wird erst beim ersten Scan abgefragt; ohne Freigabe bleibt der
   NFC-Scan nutzbar.
 - `NFC` – Geräte ohne NFC-Chip können die App trotzdem installieren.
-- Für Sicherung und Fotos werden keine Speicherberechtigungen gebraucht: Dateien
+- `INTERNET` – nur für den Serverzugriff; ohne eingerichteten Server ruft die App
+  nichts auf.
+- Für Sicherung und Bilder werden keine Speicherberechtigungen gebraucht: Dateien
   laufen über den System-Dateidialog, Aufnahmen liegen im privaten
-  App-Verzeichnis. Mit eingerichtetem Server wandern Artikelbilder beim Abgleich
-  dorthin; auf dem Gerät bleibt nur ein Zwischenspeicher.
+  App-Verzeichnis.

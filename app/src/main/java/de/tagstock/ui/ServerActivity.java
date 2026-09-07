@@ -51,6 +51,8 @@ public class ServerActivity extends AppCompatActivity {
         binding.buttonTeamAnlegen.setOnClickListener(v -> teamAnlegen());
         binding.buttonTeamBeitreten.setOnClickListener(v -> teamBeitreten());
         binding.buttonTeamWechseln.setOnClickListener(v -> teamsZeigen());
+        binding.buttonMitglieder.setOnClickListener(v ->
+                startActivity(new android.content.Intent(this, MitgliederActivity.class)));
         binding.buttonEinladung.setOnClickListener(v -> einladung());
         binding.buttonAbgleich.setOnClickListener(v -> abgleichen());
 
@@ -77,6 +79,8 @@ public class ServerActivity extends AppCompatActivity {
                 Einstellungen.rolle(this)));
         binding.buttonEinladung.setVisibility(
                 "admin".equals(Einstellungen.rolle(this)) ? View.VISIBLE : View.GONE);
+        binding.buttonMitglieder.setVisibility(
+                Einstellungen.teamId(this) == null ? View.GONE : View.VISIBLE);
 
         long letzter = Einstellungen.letzterSync(this);
         binding.textLetzterSync.setText(letzter == 0

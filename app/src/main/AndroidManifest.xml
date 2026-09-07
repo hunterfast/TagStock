@@ -13,6 +13,7 @@
     <application
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
+        android:networkSecurityConfig="@xml/netzwerk"
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
@@ -39,6 +40,11 @@
             android:name=".ui.EinstellungenActivity"
             android:exported="false"
             android:parentActivityName=".ui.MainActivity" />
+
+        <activity
+            android:name=".ui.MitgliederActivity"
+            android:exported="false"
+            android:parentActivityName=".ui.ServerActivity" />
 
         <activity
             android:name=".ui.ServerActivity"

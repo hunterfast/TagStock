@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Der TagStock-Server im eigenen Netz spricht HTTP; ohne diese Freigabe
+    blockiert Android ab Version 9 jede Verbindung dorthin. Wer den Server aus
+    dem Internet erreichbar macht, stellt einen Reverse Proxy mit TLS davor und
+    traegt in der App die https-Adresse ein - die wird ohnehin bevorzugt.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+            <certificates src="user" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

@@ -456,4 +456,21 @@ class ApiTest {
         senden(mitToken(post("/api/v1/teams/" + teamId + "/artikel/" + artikelId + "/bild"),
                 gastToken).contentType(MediaType.IMAGE_JPEG).content(jpeg((byte) 4)), 403);
     }
+
+    @Test
+    void passwortHashVerlaesstDenServerNie() throws Exception {
+        String email = email();
+        JsonNode registriert = senden(post("/api/v1/auth/registrieren")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"email\":\"" + email + "\",\"name\":\"Test\","
+                        + "\"passwort\":\"geheim1234\"}"), 200);
+        assertTrue(registriert.get("benutzer").get("passwort") == null
+                || registriert.get("benutzer").get("passwort").isNull(),
+                "Antwort: " + registriert);
+
+        String token = registriert.get("token").asText();
+        JsonNode ich = senden(mitToken(get("/api/v1/ich"), token), 200);
+        assertTrue(ich.get("benutzer").get("passwort") == null
+                || ich.get("benutzer").get("passwort").isNull(), "Antwort: " + ich);
+    }
 }

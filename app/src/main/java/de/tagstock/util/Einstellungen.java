@@ -134,6 +134,16 @@ public final class Einstellungen {
         return "admin".equals(rolle) || "lagerist".equals(rolle);
     }
 
+    /** Nur das Team loesen; die Anmeldung am Server bleibt bestehen. */
+    public static void teamVerlassen(Context context) {
+        prefs(context).edit()
+                .remove(SCHLUESSEL_TEAM_ID)
+                .remove(SCHLUESSEL_TEAM_NAME)
+                .remove(SCHLUESSEL_ROLLE)
+                .remove(SCHLUESSEL_SYNC)
+                .apply();
+    }
+
     public static void abmelden(Context context) {
         prefs(context).edit()
                 .remove(SCHLUESSEL_TOKEN)

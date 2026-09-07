@@ -117,6 +117,18 @@ public class ServerClient {
         return feld(hole("GET", "/teams/" + teamId + "/mitglieder", null));
     }
 
+    public void rolleSetzen(String teamId, String benutzerId, String rolle)
+            throws IOException, JSONException {
+        JSONObject koerper = new JSONObject();
+        koerper.put("rolle", rolle);
+        hole("PUT", "/teams/" + teamId + "/mitglieder/" + benutzerId, koerper);
+    }
+
+    /** Entfernt ein Konto aus dem Team - oder einen selbst, wenn es das eigene ist. */
+    public void mitgliedEntfernen(String teamId, String benutzerId) throws IOException {
+        hole("DELETE", "/teams/" + teamId + "/mitglieder/" + benutzerId, null);
+    }
+
     // ---------------------------------------------------------------- Abgleich
 
     public JSONObject abgleichHolen(String teamId, long seit) throws IOException, JSONException {
