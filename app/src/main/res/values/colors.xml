@@ -2,7 +2,6 @@
 <resources>
     <!-- Markenfarben, abgeleitet aus der Weboberflaeche -->
     <color name="brand_primary">#1A6EE6</color>
-    <color name="brand_primary_dunkel">#0F52B5</color>
     <color name="brand_hell">#478BEB</color>
 
     <!-- Status -->

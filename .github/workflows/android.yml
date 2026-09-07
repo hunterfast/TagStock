@@ -1,4 +1,4 @@
-name: Android Build
+name: Build
 
 on:
   push:
@@ -8,8 +8,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
-    name: Tests und APK
+  app:
+    name: "App: Tests und APK"
     runs-on: ubuntu-latest
 
     steps:
@@ -60,3 +60,55 @@ jobs:
             app/build/reports/tests/
             app/build/reports/lint-results-debug.html
           if-no-files-found: ignore
+
+  server:
+    name: "Server: Tests und Abbild"
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: JDK 21 einrichten
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+
+      - name: Gradle-Wrapper ausfuehrbar machen
+        run: chmod +x server/gradlew
+
+      - name: Tests
+        working-directory: server
+        run: ./gradlew --no-daemon --stacktrace test
+
+      - name: Jar bauen
+        working-directory: server
+        run: ./gradlew --no-daemon bootJar
+
+      - name: Docker-Abbild bauen
+        run: docker build -t tagstock-server:pruefung server
+
+      - name: Container starten und antworten lassen
+        run: |
+          docker run -d --name tagstock-pruefung -p 8080:8080 tagstock-server:pruefung
+          for i in $(seq 1 30); do
+            if curl -sf http://127.0.0.1:8080/api/v1/status > /dev/null; then
+              echo "Server antwortet:"
+              curl -s http://127.0.0.1:8080/api/v1/status
+              docker rm -f tagstock-pruefung
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Server ist nicht hochgekommen:"
+          docker logs tagstock-pruefung
+          docker rm -f tagstock-pruefung
+          exit 1
+
+      - name: Server-Jar hochladen
+        uses: actions/upload-artifact@v4
+        with:
+          name: tagstock-server-jar
+          path: server/build/libs/tagstock-server.jar
+          if-no-files-found: error

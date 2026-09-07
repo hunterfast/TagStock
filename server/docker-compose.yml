@@ -1,0 +1,23 @@
+# TagStock-Server auf Unraid oder einem anderen Docker-Host.
+#
+#   docker compose up -d
+#
+# Danach ist der Server unter http://<server-ip>:8080 erreichbar; genau diese
+# Adresse traegst du in der App unter Einstellungen > Server ein.
+
+services:
+  tagstock:
+    build: .
+    container_name: tagstock-server
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      # Auf Unraid ueblich: /mnt/user/appdata/<name>
+      - /mnt/user/appdata/tagstock:/data
+    environment:
+      # Leer: jeder, der den Server erreicht, darf sich registrieren.
+      # Gesetzt: jede Registrierung nach der ersten braucht diesen Code.
+      TAGSTOCK_REGISTRIERUNGSCODE: ""
+      TAGSTOCK_TOKEN_TAGE: "180"
+      TZ: "Europe/Berlin"

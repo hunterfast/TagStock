@@ -1,0 +1,346 @@
+package de.tagstock.server;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
+
+import java.io.File;
+import java.nio.charset.StandardCharsets;
+import java.util.UUID;
+
+/** Durchlauf durch die API: Konto, Team, Bestand, Abgleich, Anfragen. */
+@SpringBootTest(properties = {
+        "spring.datasource.url=jdbc:sqlite:build/tmp/api-test.db",
+        "tagstock.registrierungs-code="})
+@AutoConfigureMockMvc
+class ApiTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    private final ObjectMapper mapper = new ObjectMapper();
+
+    @BeforeAll
+    static void datenbankLeeren() {
+        File datei = new File("build/tmp/api-test.db");
+        if (datei.exists() && !datei.delete()) {
+            throw new IllegalStateException("Testdatenbank nicht loeschbar");
+        }
+        //noinspection ResultOfMethodCallIgnored
+        datei.getParentFile().mkdirs();
+    }
+
+    private JsonNode senden(MockHttpServletRequestBuilder anfrage, int erwarteterStatus)
+            throws Exception {
+        MvcResult ergebnis = mockMvc.perform(anfrage).andReturn();
+        assertEquals(erwarteterStatus, ergebnis.getResponse().getStatus(),
+                "Antwort: " + new String(ergebnis.getResponse().getContentAsByteArray(),
+                        StandardCharsets.UTF_8));
+        // Bewusst als UTF-8 lesen: sonst deutet MockMvc die Umlaute falsch.
+        String inhalt = new String(ergebnis.getResponse().getContentAsByteArray(),
+                StandardCharsets.UTF_8);
+        return inhalt.isEmpty() ? mapper.createObjectNode() : mapper.readTree(inhalt);
+    }
+
+    private MockHttpServletRequestBuilder mitToken(MockHttpServletRequestBuilder anfrage,
+                                                   String token) {
+        return anfrage.header("Authorization", "Bearer " + token);
+    }
+
+    private String neuesKonto(String email) throws Exception {
+        JsonNode antwort = senden(post("/api/v1/auth/registrieren")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"email\":\"" + email + "\",\"name\":\"Test\","
+                        + "\"passwort\":\"geheim1234\"}"), 200);
+        return antwort.get("token").asText();
+    }
+
+    private String neuesTeam(String token, String name) throws Exception {
+        JsonNode team = senden(mitToken(post("/api/v1/teams"), token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"name\":\"" + name + "\"}"), 200);
+        return team.get("id").asText();
+    }
+
+    private String neuerArtikel(String token, String teamId, String name, String kennung)
+            throws Exception {
+        String koerper = kennung == null
+                ? "{\"name\":\"" + name + "\"}"
+                : "{\"name\":\"" + name + "\",\"rfidUid\":\"" + kennung + "\"}";
+        JsonNode artikel = senden(mitToken(post("/api/v1/teams/" + teamId + "/artikel"), token)
+                .contentType(MediaType.APPLICATION_JSON).content(koerper), 200);
+        return artikel.get("id").asText();
+    }
+
+    private String email() {
+        return UUID.randomUUID().toString().substring(0, 8) + "@test.de";
+    }
+
+    // -------------------------------------------------------------------- Tests
+
+    @Test
+    void statusLaeuftOhneAnmeldung() throws Exception {
+        JsonNode status = senden(get("/api/v1/status"), 200);
+        assertTrue(status.get("bereit").asBoolean());
+        assertEquals(1, status.get("apiVersion").asInt());
+    }
+
+    @Test
+    void ohneTokenKeinZugriff() throws Exception {
+        senden(get("/api/v1/ich"), 401);
+    }
+
+    @Test
+    void kontoAnlegenUndAnmelden() throws Exception {
+        String email = email();
+        String token = neuesKonto(email);
+        assertNotNull(token);
+
+        JsonNode ich = senden(mitToken(get("/api/v1/ich"), token), 200);
+        assertEquals(email, ich.get("benutzer").get("email").asText());
+        // Das Passwort darf nie in einer Antwort auftauchen.
+        assertTrue(ich.get("benutzer").get("passwort") == null);
+
+        JsonNode angemeldet = senden(post("/api/v1/auth/anmelden")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"email\":\"" + email + "\",\"passwort\":\"geheim1234\"}"), 200);
+        assertNotNull(angemeldet.get("token").asText());
+
+        senden(post("/api/v1/auth/anmelden")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"email\":\"" + email + "\",\"passwort\":\"falsch12345\"}"), 401);
+    }
+
+    @Test
+    void teamBekommtStandardkategorien() throws Exception {
+        String token = neuesKonto(email());
+        String teamId = neuesTeam(token, "Werkstatt");
+
+        JsonNode kategorien = senden(
+                mitToken(get("/api/v1/teams/" + teamId + "/kategorien"), token), 200);
+        assertEquals(8, kategorien.size());
+    }
+
+    @Test
+    void artikelAnlegenUndKennungIstEindeutig() throws Exception {
+        String token = neuesKonto(email());
+        String teamId = neuesTeam(token, "Keller");
+        neuerArtikel(token, teamId, "Akkuschrauber", "ABC123");
+
+        // Dieselbe Kennung ein zweites Mal wird abgelehnt.
+        senden(mitToken(post("/api/v1/teams/" + teamId + "/artikel"), token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"name\":\"Zweitgerät\",\"rfidUid\":\"ABC123\"}"), 409);
+
+        JsonNode treffer = senden(mitToken(
+                get("/api/v1/teams/" + teamId + "/artikel/suche?kennung=ABC123"), token), 200);
+        assertEquals("Akkuschrauber", treffer.get("name").asText());
+    }
+
+    @Test
+    void aenderungenLandenImProtokoll() throws Exception {
+        String token = neuesKonto(email());
+        String teamId = neuesTeam(token, "Büro");
+        String artikelId = neuerArtikel(token, teamId, "Beamer", null);
+
+        senden(mitToken(put("/api/v1/teams/" + teamId + "/artikel/" + artikelId), token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"name\":\"Beamer\",\"status\":\"verliehen\","
+                        + "\"verliehenAn\":\"Max\",\"standort\":\"Konferenzraum\"}"), 200);
+
+        JsonNode protokoll = senden(mitToken(
+                get("/api/v1/teams/" + teamId + "/artikel/" + artikelId + "/protokoll"), token), 200);
+        boolean status = false;
+        boolean standort = false;
+        for (JsonNode eintrag : protokoll) {
+            if ("Status geändert".equals(eintrag.get("aktion").asText())) {
+                status = true;
+            }
+            if ("Standort geändert".equals(eintrag.get("aktion").asText())) {
+                standort = true;
+            }
+        }
+        assertTrue(status, "Statuswechsel fehlt");
+        assertTrue(standort, "Standortwechsel fehlt");
+    }
+
+    @Test
+    void abgleichLiefertAenderungenUndNimmtNeueAn() throws Exception {
+        String token = neuesKonto(email());
+        String teamId = neuesTeam(token, "Halle");
+        neuerArtikel(token, teamId, "Leiter", "LEIT1");
+
+        JsonNode alles = senden(mitToken(get("/api/v1/teams/" + teamId + "/sync?seit=0"), token), 200);
+        assertEquals(1, alles.get("artikel").size());
+        long stand = alles.get("stand").asLong();
+
+        // Die App laedt einen neuen Artikel hoch und bekommt seine Server-ID.
+        JsonNode antwort = senden(mitToken(post("/api/v1/teams/" + teamId + "/sync?seit=" + stand),
+                token).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"artikel\":[{\"lokaleId\":7,\"name\":\"Hammer\","
+                        + "\"rfidUid\":\"HAM1\",\"geaendertAm\":" + System.currentTimeMillis()
+                        + "}],\"protokoll\":[]}"), 200);
+
+        JsonNode zuordnung = antwort.get("zuordnungen").get(0);
+        assertTrue(zuordnung.get("angenommen").asBoolean());
+        assertEquals(7, zuordnung.get("lokaleId").asInt());
+        assertNotNull(zuordnung.get("serverId").asText());
+    }
+
+    @Test
+    void abgleichLehntBelegteKennungAb() throws Exception {
+        String token = neuesKonto(email());
+        String teamId = neuesTeam(token, "Lager");
+        neuerArtikel(token, teamId, "Bohrer", "DUP1");
+
+        JsonNode antwort = senden(mitToken(post("/api/v1/teams/" + teamId + "/sync"), token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"artikel\":[{\"lokaleId\":9,\"name\":\"Anderer Bohrer\","
+                        + "\"rfidUid\":\"DUP1\",\"geaendertAm\":" + System.currentTimeMillis()
+                        + "}],\"protokoll\":[]}"), 200);
+
+        JsonNode zuordnung = antwort.get("zuordnungen").get(0);
+        assertTrue(!zuordnung.get("angenommen").asBoolean());
+        assertTrue(zuordnung.get("grund").asText().contains("Kennung"));
+    }
+
+    @Test
+    void abgleichLaesstAeltereFassungLiegen() throws Exception {
+        String token = neuesKonto(email());
+        String teamId = neuesTeam(token, "Archiv");
+        String artikelId = neuerArtikel(token, teamId, "Kiste", null);
+
+        JsonNode antwort = senden(mitToken(post("/api/v1/teams/" + teamId + "/sync"), token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"artikel\":[{\"id\":\"" + artikelId + "\",\"lokaleId\":3,"
+                        + "\"name\":\"Alte Kiste\",\"geaendertAm\":1000}],\"protokoll\":[]}"), 200);
+
+        JsonNode zuordnung = antwort.get("zuordnungen").get(0);
+        assertTrue(!zuordnung.get("angenommen").asBoolean());
+        assertEquals("Server ist neuer", zuordnung.get("grund").asText());
+    }
+
+    @Test
+    void einladungUndRollenSteuernDenZugriff() throws Exception {
+        String adminToken = neuesKonto(email());
+        String teamId = neuesTeam(adminToken, "Verein");
+
+        JsonNode einladung = senden(mitToken(post("/api/v1/teams/" + teamId + "/einladung"),
+                adminToken).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"rolle\":\"mitglied\"}"), 200);
+        String code = einladung.get("code").asText();
+
+        String gastToken = neuesKonto(email());
+        // Ohne Mitgliedschaft ist der Bestand tabu.
+        senden(mitToken(get("/api/v1/teams/" + teamId + "/artikel"), gastToken), 403);
+
+        JsonNode team = senden(mitToken(post("/api/v1/teams/beitreten"), gastToken)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"code\":\"" + code + "\"}"), 200);
+        assertEquals("mitglied", team.get("rolle").asText());
+
+        // Lesen ja, aendern nein.
+        senden(mitToken(get("/api/v1/teams/" + teamId + "/artikel"), gastToken), 200);
+        senden(mitToken(post("/api/v1/teams/" + teamId + "/artikel"), gastToken)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"name\":\"Heimlich\"}"), 403);
+    }
+
+    @Test
+    void letzterAdminBleibtAdmin() throws Exception {
+        String token = neuesKonto(email());
+        String teamId = neuesTeam(token, "Solo");
+        JsonNode ich = senden(mitToken(get("/api/v1/ich"), token), 200);
+        String benutzerId = ich.get("benutzer").get("id").asText();
+
+        senden(mitToken(put("/api/v1/teams/" + teamId + "/mitglieder/" + benutzerId), token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"rolle\":\"mitglied\"}"), 409);
+        senden(mitToken(delete("/api/v1/teams/" + teamId + "/mitglieder/" + benutzerId), token), 409);
+    }
+
+    @Test
+    void anfrageWirdGenehmigtUndSetztDenArtikelAufVerliehen() throws Exception {
+        String adminToken = neuesKonto(email());
+        String teamId = neuesTeam(adminToken, "Fundus");
+        String artikelId = neuerArtikel(adminToken, teamId, "Zelt", null);
+
+        JsonNode einladung = senden(mitToken(post("/api/v1/teams/" + teamId + "/einladung"),
+                adminToken).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"rolle\":\"mitglied\"}"), 200);
+        String gastToken = neuesKonto(email());
+        senden(mitToken(post("/api/v1/teams/beitreten"), gastToken)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"code\":\"" + einladung.get("code").asText() + "\"}"), 200);
+
+        JsonNode anfrage = senden(mitToken(post("/api/v1/teams/" + teamId + "/anfragen"), gastToken)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"artikelId\":\"" + artikelId + "\",\"nachricht\":\"Fürs Wochenende\","
+                        + "\"datumBis\":1800000000000}"), 200);
+        assertEquals("offen", anfrage.get("status").asText());
+        String anfrageId = anfrage.get("id").asText();
+
+        // Ein Mitglied darf nicht selbst entscheiden.
+        senden(mitToken(post("/api/v1/teams/" + teamId + "/anfragen/" + anfrageId + "/entscheiden"),
+                gastToken).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"genehmigt\":true}"), 403);
+
+        JsonNode entschieden = senden(mitToken(
+                post("/api/v1/teams/" + teamId + "/anfragen/" + anfrageId + "/entscheiden"),
+                adminToken).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"genehmigt\":true,\"antwort\":\"Viel Spaß\"}"), 200);
+        assertEquals("genehmigt", entschieden.get("status").asText());
+
+        JsonNode artikel = senden(mitToken(get("/api/v1/teams/" + teamId + "/artikel"), adminToken), 200);
+        JsonNode zelt = null;
+        for (JsonNode eintrag : artikel) {
+            if (artikelId.equals(eintrag.get("id").asText())) {
+                zelt = eintrag;
+            }
+        }
+        assertNotNull(zelt);
+        assertEquals("verliehen", zelt.get("status").asText());
+        assertEquals(1800000000000L, zelt.get("rueckgabeDatum").asLong());
+
+        // Ein zweites Mal entscheiden geht nicht.
+        senden(mitToken(post("/api/v1/teams/" + teamId + "/anfragen/" + anfrageId + "/entscheiden"),
+                adminToken).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"genehmigt\":false}"), 409);
+    }
+
+    @Test
+    void geloeschteArtikelKommenAlsMerkmalZurueck() throws Exception {
+        String token = neuesKonto(email());
+        String teamId = neuesTeam(token, "Abstellraum");
+        String artikelId = neuerArtikel(token, teamId, "Alte Lampe", "LAMP1");
+
+        senden(mitToken(delete("/api/v1/teams/" + teamId + "/artikel/" + artikelId), token), 200);
+
+        JsonNode liste = senden(mitToken(get("/api/v1/teams/" + teamId + "/artikel"), token), 200);
+        assertEquals(0, liste.size());
+
+        JsonNode abgleich = senden(mitToken(get("/api/v1/teams/" + teamId + "/sync?seit=0"), token), 200);
+        assertEquals(1, abgleich.get("artikel").size());
+        assertTrue(abgleich.get("artikel").get(0).get("geloescht").asBoolean());
+
+        // Die Kennung ist danach wieder frei.
+        neuerArtikel(token, teamId, "Neue Lampe", "LAMP1");
+    }
+}

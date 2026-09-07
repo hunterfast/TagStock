@@ -1,0 +1,29 @@
+server:
+  port: ${TAGSTOCK_PORT:8080}
+  forward-headers-strategy: framework
+
+spring:
+  application:
+    name: tagstock-server
+  datasource:
+    # Standardpfad passt zum Docker-Volume /data
+    url: jdbc:sqlite:${TAGSTOCK_DB:/data/tagstock.db}?busy_timeout=5000
+    driver-class-name: org.sqlite.JDBC
+    hikari:
+      # SQLite vertraegt keine parallelen Schreiber.
+      maximum-pool-size: 1
+      pool-name: tagstock
+  sql:
+    init:
+      mode: always
+      platform: sqlite
+
+tagstock:
+  # Token laufen nach dieser Zeit ab (Tage).
+  token-gueltigkeit-tage: ${TAGSTOCK_TOKEN_TAGE:180}
+  # Wenn gesetzt, koennen sich nur Personen mit diesem Code registrieren.
+  registrierungs-code: ${TAGSTOCK_REGISTRIERUNGSCODE:}
+
+logging:
+  level:
+    root: INFO

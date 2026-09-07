@@ -2,7 +2,6 @@
 <resources>
     <!-- Im dunklen Design heller, damit der Kontrast stimmt. -->
     <color name="brand_primary">#478BEB</color>
-    <color name="brand_primary_dunkel">#1A6EE6</color>
 
     <color name="status_vorhanden">#34D399</color>
     <color name="status_fehlt">#F87171</color>

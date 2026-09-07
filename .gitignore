@@ -14,3 +14,5 @@ local.properties
 keystore.properties
 *.jks
 *.keystore
+/server/build
+/server/.gradle

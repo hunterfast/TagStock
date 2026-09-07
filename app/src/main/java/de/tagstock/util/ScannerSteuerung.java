@@ -146,6 +146,9 @@ public class ScannerSteuerung {
         letzterZeitpunkt = 0L;
     }
 
+    // Die Analyse greift auf das Kamerabild zu; die Markierung muss auch hier
+    // stehen, weil die Methodenreferenz sie weiterreicht.
+    @androidx.annotation.OptIn(markerClass = ExperimentalGetImage.class)
     private void binden(ProcessCameraProvider provider) {
         Preview vorschau = new Preview.Builder().build();
         vorschau.setSurfaceProvider(preview.getSurfaceProvider());
