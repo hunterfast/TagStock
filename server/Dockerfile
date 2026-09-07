@@ -27,7 +27,9 @@ ENV TAGSTOCK_DB=/data/tagstock.db \
 VOLUME ["/data"]
 EXPOSE 8080
 
-RUN mkdir -p /data && chown -R tagstock:tagstock /data /app
+# Gruppe ueber id, weil der Benutzer je nach Basis-Abbild in "users" landet
+# oder eine eigene Gruppe bekommt.
+RUN mkdir -p /data && chown -R "tagstock:$(id -gn tagstock)" /data /app
 USER tagstock
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
