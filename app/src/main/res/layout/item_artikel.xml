@@ -6,41 +6,57 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:layout_marginStart="12dp"
-    android:layout_marginTop="10dp"
+    android:layout_marginTop="8dp"
     android:layout_marginEnd="12dp"
+    android:checkable="true"
     android:clickable="true"
     android:focusable="true"
     app:cardCornerRadius="14dp"
-    app:cardElevation="1dp">
+    app:cardElevation="0dp"
+    app:checkedIcon="@null"
+    app:strokeColor="@color/karte_rand"
+    app:strokeWidth="1dp">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:gravity="center_vertical"
-        android:orientation="horizontal"
-        android:paddingStart="12dp"
-        android:paddingTop="12dp"
-        android:paddingEnd="4dp"
-        android:paddingBottom="12dp">
+        android:orientation="horizontal">
+
+        <View
+            android:id="@+id/viewStreifen"
+            android:layout_width="4dp"
+            android:layout_height="match_parent"
+            android:minHeight="72dp" />
+
+        <com.google.android.material.checkbox.MaterialCheckBox
+            android:id="@+id/checkAuswahl"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:clickable="false"
+            android:focusable="false"
+            android:visibility="gone" />
 
         <com.google.android.material.imageview.ShapeableImageView
             android:id="@+id/imageFoto"
             android:layout_width="48dp"
             android:layout_height="48dp"
-            android:layout_marginEnd="12dp"
-            android:alpha="0.9"
+            android:layout_marginStart="10dp"
             android:background="?attr/colorSurfaceVariant"
             android:contentDescription="@string/foto"
-            android:padding="6dp"
+            android:padding="8dp"
             android:scaleType="centerCrop"
             app:shapeAppearanceOverlay="@style/Shape.TagStock.Foto"
-            tools:src="@drawable/ic_lager" />
+            tools:src="@drawable/ic_artikel" />
 
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
+            android:layout_marginStart="12dp"
             android:layout_weight="1"
-            android:orientation="vertical">
+            android:orientation="vertical"
+            android:paddingTop="12dp"
+            android:paddingBottom="12dp">
 
             <TextView
                 android:id="@+id/textName"
@@ -51,22 +67,24 @@
                 tools:text="Bosch Akkuschrauber" />
 
             <TextView
-                android:id="@+id/textCode"
+                android:id="@+id/textZeile"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:maxLines="1"
+                android:textAppearance="?attr/textAppearanceBodySmall"
+                tools:text="Werkzeug · Regal A3" />
+
+            <TextView
+                android:id="@+id/textKennung"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="2dp"
                 android:fontFamily="monospace"
                 android:maxLines="1"
-                android:textAppearance="?attr/textAppearanceBodySmall"
-                tools:text="QR-Code · 4006381333931" />
-
-            <TextView
-                android:id="@+id/textDetails"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="2dp"
-                android:textAppearance="?attr/textAppearanceBodySmall"
-                tools:text="3 vorhanden · 2 verliehen" />
+                android:textAppearance="?attr/textAppearanceLabelSmall"
+                android:textColor="?attr/colorOutline"
+                tools:text="04E1A2B3C4D5" />
         </LinearLayout>
 
         <TextView
@@ -80,14 +98,16 @@
             android:paddingBottom="4dp"
             android:textAppearance="?attr/textAppearanceLabelSmall"
             android:textColor="@color/white"
-            tools:text="Verliehen" />
+            tools:text="Vorhanden" />
 
-        <ImageButton
-            android:id="@+id/buttonMenu"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="@string/aktionen"
-            android:src="@drawable/ic_more" />
+        <ImageView
+            android:id="@+id/imageChevron"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:layout_marginStart="4dp"
+            android:layout_marginEnd="8dp"
+            android:alpha="0.4"
+            android:contentDescription="@null"
+            android:src="@drawable/ic_chevron" />
     </LinearLayout>
 </com.google.android.material.card.MaterialCardView>

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Im dunklen Design heller, damit der Kontrast stimmt. -->
+    <color name="brand_primary">#478BEB</color>
+    <color name="brand_primary_dunkel">#1A6EE6</color>
+
+    <color name="status_vorhanden">#34D399</color>
+    <color name="status_fehlt">#F87171</color>
+    <color name="status_verliehen">#FBBF24</color>
+    <color name="status_verbraucht">#FB923C</color>
+    <color name="status_ausgelagert">#C084FC</color>
+    <color name="status_vermisst">#A78BFA</color>
+
+    <color name="warnung_hintergrund">#3A2E12</color>
+    <color name="warnung_rand">#6B5220</color>
+    <color name="warnung_text">#FCD34D</color>
+    <color name="vermisst_hintergrund">#2E1B44</color>
+    <color name="vermisst_rand">#5B3A87</color>
+    <color name="vermisst_text">#D8B4FE</color>
+
+    <color name="karte_rand">#33394A</color>
+</resources>

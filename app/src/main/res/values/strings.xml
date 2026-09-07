@@ -9,119 +9,102 @@
     <string name="action_edit">Bearbeiten</string>
     <string name="action_ok">OK</string>
     <string name="action_scan">Scannen</string>
-    <string name="aktionen">Aktionen</string>
+    <string name="action_ausklappen">Ausklappen</string>
+    <string name="action_schliessen">Schließen</string>
 
-    <!-- Zustände -->
+    <!-- Bereiche -->
+    <string name="tab_bestand">Bestand</string>
+    <string name="tab_scan">Scannen</string>
+    <string name="tab_neu">Hinzufügen</string>
+    <string name="tab_anfragen">Anfragen</string>
+
+    <!-- Status -->
     <string name="status_vorhanden">Vorhanden</string>
+    <string name="status_nicht_vorhanden">Nicht vorhanden</string>
     <string name="status_verliehen">Verliehen</string>
-    <string name="status_verloren">Verloren</string>
-    <string name="status_alle">Alle</string>
+    <string name="status_verbraucht">Verbraucht</string>
+    <string name="status_ausgelagert">Ausgelagert</string>
+    <string name="stats_gesamt">Gesamt</string>
+    <string name="stats_fehlt">Fehlt</string>
 
-    <string name="bestand_titel">Bestand</string>
-    <string name="bestand_vorhanden">%1$d vorhanden</string>
-    <string name="bestand_verliehen">%1$d verliehen</string>
-    <string name="bestand_verloren">%1$d verloren</string>
-    <string name="bestand_leer">Kein Bestand</string>
+    <!-- Scan-Warnung -->
+    <string name="scanwarnung_6m">Warnung nach 6 Monaten</string>
+    <string name="scanwarnung_1j">Warnung nach 1 Jahr</string>
+    <string name="scanwarnung_2j">Warnung nach 2 Jahren</string>
+    <string name="scanwarnung_niemals">Keine Warnung</string>
 
-    <!-- Code-Arten -->
-    <string name="codetype_barcode">Barcode</string>
-    <string name="codetype_qr">QR-Code</string>
-    <string name="codetype_nfc">NFC-Tag</string>
-    <string name="codetype_manuell">Manuell erfasst</string>
+    <!-- Codearten -->
+    <string name="codeart_barcode">Barcode</string>
+    <string name="codeart_qr">QR-Code</string>
+    <string name="codeart_nfc">NFC-Tag</string>
+    <string name="codeart_manuell">Manuell erfasst</string>
 
-    <!-- Lagerübersicht -->
-    <string name="lager_neu">Neues Lager</string>
-    <string name="lager_bearbeiten">Lager bearbeiten</string>
-    <string name="lager_name">Name des Lagers</string>
-    <string name="lager_beschreibung">Beschreibung (optional)</string>
-    <string name="lager_ort">Ort (optional)</string>
-    <string name="lager_leer_titel">Noch kein Lager angelegt</string>
-    <string name="lager_leer_text">Lege dein erstes Lager an, zum Beispiel „Werkstatt“ oder „Keller“. Danach kannst du Artikel per Barcode, QR-Code oder NFC-Tag erfassen.</string>
-    <string name="lager_loeschen_titel">Lager löschen?</string>
-    <string name="lager_loeschen_text">„%1$s“ und alle darin enthaltenen Artikel werden endgültig gelöscht.</string>
-    <string name="lager_gespeichert">Lager gespeichert</string>
-    <string name="lager_geloescht">Lager gelöscht</string>
-    <string name="lager_name_fehlt">Bitte einen Namen eingeben</string>
-    <string name="lager_auswaehlen">Lager auswählen</string>
-    <string name="menu_lager_neu">Lager anlegen</string>
+    <!-- Bestand -->
+    <string name="bestand_suche_hint">Name, Kennung, Standort…</string>
+    <string name="bestand_per_scan_suchen">Per Scan suchen</string>
+    <string name="filter_kategorie">Kategorie</string>
+    <string name="filter_standort">Standort</string>
+    <string name="filter_alle_kategorien">Alle Kategorien</string>
+    <string name="filter_alle_standorte">Alle Standorte</string>
+    <string name="bestand_leer_titel">Noch keine Artikel</string>
+    <string name="bestand_leer_text">Scanne einen Code oder lege einen Artikel über „Hinzufügen“ an.</string>
+    <string name="bestand_kein_treffer_titel">Keine Ergebnisse</string>
+    <string name="bestand_kein_treffer_text">Versuche einen anderen Suchbegriff oder entferne Filter.</string>
+    <string name="bestand_auswaehlen">Auswählen</string>
+    <string name="bestand_ausgewaehlt">%1$d ausgewählt</string>
+    <string name="bestand_status">Status</string>
+    <string name="bestand_status_setzen">Status setzen</string>
+    <string name="bestand_status_gesetzt">%1$d Artikel auf „%2$s“ gesetzt</string>
+    <string name="bestand_standort_setzen">Standort setzen</string>
+    <string name="bestand_standort_gesetzt">%1$d Artikel nach „%2$s“ verschoben</string>
+    <string name="bestand_standort_neu">Neuer Standort…</string>
+    <string name="bestand_etiketten">Etiketten drucken</string>
 
-    <plurals name="lager_artikel_anzahl">
+    <plurals name="bestand_anzahl">
         <item quantity="one">%1$d Artikel</item>
         <item quantity="other">%1$d Artikel</item>
     </plurals>
 
+    <!-- Warnbanner -->
+    <plurals name="banner_ueberfaellig">
+        <item quantity="one">%1$d Artikel überfällig</item>
+        <item quantity="other">%1$d Artikel überfällig</item>
+    </plurals>
+    <plurals name="banner_vermisst">
+        <item quantity="one">%1$d Artikel lange nicht gescannt</item>
+        <item quantity="other">%1$d Artikel lange nicht gescannt</item>
+    </plurals>
+    <string name="banner_vermisst_hinweis">Mögliche vermisste Geräte – tippen für Details</string>
+    <string name="banner_ueberfaellig_zeile">Verliehen an %1$s · fällig war %2$s</string>
+    <string name="banner_tage">+%1$d Tage</string>
+    <string name="banner_nie_gescannt">Noch nie gescannt</string>
+    <string name="banner_zuletzt">Zuletzt %1$s</string>
+
     <!-- Artikel -->
-    <string name="artikel_neu">Neuer Artikel</string>
-    <string name="artikel_bearbeiten">Artikel bearbeiten</string>
-    <string name="artikel_suchen">Artikel oder Code suchen</string>
-    <string name="artikel_leer_titel">Keine Artikel</string>
-    <string name="artikel_leer_text">Scanne einen Barcode, QR-Code oder NFC-Tag oder lege einen Artikel manuell an.</string>
-    <string name="artikel_leer_filter">Kein Artikel passt zum Filter.</string>
+    <string name="artikel_name">Bezeichnung</string>
+    <string name="artikel_name_fehlt">Bitte eine Bezeichnung eingeben</string>
+    <string name="artikel_beschreibung">Beschreibung</string>
+    <string name="artikel_kategorie">Kategorie</string>
+    <string name="artikel_standort">Standort</string>
+    <string name="artikel_standort_hilfe">Übergeordnet, z. B. Werkstatt oder Keller</string>
+    <string name="artikel_lagerort">Lagerort</string>
+    <string name="artikel_lagerort_hilfe">Genaue Position, z. B. Regal A3, Fach 2</string>
+    <string name="artikel_kennung">Kennung (NFC/QR)</string>
+    <string name="artikel_status">Status</string>
+    <string name="artikel_verliehen_an">Verliehen an</string>
+    <string name="artikel_rueckgabe">Rückgabe bis</string>
+    <string name="artikel_scanwarnung">Warnung, wenn nicht gescannt seit</string>
+    <string name="artikel_anlegen">Artikel anlegen</string>
     <string name="artikel_gespeichert">Artikel gespeichert</string>
     <string name="artikel_geloescht">Artikel gelöscht</string>
     <string name="artikel_loeschen_titel">Artikel löschen?</string>
     <string name="artikel_loeschen_text">„%1$s“ wird endgültig gelöscht.</string>
-    <string name="artikel_name">Bezeichnung</string>
-    <string name="artikel_name_fehlt">Bitte eine Bezeichnung eingeben</string>
-    <string name="artikel_beschreibung">Beschreibung (optional)</string>
-    <string name="artikel_menge">Menge</string>
-    <string name="artikel_menge_zu_klein">Mindestens %1$d Stück sind verliehen oder verloren – die Menge kann nicht kleiner sein.</string>
-    <string name="artikel_notiz">Notiz (optional)</string>
-    <string name="artikel_verliehen_an">Verliehen an</string>
-    <string name="artikel_code">Code</string>
-    <string name="artikel_code_leer">Noch kein Code hinterlegt</string>
-    <string name="artikel_code_entfernen">Code entfernen</string>
-    <string name="artikel_lager">Lager</string>
+    <string name="artikel_ueberfaellig_seit">überfällig seit %1$s</string>
+    <string name="artikel_bis">bis %1$s</string>
 
-    <!-- Codes -->
-    <string name="codes_titel">Codes</string>
-    <string name="codes_eingeben">Eingeben</string>
-    <string name="code_hinzugefuegt">Code hinterlegt</string>
-    <string name="code_belegt_titel">Code schon vergeben</string>
-    <string name="code_belegt_text">%1$s gehört bereits zu „%2$s“. Ein Code kann nur einem Artikel gehören.</string>
-    <string name="code_belegt_unbekannt">Dieser Code ist bereits vergeben.</string>
-    <string name="code_belegt_uebersprungen">%1$d Code(s) waren schon vergeben und wurden ausgelassen.</string>
-
-    <plurals name="code_weitere">
-        <item quantity="one">(+%1$d weiterer)</item>
-        <item quantity="other">(+%1$d weitere)</item>
-    </plurals>
-
-    <!-- Aktionen am Artikel -->
-    <string name="aktion_ausleihen">Verleihen</string>
-    <string name="aktion_zurueck">Zurücknehmen</string>
-    <string name="aktion_verloren">Verlust melden</string>
-    <string name="aktion_gefunden">Wieder da</string>
-
-    <!-- Verleih -->
-    <string name="verleih_titel">Verleihen</string>
-    <string name="verleih_bestaetigen">Verleihen</string>
-    <string name="verleih_person_fehlt">Bitte eintragen, an wen</string>
-    <string name="verleih_max">Höchstens %1$d Stück verfügbar</string>
-    <string name="verleih_gebucht">Verliehen an %1$s</string>
-    <string name="verleih_fehlgeschlagen">Verleihen nicht möglich – Bestand reicht nicht.</string>
-    <string name="verleih_nichts_vorhanden">Nichts vorhanden, was verliehen werden könnte.</string>
-    <string name="verleih_nichts_offen">Nichts verliehen.</string>
-    <string name="verleih_zurueck">Zurück</string>
-    <string name="verleih_zurueck_titel">Welche Ausleihe?</string>
-    <string name="verleih_zurueck_gebucht">Zurück von %1$s</string>
-    <string name="verleih_stueck">%1$d Stück</string>
-    <string name="verleih_seit">seit %1$s</string>
-    <string name="verleih_zurueck_am">%1$s bis %2$s</string>
-    <string name="verleih_historie_titel">Ausleihen</string>
-    <string name="verleih_historie_leer">Noch nichts verliehen.</string>
-    <string name="verleih_eintrag_loeschen_titel">Eintrag löschen?</string>
-    <string name="verleih_eintrag_loeschen_text">Der Eintrag zu %1$s verschwindet aus der Historie.</string>
-
-    <!-- Verluste -->
-    <string name="verlust_titel">Als verloren melden</string>
-    <string name="verlust_menge">Wie viele Stück?</string>
-    <string name="verlust_gemeldet">Als verloren gemeldet</string>
-    <string name="verlust_fehlgeschlagen">Nicht möglich – so viel ist nicht vorhanden.</string>
-    <string name="verlust_nichts_vorhanden">Nichts vorhanden, was fehlen könnte.</string>
-    <string name="verlust_nichts_gemeldet">Nichts als verloren gemeldet.</string>
-    <string name="verlust_gefunden_titel">Wieder aufgetaucht</string>
-    <string name="verlust_zurueckgenommen">Wieder als vorhanden gebucht</string>
+    <string name="kennung_belegt_titel">Kennung schon vergeben</string>
+    <string name="kennung_belegt_text">%1$s gehört bereits zu „%2$s“. Eine Kennung kann nur einem Artikel gehören.</string>
+    <string name="kennung_belegt_unbekannt">Diese Kennung ist bereits vergeben.</string>
 
     <!-- Foto -->
     <string name="foto">Foto</string>
@@ -131,70 +114,98 @@
 
     <!-- Scannen -->
     <string name="scan_titel">Code scannen</string>
-    <string name="scan_hinweis">Barcode oder QR-Code in den Rahmen halten – oder ein NFC-Tag an die Rückseite des Geräts.</string>
+    <string name="scan_modus_einzel">Einzeln</string>
+    <string name="scan_modus_liste">Liste</string>
+    <string name="scan_modus_schnell">Schnell</string>
+    <string name="scan_hinweis_einzel">Code scannen – der Artikel öffnet sich direkt.</string>
+    <string name="scan_hinweis_liste">Codes sammeln und danach gemeinsam buchen.</string>
+    <string name="scan_hinweis_schnell">Jeder Treffer wird sofort als vorhanden gebucht.</string>
     <string name="scan_hinweis_nur_nfc">Halte ein NFC-Tag an die Rückseite des Geräts.</string>
     <string name="scan_nfc_aus">NFC ist ausgeschaltet – nur Kamera-Scan möglich.</string>
     <string name="scan_kamera_verweigert">Ohne Kamerafreigabe ist nur das Lesen von NFC-Tags möglich.</string>
-    <string name="scan_taschenlampe">Licht</string>
-    <string name="scan_manuell">Code manuell eingeben</string>
-    <string name="scan_manuell_kurz">Eingeben</string>
-    <string name="scan_manuell_titel">Code eingeben</string>
+    <string name="scan_licht">Licht</string>
+    <string name="scan_eingeben">Eingeben</string>
+    <string name="scan_manuell_titel">Kennung eingeben</string>
     <string name="scan_erkannt">Erkannt: %1$s</string>
+    <string name="scan_liste_leer">Noch nichts gescannt.</string>
+    <string name="scan_liste_leeren">Liste leeren</string>
+    <string name="scan_buchen">Als vorhanden buchen</string>
+    <string name="scan_gebucht">%1$d Artikel als vorhanden gebucht</string>
+    <string name="scan_nichts_zu_buchen">Nichts zu buchen.</string>
+    <string name="scan_anlegen">Anlegen</string>
+    <string name="scan_zaehler_gebucht">gebucht</string>
+    <string name="scan_zaehler_bereits">schon da</string>
+    <string name="scan_zaehler_unbekannt">unbekannt</string>
+    <string name="scan_log_gebucht">gebucht</string>
+    <string name="scan_log_bereits">bereits vorhanden</string>
+    <string name="scan_log_unbekannt">unbekannt</string>
+    <string name="scan_log_offen">zu buchen</string>
 
     <!-- Scan-Treffer -->
-    <string name="treffer_gefunden">Artikel gefunden: %1$s</string>
     <string name="treffer_nicht_gefunden_titel">Kein Artikel zu diesem Code</string>
-    <string name="treffer_nicht_gefunden_text">Code %1$s ist noch keinem Artikel zugeordnet. Jetzt neu anlegen?</string>
+    <string name="treffer_nicht_gefunden_text">Die Kennung %1$s ist noch keinem Artikel zugeordnet. Jetzt anlegen?</string>
     <string name="treffer_anlegen">Anlegen</string>
-    <string name="treffer_anderes_lager_titel">Artikel liegt in einem anderen Lager</string>
-    <string name="treffer_anderes_lager_text">„%1$s“ ist im Lager „%2$s“ erfasst. Hierher verschieben?</string>
-    <string name="treffer_verschieben">Verschieben</string>
     <string name="treffer_oeffnen">Öffnen</string>
-    <string name="treffer_verschoben">Artikel verschoben nach „%1$s“</string>
-    <string name="treffer_kein_lager">Bitte zuerst ein Lager anlegen</string>
-
-    <!-- NFC -->
     <string name="nfc_tag_gelesen">NFC-Tag gelesen: %1$s</string>
     <string name="nfc_nicht_bereit">NFC ist ausgeschaltet oder nicht verfügbar.</string>
     <string name="nfc_schreiben_aktion">NFC-Tag beschreiben</string>
     <string name="nfc_schreiben_titel">Tag beschreiben</string>
-    <string name="nfc_schreiben_text">Halte ein leeres NFC-Tag an die Rückseite des Geräts. Der Artikel wird als Text auf das Tag geschrieben und seine Kennung als Code hinterlegt.</string>
+    <string name="nfc_schreiben_text">Halte ein leeres NFC-Tag an die Rückseite des Geräts. Der Artikel wird als Text auf das Tag geschrieben; hat er noch keine Kennung, wird die Tag-Nummer eingetragen.</string>
     <string name="nfc_schreiben_ok">Tag beschrieben</string>
     <string name="nfc_schreiben_schreibgeschuetzt">Das Tag ist schreibgeschützt.</string>
     <string name="nfc_schreiben_zu_klein">Auf dem Tag ist zu wenig Platz.</string>
     <string name="nfc_schreiben_nicht_unterstuetzt">Dieses Tag lässt sich nicht beschreiben.</string>
     <string name="nfc_schreiben_fehler">Schreiben fehlgeschlagen – Tag zu früh entfernt?</string>
 
-    <!-- Inventur -->
-    <string name="inventur_titel">Inventur</string>
-    <string name="inventur_starten">Inventur starten</string>
-    <string name="inventur_hinweis">Einen Artikel nach dem anderen scannen – der Scanner bleibt offen.</string>
-    <string name="inventur_zaehler">%1$d erfasst · %2$d aus anderem Lager · %3$d unbekannt</string>
-    <string name="inventur_erfasst">erfasst</string>
-    <string name="inventur_unbekannt">Unbekannter Code</string>
-    <string name="inventur_fremdes_lager">gehört zu „%1$s“</string>
-    <string name="inventur_auswerten">Auswerten</string>
-    <string name="inventur_nichts_erfasst">Noch nichts erfasst.</string>
-    <string name="inventur_ergebnis_titel">Inventur-Ergebnis</string>
-    <string name="inventur_gefunden_anzahl">%1$d Artikel erfasst</string>
-    <string name="inventur_fehlt_titel">%1$d nicht gefunden</string>
-    <string name="inventur_nichts_fehlt">Alles gefunden.</string>
-    <string name="inventur_fremd_titel">%1$d aus anderen Lagern</string>
-    <string name="inventur_unbekannt_titel">%1$d unbekannte Codes</string>
-    <string name="inventur_als_verloren">Als verloren melden</string>
-    <string name="inventur_hierher">Hierher verschieben</string>
-    <string name="inventur_anlegen">Artikel anlegen</string>
-    <string name="inventur_anlegen_titel">Welchen Code anlegen?</string>
-    <string name="inventur_verloren_titel">Welche gelten als verloren?</string>
-    <string name="inventur_verloren_gemeldet">Als verloren gemeldet</string>
-    <string name="inventur_verschieben_titel">Welche hierher verschieben?</string>
-    <string name="inventur_verschoben">Artikel verschoben</string>
+    <!-- Detailansicht -->
+    <string name="detail_zuletzt_gescannt">Zuletzt gescannt: %1$s</string>
+    <string name="detail_ohne_person">Ohne Angabe</string>
+    <string name="detail_rueckgabe">Rückgabe bis %1$s</string>
+    <string name="detail_ueberfaellig">Überfällig seit %1$d Tagen</string>
+    <string name="detail_vermisst">Dieser Artikel wurde lange nicht gescannt – vielleicht ist er nicht mehr am Platz.</string>
+    <string name="detail_status_aendern">Status ändern</string>
+    <string name="detail_status_gesetzt">Status auf „%1$s“ geändert</string>
+    <string name="detail_verliehen_an">Verliehen an %1$s</string>
+    <string name="detail_standort_wechseln">Standort wechseln</string>
+    <string name="detail_standort_gesetzt">Standort auf „%1$s“ geändert</string>
+    <string name="detail_wechseln">Wechseln</string>
+    <string name="detail_qr">QR-Code</string>
+    <string name="detail_anzeigen">Anzeigen</string>
+    <string name="detail_ausblenden">Ausblenden</string>
+    <string name="detail_etikett">Etikett als PDF</string>
+    <string name="detail_leihbeleg">Leihbeleg als PDF</string>
+    <string name="detail_historie">Standort-Historie</string>
+    <string name="detail_historie_aktuell">Aktuell</string>
+    <string name="detail_historie_vorher">vorher: %1$s</string>
+    <string name="detail_protokoll">Änderungsprotokoll</string>
 
-    <!-- Suche -->
-    <string name="suche_titel">Suche</string>
-    <string name="suche_hint">Artikel, Code oder Notiz</string>
-    <string name="suche_hinweis">Suchbegriff eingeben oder einen Zustand wählen – gesucht wird über alle Lager.</string>
-    <string name="suche_kein_treffer">Kein Treffer.</string>
+    <string name="protokoll_wechsel">%1$s → %2$s</string>
+    <string name="protokoll_fuss">%1$s · %2$s</string>
+    <string name="protokoll_ohne_nutzer">Ohne Namen</string>
+
+    <!-- Einstellungen -->
+    <string name="einstellungen_titel">Einstellungen</string>
+    <string name="einstellungen_design">Design</string>
+    <string name="einstellungen_protokoll">Protokoll</string>
+    <string name="einstellungen_nutzer">Dein Name</string>
+    <string name="einstellungen_nutzer_hilfe">Steht bei jeder Änderung im Protokoll</string>
+    <string name="einstellungen_daten">Daten</string>
+    <string name="einstellungen_gespeichert">Gespeichert</string>
+    <string name="design_system">System</string>
+    <string name="design_hell">Hell</string>
+    <string name="design_dunkel">Dunkel</string>
+
+    <!-- Kategorien -->
+    <string name="kategorien_titel">Kategorien</string>
+    <string name="kategorien_leer">Noch keine Kategorien angelegt.</string>
+    <string name="kategorie_neu">Neue Kategorie</string>
+    <string name="kategorie_name">Name der Kategorie</string>
+    <string name="kategorie_doppelt">Diese Kategorie gibt es schon.</string>
+    <string name="kategorie_umbenennen">Kategorie umbenennen</string>
+    <string name="kategorie_loeschen_titel">Kategorie löschen?</string>
+    <string name="kategorie_loeschen_text">„%1$s“ wird entfernt. Artikel behalten den Eintrag.</string>
+    <string name="kategorie_hoch">Nach oben</string>
+    <string name="kategorie_runter">Nach unten</string>
 
     <!-- Sicherung -->
     <string name="export_json">Sicherung exportieren (JSON)</string>
@@ -205,16 +216,26 @@
     <string name="import_fehler">Datei konnte nicht gelesen werden: %1$s</string>
     <string name="import_leer">Die Datei enthält keine Daten.</string>
     <string name="import_titel">Sicherung einlesen</string>
-    <string name="import_frage">Die Datei enthält %1$d Lager und %2$d Artikel. Sollen sie zum vorhandenen Bestand dazukommen oder ihn ersetzen?</string>
+    <string name="import_frage">Die Datei enthält %1$d Artikel. Sollen sie dazukommen oder den Bestand ersetzen?</string>
     <string name="import_ergaenzen">Dazu</string>
     <string name="import_ersetzen">Ersetzen</string>
     <string name="import_ersetzen_titel">Bestand ersetzen?</string>
-    <string name="import_ersetzen_text">Alle vorhandenen Lager und Artikel werden gelöscht und durch die Sicherung ersetzt.</string>
+    <string name="import_ersetzen_text">Alle vorhandenen Artikel werden gelöscht und durch die Sicherung ersetzt.</string>
     <string name="import_ergaenzt">%1$d Artikel übernommen</string>
-    <string name="import_fertig">Bestand wiederhergestellt</string>
+    <string name="import_fertig">%1$d Artikel wiederhergestellt</string>
 
-    <!-- Ungespeicherte Änderungen -->
-    <string name="aenderungen_titel">Änderungen verwerfen?</string>
-    <string name="aenderungen_text">Deine Eingaben wurden noch nicht gespeichert.</string>
-    <string name="aenderungen_verwerfen">Verwerfen</string>
+    <!-- PDF -->
+    <string name="etiketten_fertig">%1$d Etikett(en) gespeichert</string>
+    <string name="etiketten_fehler">PDF fehlgeschlagen: %1$s</string>
+    <string name="leihbeleg_fertig">Leihbeleg gespeichert</string>
+    <string name="leihbeleg_titel">Leihbeleg</string>
+    <string name="leihbeleg_erstellt">Erstellt am %1$s</string>
+    <string name="leihbeleg_uebergeber">Übergeber</string>
+    <string name="leihbeleg_empfaenger">Empfänger</string>
+
+    <!-- Anfragen und Server -->
+    <string name="anfragen_ohne_server_titel">Anfragen brauchen den Server</string>
+    <string name="anfragen_ohne_server_text">Leih-Anfragen laufen zwischen mehreren Personen. Richte dazu den TagStock-Server ein, dann erscheinen hier die offenen Anfragen.</string>
+    <string name="anfragen_einrichten">Server einrichten</string>
+    <string name="sync_kein_server">Kein Server eingerichtet – die Daten liegen nur auf diesem Gerät.</string>
 </resources>

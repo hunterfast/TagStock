@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="?attr/selectableItemBackground"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:paddingStart="16dp"
+    android:paddingEnd="8dp">
+
+    <TextView
+        android:id="@+id/textName"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:paddingTop="14dp"
+        android:paddingBottom="14dp"
+        android:textAppearance="?attr/textAppearanceBodyLarge"
+        tools:text="Werkzeug" />
+
+    <ImageButton
+        android:id="@+id/buttonHoch"
+        style="@style/Widget.TagStock.IconButton"
+        android:contentDescription="@string/kategorie_hoch"
+        android:src="@drawable/ic_hoch" />
+
+    <ImageButton
+        android:id="@+id/buttonRunter"
+        style="@style/Widget.TagStock.IconButton"
+        android:contentDescription="@string/kategorie_runter"
+        android:src="@drawable/ic_runter" />
+
+    <ImageButton
+        android:id="@+id/buttonLoeschen"
+        style="@style/Widget.TagStock.IconButton"
+        android:contentDescription="@string/action_delete"
+        android:src="@drawable/ic_delete" />
+</LinearLayout>

@@ -23,15 +23,13 @@ import org.robolectric.RobolectricTestRunner;
 import java.util.List;
 
 import de.tagstock.data.AppDatabase;
-import de.tagstock.data.Code;
-import de.tagstock.data.CodeType;
-import de.tagstock.data.ItemWithState;
-import de.tagstock.data.Verleih;
+import de.tagstock.data.Artikel;
+import de.tagstock.data.ArtikelStatus;
+import de.tagstock.data.Protokoll;
 
 /**
- * Prueft die Migration von Version 1 auf 2: Codes und Ausleihen ziehen in
- * eigene Tabellen um, der Status wird zu Stueckzahlen. Room selbst prueft beim
- * Oeffnen zusaetzlich, ob das Schema exakt zu den Entities passt.
+ * Prueft die Migration der Datenbank bis Version 3. Room prueft beim Oeffnen
+ * zusaetzlich, ob das Schema exakt zu den Entities passt.
  */
 @RunWith(RobolectricTestRunner.class)
 public class MigrationTest {
@@ -42,43 +40,57 @@ public class MigrationTest {
     private AppDatabase db;
 
     @Before
-    public void datenbankV1Anlegen() {
+    public void vorbereiten() {
         context = ApplicationProvider.getApplicationContext();
         context.deleteDatabase(DB);
-
-        SupportSQLiteOpenHelper.Configuration konfiguration =
-                SupportSQLiteOpenHelper.Configuration.builder(context)
-                        .name(DB)
-                        .callback(new SupportSQLiteOpenHelper.Callback(1) {
-                            @Override
-                            public void onCreate(@NonNull SupportSQLiteDatabase db) {
-                                schemaV1(db);
-                                datenV1(db);
-                            }
-
-                            @Override
-                            public void onUpgrade(@NonNull SupportSQLiteDatabase db,
-                                                  int alt, int neu) {
-                                // In Version 1 gab es noch nichts zu migrieren.
-                            }
-                        })
-                        .build();
-
-        SupportSQLiteOpenHelper helper = new FrameworkSQLiteOpenHelperFactory()
-                .create(konfiguration);
-        helper.getWritableDatabase();
-        helper.close();
     }
 
     @After
     public void aufraeumen() {
         if (db != null) {
             db.close();
+            db = null;
         }
         context.deleteDatabase(DB);
     }
 
-    /** Das Schema, wie Room es in Version 1 angelegt hat. */
+    /** Legt eine Datenbank im Format der angegebenen Version an. */
+    private void alteDatenbank(int version, Fuellung fuellung) {
+        SupportSQLiteOpenHelper.Configuration konfiguration =
+                SupportSQLiteOpenHelper.Configuration.builder(context)
+                        .name(DB)
+                        .callback(new SupportSQLiteOpenHelper.Callback(version) {
+                            @Override
+                            public void onCreate(@NonNull SupportSQLiteDatabase db) {
+                                fuellung.fuellen(db);
+                            }
+
+                            @Override
+                            public void onUpgrade(@NonNull SupportSQLiteDatabase db,
+                                                  int alt, int neu) {
+                            }
+                        })
+                        .build();
+        SupportSQLiteOpenHelper helper = new FrameworkSQLiteOpenHelperFactory()
+                .create(konfiguration);
+        helper.getWritableDatabase();
+        helper.close();
+    }
+
+    private interface Fuellung {
+        void fuellen(SupportSQLiteDatabase db);
+    }
+
+    private void migrieren() {
+        db = Room.databaseBuilder(context, AppDatabase.class, DB)
+                .addMigrations(AppDatabase.MIGRATION_1_2, AppDatabase.MIGRATION_2_3)
+                .allowMainThreadQueries()
+                .build();
+        db.artikelDao().alle();
+    }
+
+    // ------------------------------------------------------------ Version 1
+
     private void schemaV1(SupportSQLiteDatabase db) {
         db.execSQL("CREATE TABLE IF NOT EXISTS `lager` ("
                 + "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, "
@@ -98,86 +110,135 @@ public class MigrationTest {
 
     private void datenV1(SupportSQLiteDatabase db) {
         db.execSQL("INSERT INTO lager (id, name, beschreibung, ort, erstelltAm)"
-                + " VALUES (1, 'Werkstatt', NULL, 'Keller', 1000)");
-        // Vorhanden, mit Code
+                + " VALUES (1, 'Werkstatt', NULL, 'Regal A3', 1000)");
         db.execSQL("INSERT INTO items (id, lagerId, name, beschreibung, code, codeType, menge,"
                 + " status, verliehenAn, verliehenSeit, notiz, erstelltAm, geaendertAm)"
-                + " VALUES (1, 1, 'Akkuschrauber', NULL, '111', 'QR', 2,"
-                + " 'VORHANDEN', NULL, NULL, NULL, 1000, 1000)");
-        // Verliehen, mit Ausleiher
+                + " VALUES (1, 1, 'Akkuschrauber', 'Mit Ladegerät', '111', 'QR', 2,"
+                + " 'VORHANDEN', NULL, NULL, 'Zweiter Akku fehlt', 1000, 1000)");
         db.execSQL("INSERT INTO items (id, lagerId, name, beschreibung, code, codeType, menge,"
                 + " status, verliehenAn, verliehenSeit, notiz, erstelltAm, geaendertAm)"
                 + " VALUES (2, 1, 'Bohrmaschine', NULL, '222', 'BARCODE', 1,"
                 + " 'VERLIEHEN', 'Max', 5000, NULL, 1000, 1000)");
-        // Verloren, und mit einem bereits vergebenen Code
         db.execSQL("INSERT INTO items (id, lagerId, name, beschreibung, code, codeType, menge,"
                 + " status, verliehenAn, verliehenSeit, notiz, erstelltAm, geaendertAm)"
-                + " VALUES (3, 1, 'Zollstock', NULL, '111', 'QR', 1,"
+                + " VALUES (3, 1, 'Zollstock', NULL, NULL, 'MANUELL', 1,"
                 + " 'VERLOREN', NULL, NULL, NULL, 1000, 1000)");
     }
 
-    private void migrieren() {
-        db = Room.databaseBuilder(context, AppDatabase.class, DB)
-                .addMigrations(AppDatabase.MIGRATION_1_2)
-                .allowMainThreadQueries()
-                .build();
-        // Erster Zugriff loest die Migration aus.
-        db.lagerDao().getAll();
+    @Test
+    public void ausVersion1WirdDasNeueModell() {
+        alteDatenbank(1, db -> {
+            schemaV1(db);
+            datenV1(db);
+        });
+        migrieren();
+
+        List<Artikel> artikel = db.artikelDao().alle();
+        assertEquals(3, artikel.size());
+
+        Artikel akku = db.artikelDao().nachId(1);
+        assertNotNull(akku);
+        assertEquals("Akkuschrauber", akku.name);
+        // Aus dem Lager wird der Standort, aus dem Lager-Ort der Lagerort.
+        assertEquals("Werkstatt", akku.standort);
+        assertEquals("Regal A3", akku.lagerort);
+        assertEquals("111", akku.rfidUid);
+        assertEquals(ArtikelStatus.VORHANDEN, akku.status);
+        // Notiz haengt an der Beschreibung, damit nichts verloren geht.
+        assertTrue(akku.beschreibung.contains("Ladegerät"));
+        assertTrue(akku.beschreibung.contains("Zweiter Akku"));
+
+        Artikel bohrer = db.artikelDao().nachId(2);
+        assertEquals(ArtikelStatus.VERLIEHEN, bohrer.status);
+        assertEquals("Max", bohrer.verliehenAn);
+
+        Artikel zollstock = db.artikelDao().nachId(3);
+        assertEquals(ArtikelStatus.NICHT_VORHANDEN, zollstock.status);
+        assertNull(zollstock.rfidUid);
     }
 
     @Test
-    public void lagerUndArtikelBleibenErhalten() {
+    public void ausleihenLandenImProtokoll() {
+        alteDatenbank(1, db -> {
+            schemaV1(db);
+            datenV1(db);
+        });
         migrieren();
-        assertEquals(1, db.lagerDao().getAll().size());
-        assertEquals(3, db.itemDao().getAll().size());
-        assertEquals("Werkstatt", db.lagerDao().getById(1).name);
+
+        List<Protokoll> protokoll = db.protokollDao().alle();
+        boolean gefunden = false;
+        for (Protokoll eintrag : protokoll) {
+            if (Protokoll.VERLIEHEN.equals(eintrag.aktion) && "Max".equals(eintrag.neuerWert)) {
+                gefunden = true;
+            }
+        }
+        assertTrue("Ausleihe fehlt im Protokoll", gefunden);
     }
 
     @Test
-    public void codeWirdUebernommenUndDoppelterVerworfen() {
+    public void standardkategorienStehenBereit() {
+        alteDatenbank(1, db -> {
+            schemaV1(db);
+            datenV1(db);
+        });
         migrieren();
-        List<Code> codes = db.codeDao().getAll();
-        // '111' war doppelt vergeben und darf nur einmal existieren.
-        assertEquals(2, codes.size());
-
-        Code ersterCode = db.codeDao().findByWert("111");
-        assertNotNull(ersterCode);
-        assertEquals(1L, ersterCode.itemId);
-        assertEquals(CodeType.QR, ersterCode.typ);
-
-        Code zweiterCode = db.codeDao().findByWert("222");
-        assertNotNull(zweiterCode);
-        assertEquals(CodeType.BARCODE, zweiterCode.typ);
+        assertTrue(db.kategorieDao().anzahl() >= 8);
     }
 
-    @Test
-    public void verliehenerArtikelWirdZuOffenemVorgang() {
-        migrieren();
-        List<Verleih> offene = db.verleihDao().getOffene(2);
-        assertEquals(1, offene.size());
-        assertEquals("Max", offene.get(0).person);
-        assertEquals(5000L, offene.get(0).ausgeliehenAm);
-        assertNull(offene.get(0).zurueckAm);
-
-        ItemWithState zustand = db.itemDao().getState(2);
-        assertEquals(1, zustand.verliehen);
-        assertEquals(0, zustand.vorhanden());
-    }
+    // ------------------------------------------------------------ Version 2
 
     @Test
-    public void verlorenerArtikelBehaeltSeineMenge() {
-        migrieren();
-        ItemWithState zustand = db.itemDao().getState(3);
-        assertEquals(1, zustand.verloren());
-        assertEquals(0, zustand.vorhanden());
-    }
+    public void ausVersion2WirdDasNeueModell() {
+        alteDatenbank(2, db -> {
+            db.execSQL("CREATE TABLE IF NOT EXISTS `lager` ("
+                    + "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, "
+                    + "`name` TEXT NOT NULL, `beschreibung` TEXT, `ort` TEXT, "
+                    + "`erstelltAm` INTEGER NOT NULL)");
+            db.execSQL("CREATE TABLE IF NOT EXISTS `items` ("
+                    + "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, "
+                    + "`lagerId` INTEGER NOT NULL, `name` TEXT NOT NULL, `beschreibung` TEXT, "
+                    + "`menge` INTEGER NOT NULL, `mengeVerloren` INTEGER NOT NULL, "
+                    + "`fotoPfad` TEXT, `notiz` TEXT, `erstelltAm` INTEGER NOT NULL, "
+                    + "`geaendertAm` INTEGER NOT NULL, "
+                    + "FOREIGN KEY(`lagerId`) REFERENCES `lager`(`id`)"
+                    + " ON UPDATE NO ACTION ON DELETE CASCADE )");
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_items_lagerId` ON `items` (`lagerId`)");
+            db.execSQL("CREATE TABLE IF NOT EXISTS `codes` ("
+                    + "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, "
+                    + "`itemId` INTEGER NOT NULL, `wert` TEXT NOT NULL, `typ` TEXT NOT NULL, "
+                    + "`erfasstAm` INTEGER NOT NULL, "
+                    + "FOREIGN KEY(`itemId`) REFERENCES `items`(`id`)"
+                    + " ON UPDATE NO ACTION ON DELETE CASCADE )");
+            db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_codes_wert` ON `codes` (`wert`)");
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_codes_itemId` ON `codes` (`itemId`)");
+            db.execSQL("CREATE TABLE IF NOT EXISTS `verleih` ("
+                    + "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, "
+                    + "`itemId` INTEGER NOT NULL, `person` TEXT NOT NULL, "
+                    + "`menge` INTEGER NOT NULL, `ausgeliehenAm` INTEGER NOT NULL, "
+                    + "`zurueckAm` INTEGER, `notiz` TEXT, "
+                    + "FOREIGN KEY(`itemId`) REFERENCES `items`(`id`)"
+                    + " ON UPDATE NO ACTION ON DELETE CASCADE )");
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_verleih_itemId` ON `verleih` (`itemId`)");
 
-    @Test
-    public void vorhandenerArtikelBehaeltBestand() {
+            db.execSQL("INSERT INTO lager (id, name, beschreibung, ort, erstelltAm)"
+                    + " VALUES (5, 'Keller', NULL, 'Schrank links', 1000)");
+            db.execSQL("INSERT INTO items (id, lagerId, name, beschreibung, menge, mengeVerloren,"
+                    + " fotoPfad, notiz, erstelltAm, geaendertAm)"
+                    + " VALUES (7, 5, 'Leiter', NULL, 1, 0, NULL, NULL, 1000, 2000)");
+            db.execSQL("INSERT INTO codes (itemId, wert, typ, erfasstAm)"
+                    + " VALUES (7, 'ABC123', 'NFC', 1500)");
+            db.execSQL("INSERT INTO verleih (itemId, person, menge, ausgeliehenAm, zurueckAm, notiz)"
+                    + " VALUES (7, 'Anna', 1, 3000, NULL, NULL)");
+        });
         migrieren();
-        ItemWithState zustand = db.itemDao().getState(1);
-        assertEquals(2, zustand.vorhanden());
-        assertEquals(0, zustand.verliehen);
-        assertTrue(zustand.codes.size() >= 1);
+
+        Artikel leiter = db.artikelDao().nachId(7);
+        assertNotNull(leiter);
+        assertEquals("Keller", leiter.standort);
+        assertEquals("Schrank links", leiter.lagerort);
+        assertEquals("ABC123", leiter.rfidUid);
+        assertEquals(ArtikelStatus.VERLIEHEN, leiter.status);
+        assertEquals("Anna", leiter.verliehenAn);
+        assertEquals(2000L, leiter.geaendertAm);
     }
 }

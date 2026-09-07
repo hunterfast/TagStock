@@ -3,95 +3,108 @@ package de.tagstock.util;
 import android.content.Context;
 import android.content.res.ColorStateList;
 import android.text.format.DateFormat;
+import android.text.format.DateUtils;
 import android.widget.TextView;
 
 import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
 import androidx.core.view.ViewCompat;
 
+import java.util.Calendar;
 import java.util.Date;
 
 import de.tagstock.R;
-import de.tagstock.data.Code;
-import de.tagstock.data.ItemStatus;
-import de.tagstock.data.ItemWithState;
-import de.tagstock.data.Verleih;
+import de.tagstock.data.Artikel;
+import de.tagstock.data.ArtikelStatus;
 
-/** Kleine Helfer zur Anzeige von Datum, Bestand und Codes. */
+/** Anzeige-Helfer fuer Datum, Status und Artikelzeilen. */
 public final class Formatter {
 
     private Formatter() {
     }
 
-    public static String date(Context context, long millis) {
+    public static String datum(Context context, long millis) {
         return DateFormat.getDateFormat(context).format(new Date(millis));
     }
 
-    public static String statusLabel(Context context, ItemStatus status) {
+    public static String datumZeit(Context context, long millis) {
+        return DateFormat.getDateFormat(context).format(new Date(millis))
+                + ", " + DateFormat.getTimeFormat(context).format(new Date(millis));
+    }
+
+    /** "vor 3 Monaten" - fuer den letzten Scan. */
+    public static CharSequence seit(long millis) {
+        return DateUtils.getRelativeTimeSpanString(millis, System.currentTimeMillis(),
+                DateUtils.MINUTE_IN_MILLIS);
+    }
+
+    /** Tagesbeginn - Rueckgabedaten werden ohne Uhrzeit gespeichert. */
+    public static long tagesbeginn(long millis) {
+        Calendar kalender = Calendar.getInstance();
+        kalender.setTimeInMillis(millis);
+        kalender.set(Calendar.HOUR_OF_DAY, 0);
+        kalender.set(Calendar.MINUTE, 0);
+        kalender.set(Calendar.SECOND, 0);
+        kalender.set(Calendar.MILLISECOND, 0);
+        return kalender.getTimeInMillis();
+    }
+
+    public static String statusLabel(Context context, ArtikelStatus status) {
         return context.getString(status.labelRes);
     }
 
     /** Faerbt die Status-Plakette eines Listeneintrags. */
-    public static void bindStatusPill(TextView view, ItemStatus status) {
+    public static void statusPlakette(TextView view, ArtikelStatus status) {
         Context context = view.getContext();
         view.setText(statusLabel(context, status));
         ViewCompat.setBackgroundTintList(view,
-                ColorStateList.valueOf(ContextCompat.getColor(context, status.colorRes)));
+                ColorStateList.valueOf(ContextCompat.getColor(context, status.farbeRes)));
     }
 
-    /** "3 vorhanden · 2 verliehen · 1 verloren" - nur belegte Zustaende. */
-    public static String bestandText(Context context, ItemWithState state) {
+    /**
+     * Zweite Zeile der Artikelkarte: bei verliehenen Artikeln die Person,
+     * sonst die Kategorie - dahinter jeweils der Lagerort.
+     */
+    public static String zeile(Context context, Artikel artikel) {
         StringBuilder text = new StringBuilder();
-        anhaengen(context, text, state.vorhanden(), R.string.bestand_vorhanden);
-        anhaengen(context, text, state.verliehen, R.string.bestand_verliehen);
-        anhaengen(context, text, state.verloren(), R.string.bestand_verloren);
-        if (text.length() == 0) {
-            return context.getString(R.string.bestand_leer);
+        if (artikel.status == ArtikelStatus.VERLIEHEN
+                && artikel.verliehenAn != null && !artikel.verliehenAn.isEmpty()) {
+            text.append(artikel.verliehenAn);
+        } else if (artikel.kategorie != null && !artikel.kategorie.isEmpty()) {
+            text.append(artikel.kategorie);
+        }
+        if (artikel.lagerort != null && !artikel.lagerort.isEmpty()) {
+            anhaengen(text, artikel.lagerort);
+        } else if (artikel.standort != null && !artikel.standort.isEmpty()) {
+            anhaengen(text, artikel.standort);
+        }
+        if (artikel.status == ArtikelStatus.VERLIEHEN && artikel.rueckgabeDatum != null) {
+            anhaengen(text, artikel.istUeberfaellig()
+                    ? context.getString(R.string.artikel_ueberfaellig_seit,
+                    datum(context, artikel.rueckgabeDatum))
+                    : context.getString(R.string.artikel_bis, datum(context, artikel.rueckgabeDatum)));
         }
         return text.toString();
     }
 
-    private static void anhaengen(Context context, StringBuilder text, int anzahl, int formatRes) {
-        if (anzahl <= 0) {
-            return;
-        }
+    private static void anhaengen(StringBuilder text, String wert) {
         if (text.length() > 0) {
             text.append(" · ");
         }
-        text.append(context.getString(formatRes, anzahl));
+        text.append(wert);
     }
 
-    /** "QR-Code · 4006381333931" plus Hinweis auf weitere Codes, sonst null. */
+    /** Tage, die eine Rueckgabe ueberfaellig ist. */
+    public static int tageUeberfaellig(Artikel artikel) {
+        if (artikel.rueckgabeDatum == null) {
+            return 0;
+        }
+        long differenz = System.currentTimeMillis() - artikel.rueckgabeDatum;
+        return (int) Math.max(0, differenz / DateUtils.DAY_IN_MILLIS);
+    }
+
     @Nullable
-    public static String codeText(Context context, ItemWithState state) {
-        Code erster = state.ersterCode();
-        if (erster == null) {
-            return null;
-        }
-        String text = context.getString(erster.typ.labelRes) + " · " + erster.wert;
-        int weitere = state.codes.size() - 1;
-        if (weitere > 0) {
-            text += " " + context.getResources().getQuantityString(
-                    R.plurals.code_weitere, weitere, weitere);
-        }
-        return text;
-    }
-
-    /** "Max Mustermann · 2 Stueck · seit 12.03.2026" bzw. mit Rueckgabedatum. */
-    public static String verleihZeile(Context context, Verleih verleih) {
-        StringBuilder text = new StringBuilder(verleih.person);
-        if (verleih.menge > 1) {
-            text.append(" · ").append(context.getString(R.string.verleih_stueck, verleih.menge));
-        }
-        text.append(" · ");
-        if (verleih.istOffen()) {
-            text.append(context.getString(R.string.verleih_seit,
-                    date(context, verleih.ausgeliehenAm)));
-        } else {
-            text.append(context.getString(R.string.verleih_zurueck_am,
-                    date(context, verleih.ausgeliehenAm),
-                    date(context, verleih.zurueckAm)));
-        }
-        return text.toString();
+    public static String leerZuNull(String wert) {
+        return wert == null || wert.trim().isEmpty() ? null : wert.trim();
     }
 }

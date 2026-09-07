@@ -1,33 +1,47 @@
 package de.tagstock.ui;
 
+import android.Manifest;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Toast;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.ContextCompat;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import de.tagstock.R;
-import de.tagstock.data.CodeType;
 import de.tagstock.databinding.ActivityScannerBinding;
+import de.tagstock.util.CodeArt;
 import de.tagstock.util.Dialogs;
 import de.tagstock.util.NfcHelper;
 import de.tagstock.util.ScanResult;
+import de.tagstock.util.ScannerSteuerung;
 
-/**
- * Vollbild-Scanner fuer einen einzelnen Code. Liest Barcodes und QR-Codes ueber
- * die Kamera und gleichzeitig NFC-Tags ueber den Reader-Mode.
- */
-public class ScannerActivity extends ScannerBaseActivity {
+/** Vollbild-Scanner fuer einen einzelnen Code; liefert das Ergebnis zurueck. */
+public class ScannerActivity extends AppCompatActivity implements ScannerSteuerung.Listener {
 
     private ActivityScannerBinding binding;
+    private ScannerSteuerung scanner;
     private final AtomicBoolean erledigt = new AtomicBoolean(false);
 
-    public static Intent createIntent(Context context) {
+    private final ActivityResultLauncher<String> berechtigung = registerForActivityResult(
+            new ActivityResultContracts.RequestPermission(), erlaubt -> {
+                if (erlaubt) {
+                    scanner.kameraStarten();
+                } else {
+                    onKameraFehlt();
+                }
+            });
+
+    public static Intent intent(Context context) {
         return new Intent(context, ScannerActivity.class);
     }
 
@@ -37,22 +51,47 @@ public class ScannerActivity extends ScannerBaseActivity {
         binding = ActivityScannerBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
 
+        scanner = new ScannerSteuerung(this, this, binding.previewView, this);
+
         binding.toolbar.setNavigationOnClickListener(v -> finish());
-        binding.buttonTorch.setOnClickListener(v -> blitzUmschalten());
-        binding.buttonManuell.setOnClickListener(v -> manuellEingeben());
-        binding.buttonTorch.setVisibility(View.GONE);
+        binding.buttonBlitz.setVisibility(View.GONE);
+        binding.buttonBlitz.setOnClickListener(v -> scanner.blitzUmschalten());
+        binding.buttonManuell.setOnClickListener(v -> Dialogs.textInput(this,
+                getString(R.string.scan_manuell_titel), getString(R.string.artikel_kennung), null,
+                wert -> onCode(new ScanResult(wert, CodeArt.MANUELL, null))));
 
-        scannerStarten(binding.previewView);
-        hinweisAktualisieren();
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
+                == PackageManager.PERMISSION_GRANTED) {
+            scanner.kameraStarten();
+        } else {
+            berechtigung.launch(Manifest.permission.CAMERA);
+        }
+
+        if (NfcHelper.hasHardware(this) && !NfcHelper.isReady(this)) {
+            binding.textHinweis.setText(R.string.scan_nfc_aus);
+        }
     }
 
     @Override
-    protected void onKameraBereit() {
-        binding.buttonTorch.setVisibility(hatBlitz() ? View.VISIBLE : View.GONE);
+    protected void onResume() {
+        super.onResume();
+        scanner.nfcStarten(this);
     }
 
     @Override
-    protected void onScan(ScanResult ergebnis) {
+    protected void onPause() {
+        scanner.nfcBeenden(this);
+        super.onPause();
+    }
+
+    @Override
+    protected void onDestroy() {
+        scanner.freigeben();
+        super.onDestroy();
+    }
+
+    @Override
+    public void onCode(ScanResult ergebnis) {
         if (!erledigt.compareAndSet(false, true)) {
             return;
         }
@@ -63,23 +102,16 @@ public class ScannerActivity extends ScannerBaseActivity {
     }
 
     @Override
-    protected void onKameraFehlt() {
+    public void onKameraBereit() {
+        binding.buttonBlitz.setVisibility(scanner.hatBlitz() ? View.VISIBLE : View.GONE);
+    }
+
+    @Override
+    public void onKameraFehlt() {
         binding.previewView.setVisibility(View.GONE);
-        binding.scanFrame.setVisibility(View.GONE);
-        binding.buttonTorch.setVisibility(View.GONE);
-        binding.textNoCamera.setVisibility(View.VISIBLE);
-        binding.textHint.setText(R.string.scan_hinweis_nur_nfc);
-    }
-
-    private void hinweisAktualisieren() {
-        if (NfcHelper.hasHardware(this) && !NfcHelper.isReady(this)) {
-            binding.textHint.setText(R.string.scan_nfc_aus);
-        }
-    }
-
-    private void manuellEingeben() {
-        Dialogs.textInput(this, getString(R.string.scan_manuell_titel),
-                getString(R.string.artikel_code), null,
-                wert -> onScan(new ScanResult(wert, CodeType.MANUELL, null)));
+        binding.scanRahmen.setVisibility(View.GONE);
+        binding.buttonBlitz.setVisibility(View.GONE);
+        binding.textKeineKamera.setVisibility(View.VISIBLE);
+        binding.textHinweis.setText(R.string.scan_hinweis_nur_nfc);
     }
 }

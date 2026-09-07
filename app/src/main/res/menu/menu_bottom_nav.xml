@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/tab_bestand"
+        android:icon="@drawable/ic_artikel"
+        android:title="@string/tab_bestand" />
+    <item
+        android:id="@+id/tab_scan"
+        android:icon="@drawable/ic_scan"
+        android:title="@string/tab_scan" />
+    <item
+        android:id="@+id/tab_neu"
+        android:icon="@drawable/ic_add"
+        android:title="@string/tab_neu" />
+    <item
+        android:id="@+id/tab_anfragen"
+        android:icon="@drawable/ic_anfragen"
+        android:title="@string/tab_anfragen" />
+</menu>

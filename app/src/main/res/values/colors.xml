@@ -1,13 +1,27 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="brand_primary">#1565C0</color>
-    <color name="brand_primary_dark">#0D47A1</color>
-    <color name="brand_secondary">#00897B</color>
+    <!-- Markenfarben, abgeleitet aus der Weboberflaeche -->
+    <color name="brand_primary">#1A6EE6</color>
+    <color name="brand_primary_dunkel">#0F52B5</color>
+    <color name="brand_hell">#478BEB</color>
 
-    <color name="status_vorhanden">#2E7D32</color>
-    <color name="status_verliehen">#EF6C00</color>
-    <color name="status_verloren">#C62828</color>
+    <!-- Status -->
+    <color name="status_vorhanden">#059669</color>
+    <color name="status_fehlt">#EF4444</color>
+    <color name="status_verliehen">#F59E0B</color>
+    <color name="status_verbraucht">#EA580C</color>
+    <color name="status_ausgelagert">#9333EA</color>
+    <color name="status_vermisst">#7C3AED</color>
 
+    <!-- Hinweisflaechen -->
+    <color name="warnung_hintergrund">#FEF3C7</color>
+    <color name="warnung_rand">#FCD34D</color>
+    <color name="warnung_text">#92400E</color>
+    <color name="vermisst_hintergrund">#F3E8FF</color>
+    <color name="vermisst_rand">#D8B4FE</color>
+    <color name="vermisst_text">#6B21A8</color>
+
+    <color name="karte_rand">#DDE1E8</color>
     <color name="white">#FFFFFFFF</color>
     <color name="black">#FF000000</color>
     <color name="scrim">#99000000</color>

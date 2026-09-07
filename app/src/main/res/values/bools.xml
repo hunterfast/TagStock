@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Im hellen Design dunkle Symbole in der Statusleiste. -->
+    <bool name="heller_statusbalken">true</bool>
+</resources>

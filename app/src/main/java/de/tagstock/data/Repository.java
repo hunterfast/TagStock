@@ -14,55 +14,42 @@ import java.util.concurrent.Executors;
 
 /**
  * Einziger Zugriffspunkt auf die Datenbank. Schreibende und lesende Einzelabfragen
- * laufen im Hintergrund, Ergebnisse werden auf dem Main-Thread zurueckgegeben.
+ * laufen im Hintergrund, Ergebnisse kommen auf dem Main-Thread zurueck.
  */
 public class Repository {
 
-    /** Rueckgabe einer Hintergrundabfrage auf dem Main-Thread. */
     public interface Callback<T> {
-        void onResult(T result);
+        void onResult(T ergebnis);
     }
 
-    /** Treffer einer Code-Suche samt Lager, in dem der Artikel liegt. */
-    public static class Treffer {
-        public final ItemWithState item;
-        public final Lager lager;
-
-        public Treffer(ItemWithState item, Lager lager) {
-            this.item = item;
-            this.lager = lager;
-        }
-    }
-
-    /** Ergebnis beim Hinterlegen eines Codes. */
-    public static class CodeVergabe {
+    /** Ergebnis des Speicherns; bei belegter Kennung steht der Gegenspieler drin. */
+    public static class Speicherergebnis {
         public final boolean erfolgreich;
-        /** Bei Misserfolg: der Artikel, der den Code bereits belegt. */
+        public final long id;
         @Nullable
-        public final Treffer belegtVon;
+        public final Artikel kennungBelegtVon;
 
-        CodeVergabe(boolean erfolgreich, @Nullable Treffer belegtVon) {
+        Speicherergebnis(boolean erfolgreich, long id, @Nullable Artikel kennungBelegtVon) {
             this.erfolgreich = erfolgreich;
-            this.belegtVon = belegtVon;
+            this.id = id;
+            this.kennungBelegtVon = kennungBelegtVon;
         }
     }
 
     private static volatile Repository instance;
 
     private final AppDatabase db;
-    private final LagerDao lagerDao;
-    private final ItemDao itemDao;
-    private final CodeDao codeDao;
-    private final VerleihDao verleihDao;
+    private final ArtikelDao artikelDao;
+    private final KategorieDao kategorieDao;
+    private final ProtokollDao protokollDao;
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
 
     private Repository(Context context) {
         db = AppDatabase.getInstance(context);
-        lagerDao = db.lagerDao();
-        itemDao = db.itemDao();
-        codeDao = db.codeDao();
-        verleihDao = db.verleihDao();
+        artikelDao = db.artikelDao();
+        kategorieDao = db.kategorieDao();
+        protokollDao = db.protokollDao();
     }
 
     public static Repository getInstance(Context context) {
@@ -76,121 +63,48 @@ public class Repository {
         return instance;
     }
 
-    // ------------------------------------------------------------------ Lager
+    // ---------------------------------------------------------------- Abfragen
 
-    public LiveData<List<LagerWithCount>> observeLagerWithCounts() {
-        return lagerDao.observeAllWithCounts();
+    public LiveData<List<Artikel>> beobachteArtikel() {
+        return artikelDao.beobachteAlle();
     }
 
-    public LiveData<Lager> observeLager(long id) {
-        return lagerDao.observeById(id);
+    public LiveData<Artikel> beobachteArtikel(long id) {
+        return artikelDao.beobachte(id);
     }
 
-    public void loadAllLager(Callback<List<Lager>> callback) {
-        run(lagerDao::getAll, callback);
+    public LiveData<List<String>> beobachteStandorte() {
+        return artikelDao.beobachteStandorte();
     }
 
-    public void loadLager(long id, Callback<Lager> callback) {
-        run(() -> lagerDao.getById(id), callback);
+    public LiveData<List<Kategorie>> beobachteKategorien() {
+        return kategorieDao.beobachteAlle();
     }
 
-    public void insertLager(Lager lager, Callback<Long> callback) {
-        run(() -> lagerDao.insert(lager), callback);
+    public LiveData<List<Protokoll>> beobachteProtokoll(long artikelId) {
+        return protokollDao.beobachteFuerArtikel(artikelId);
     }
 
-    public void updateLager(Lager lager) {
-        executor.execute(() -> lagerDao.update(lager));
+    public void ladeArtikel(long id, Callback<Artikel> callback) {
+        starte(() -> artikelDao.nachId(id), callback);
     }
 
-    public void deleteLager(Lager lager) {
-        executor.execute(() -> lagerDao.delete(lager));
+    public void ladeAlleArtikel(Callback<List<Artikel>> callback) {
+        starte(artikelDao::alle, callback);
     }
 
-    // ---------------------------------------------------------------- Artikel
-
-    public LiveData<List<ItemWithState>> observeItems(long lagerId) {
-        return itemDao.observeByLager(lagerId);
+    public void ladeKategorien(Callback<List<Kategorie>> callback) {
+        starte(kategorieDao::alle, callback);
     }
 
-    public LiveData<List<ItemWithState>> observeAlleItems() {
-        return itemDao.observeAll();
-    }
-
-    public LiveData<ItemWithState> observeItemState(long id) {
-        return itemDao.observeState(id);
-    }
-
-    public void ladeAlleZustaende(Callback<List<ItemWithState>> callback) {
-        run(itemDao::getAllStates, callback);
-    }
-
-    public void ladeZustaendeVonLager(long lagerId, Callback<List<ItemWithState>> callback) {
-        run(() -> itemDao.getByLager(lagerId), callback);
-    }
-
-    public void loadItem(long id, Callback<Item> callback) {
-        run(() -> itemDao.getById(id), callback);
-    }
-
-    public void loadItemState(long id, Callback<ItemWithState> callback) {
-        run(() -> itemDao.getState(id), callback);
-    }
-
-    public void insertItem(Item item, Callback<Long> callback) {
-        run(() -> itemDao.insert(item), callback);
-    }
-
-    public void updateItem(Item item) {
-        item.geaendertAm = System.currentTimeMillis();
-        executor.execute(() -> itemDao.update(item));
-    }
-
-    public void updateItem(Item item, Runnable danach) {
-        item.geaendertAm = System.currentTimeMillis();
-        run(() -> {
-            itemDao.update(item);
-            return null;
-        }, ignored -> danach.run());
-    }
-
-    public void deleteItem(Item item) {
-        executor.execute(() -> itemDao.delete(item));
-    }
-
-    // ------------------------------------------------------------------ Codes
-
-    public LiveData<List<Code>> observeCodes(long itemId) {
-        return codeDao.observeByItem(itemId);
-    }
-
-    /**
-     * Hinterlegt einen Code an einem Artikel. Ist der Wert bereits vergeben,
-     * meldet das Ergebnis, welcher Artikel ihn belegt.
-     */
-    public void codeHinzufuegen(long itemId, String wert, CodeType typ,
-                                Callback<CodeVergabe> callback) {
-        run(() -> {
-            try {
-                codeDao.insert(new Code(itemId, wert, typ));
-                return new CodeVergabe(true, null);
-            } catch (SQLiteConstraintException e) {
-                return new CodeVergabe(false, suchen(wert));
-            }
-        }, callback);
-    }
-
-    public void codeEntfernen(Code code) {
-        executor.execute(() -> codeDao.delete(code));
-    }
-
-    /** Sucht den Artikel zu einem gescannten Wert - UID oder Tag-Inhalt. */
-    public void findeZuCode(List<String> werte, Callback<Treffer> callback) {
-        run(() -> {
+    /** Sucht den Artikel zu einem gescannten Wert; prueft mehrere Kandidaten. */
+    public void findeNachKennung(List<String> werte, Callback<Artikel> callback) {
+        starte(() -> {
             for (String wert : werte) {
-                if (wert == null || wert.isEmpty()) {
+                if (wert == null || wert.trim().isEmpty()) {
                     continue;
                 }
-                Treffer treffer = suchen(wert);
+                Artikel treffer = artikelDao.nachKennung(wert.trim());
                 if (treffer != null) {
                     return treffer;
                 }
@@ -199,193 +113,297 @@ public class Repository {
         }, callback);
     }
 
-    @Nullable
-    private Treffer suchen(String wert) {
-        Code code = codeDao.findByWert(wert);
-        if (code == null) {
-            return null;
+    // --------------------------------------------------------------- Schreiben
+
+    /**
+     * Legt einen Artikel an oder aktualisiert ihn und schreibt die Aenderungen
+     * ins Protokoll. Ist die Kennung schon vergeben, wird nichts gespeichert.
+     */
+    public void speichern(Artikel neu, @Nullable Artikel vorher, String nutzer,
+                          Callback<Speicherergebnis> callback) {
+        starte(() -> {
+            if (neu.rfidUid != null && !neu.rfidUid.isEmpty()) {
+                Artikel belegt = artikelDao.nachKennung(neu.rfidUid);
+                if (belegt != null && belegt.id != neu.id) {
+                    return new Speicherergebnis(false, 0L, belegt);
+                }
+            }
+            neu.geaendertAm = System.currentTimeMillis();
+            neu.offen = true;
+            try {
+                if (neu.id == 0L) {
+                    long id = artikelDao.insert(neu);
+                    neu.id = id;
+                    eintragen(neu, Protokoll.ANGELEGT, null, neu.name, nutzer);
+                    return new Speicherergebnis(true, id, null);
+                }
+                artikelDao.update(neu);
+                if (vorher != null) {
+                    protokolliereUnterschiede(vorher, neu, nutzer);
+                }
+                return new Speicherergebnis(true, neu.id, null);
+            } catch (SQLiteConstraintException e) {
+                Artikel belegt = neu.rfidUid == null ? null : artikelDao.nachKennung(neu.rfidUid);
+                return new Speicherergebnis(false, 0L, belegt);
+            }
+        }, callback);
+    }
+
+    private void protokolliereUnterschiede(Artikel vorher, Artikel neu, String nutzer) {
+        if (!vorher.name.equals(neu.name)) {
+            eintragen(neu, Protokoll.NAME, vorher.name, neu.name, nutzer);
         }
-        ItemWithState item = itemDao.getState(code.itemId);
-        if (item == null) {
-            return null;
+        if (vorher.status != neu.status) {
+            eintragen(neu, Protokoll.STATUS, schluessel(vorher.status), schluessel(neu.status), nutzer);
         }
-        return new Treffer(item, lagerDao.getById(item.item.lagerId));
+        if (!gleich(vorher.standort, neu.standort)) {
+            eintragen(neu, Protokoll.STANDORT, vorher.standort, neu.standort, nutzer);
+        }
+        if (!gleich(vorher.lagerort, neu.lagerort)) {
+            eintragen(neu, Protokoll.LAGERORT, vorher.lagerort, neu.lagerort, nutzer);
+        }
     }
 
-    // ---------------------------------------------------------------- Verleih
-
-    public LiveData<List<Verleih>> observeVerleih(long itemId) {
-        return verleihDao.observeByItem(itemId);
-    }
-
-    public LiveData<List<Verleih>> observeOffeneVerleihe() {
-        return verleihDao.observeOffene();
-    }
-
-    public void ladeOffeneVerleihe(long itemId, Callback<List<Verleih>> callback) {
-        run(() -> verleihDao.getOffene(itemId), callback);
-    }
-
-    /** Verleiht Stuecke eines Artikels; begrenzt auf den vorhandenen Bestand. */
-    public void ausleihen(long itemId, String person, int menge, @Nullable String notiz,
-                          Callback<Boolean> callback) {
-        run(() -> {
-            ItemWithState state = itemDao.getState(itemId);
-            if (state == null || menge < 1 || state.vorhanden() < menge) {
+    /** Setzt den Status eines Artikels und schreibt einen Protokolleintrag. */
+    public void statusSetzen(Artikel artikel, ArtikelStatus status, String nutzer,
+                             @Nullable Callback<Boolean> callback) {
+        starte(() -> {
+            Artikel aktuell = artikelDao.nachId(artikel.id);
+            if (aktuell == null || aktuell.status == status) {
                 return false;
             }
-            Verleih verleih = new Verleih();
-            verleih.itemId = itemId;
-            verleih.person = person;
-            verleih.menge = menge;
-            verleih.notiz = notiz;
-            verleihDao.insert(verleih);
-            beruehren(itemId);
+            ArtikelStatus alt = aktuell.status;
+            aktuell.status = status;
+            if (status != ArtikelStatus.VERLIEHEN) {
+                aktuell.verliehenAn = null;
+                aktuell.rueckgabeDatum = null;
+            }
+            aktuell.geaendertAm = System.currentTimeMillis();
+            aktuell.offen = true;
+            artikelDao.update(aktuell);
+            eintragen(aktuell, Protokoll.STATUS, schluessel(alt), schluessel(status), nutzer);
             return true;
-        }, callback);
-    }
-
-    public void zurueckgeben(Verleih verleih, Callback<Boolean> callback) {
-        run(() -> {
-            verleih.zurueckAm = System.currentTimeMillis();
-            verleihDao.update(verleih);
-            beruehren(verleih.itemId);
-            return true;
-        }, callback);
-    }
-
-    /** Loescht einen Eintrag aus der Historie. */
-    public void verleihLoeschen(Verleih verleih) {
-        executor.execute(() -> {
-            verleihDao.delete(verleih);
-            beruehren(verleih.itemId);
+        }, ergebnis -> {
+            if (callback != null) {
+                callback.onResult(ergebnis);
+            }
         });
     }
 
-    // --------------------------------------------------------------- Verluste
-
-    /** Meldet Stuecke als verloren; begrenzt auf den vorhandenen Bestand. */
-    public void verlorenMelden(long itemId, int menge, Callback<Boolean> callback) {
-        run(() -> {
-            ItemWithState state = itemDao.getState(itemId);
-            if (state == null || menge < 1 || state.vorhanden() < menge) {
+    /** Setzt den Standort eines Artikels. */
+    public void standortSetzen(Artikel artikel, String standort, String nutzer,
+                               @Nullable Callback<Boolean> callback) {
+        starte(() -> {
+            Artikel aktuell = artikelDao.nachId(artikel.id);
+            if (aktuell == null || gleich(aktuell.standort, standort)) {
                 return false;
             }
-            Item item = state.item;
-            item.mengeVerloren += menge;
-            item.geaendertAm = System.currentTimeMillis();
-            itemDao.update(item);
+            String alt = aktuell.standort;
+            aktuell.standort = standort;
+            aktuell.geaendertAm = System.currentTimeMillis();
+            aktuell.offen = true;
+            artikelDao.update(aktuell);
+            eintragen(aktuell, Protokoll.STANDORT, alt, standort, nutzer);
             return true;
+        }, ergebnis -> {
+            if (callback != null) {
+                callback.onResult(ergebnis);
+            }
+        });
+    }
+
+    /** Setzt den Status mehrerer Artikel in einem Rutsch. */
+    public void mehrfachStatus(List<Long> ids, ArtikelStatus status, String nutzer,
+                               Callback<Integer> callback) {
+        starte(() -> {
+            int geaendert = 0;
+            for (Long id : ids) {
+                Artikel artikel = artikelDao.nachId(id);
+                if (artikel == null || artikel.status == status) {
+                    continue;
+                }
+                ArtikelStatus alt = artikel.status;
+                artikel.status = status;
+                if (status != ArtikelStatus.VERLIEHEN) {
+                    artikel.verliehenAn = null;
+                    artikel.rueckgabeDatum = null;
+                }
+                artikel.geaendertAm = System.currentTimeMillis();
+                artikel.offen = true;
+                artikelDao.update(artikel);
+                eintragen(artikel, Protokoll.STATUS, schluessel(alt), schluessel(status), nutzer);
+                geaendert++;
+            }
+            return geaendert;
         }, callback);
     }
 
-    /** Nimmt eine Verlustmeldung zurueck - der Artikel ist wieder aufgetaucht. */
-    public void verlustZuruecknehmen(long itemId, int menge, Callback<Boolean> callback) {
-        run(() -> {
-            Item item = itemDao.getById(itemId);
-            if (item == null || menge < 1 || item.mengeVerloren < menge) {
-                return false;
+    /** Verschiebt mehrere Artikel an einen anderen Standort. */
+    public void mehrfachStandort(List<Long> ids, String standort, String nutzer,
+                                 Callback<Integer> callback) {
+        starte(() -> {
+            int geaendert = 0;
+            for (Long id : ids) {
+                Artikel artikel = artikelDao.nachId(id);
+                if (artikel == null || gleich(artikel.standort, standort)) {
+                    continue;
+                }
+                String alt = artikel.standort;
+                artikel.standort = standort;
+                artikel.geaendertAm = System.currentTimeMillis();
+                artikel.offen = true;
+                artikelDao.update(artikel);
+                eintragen(artikel, Protokoll.STANDORT, alt, standort, nutzer);
+                geaendert++;
             }
-            item.mengeVerloren -= menge;
-            item.geaendertAm = System.currentTimeMillis();
-            itemDao.update(item);
-            return true;
+            return geaendert;
         }, callback);
     }
 
-    // ----------------------------------------------------------- Sicherung
-
-    /** Liest den gesamten Bestand fuer den Export. */
-    public void ladeAlles(Callback<Bestand> callback) {
-        run(() -> new Bestand(lagerDao.getAll(), itemDao.getAll(), codeDao.getAll(),
-                verleihDao.getAll()), callback);
+    /**
+     * Vermerkt einen Scan: Zeitstempel setzen und - falls der Artikel als nicht
+     * vorhanden galt - wieder auf vorhanden buchen.
+     */
+    public void alsGescanntBuchen(long artikelId, String nutzer, Callback<Artikel> callback) {
+        starte(() -> {
+            Artikel artikel = artikelDao.nachId(artikelId);
+            if (artikel == null) {
+                return null;
+            }
+            boolean statusWechsel = artikel.status == ArtikelStatus.NICHT_VORHANDEN;
+            ArtikelStatus alt = artikel.status;
+            if (statusWechsel) {
+                artikel.status = ArtikelStatus.VORHANDEN;
+            }
+            artikel.zuletztGescannt = System.currentTimeMillis();
+            artikel.geaendertAm = artikel.zuletztGescannt;
+            artikel.offen = true;
+            artikelDao.update(artikel);
+            if (statusWechsel) {
+                eintragen(artikel, Protokoll.STATUS, schluessel(alt),
+                        schluessel(ArtikelStatus.VORHANDEN), nutzer);
+            } else {
+                eintragen(artikel, Protokoll.GESCANNT, null, null, nutzer);
+            }
+            return artikel;
+        }, callback);
     }
 
-    /** Ersetzt den gesamten Bestand durch die importierten Daten. */
-    public void ersetzeAlles(Bestand bestand, Callback<Boolean> callback) {
-        run(() -> {
+    public void loeschen(Artikel artikel) {
+        executor.execute(() -> artikelDao.delete(artikel));
+    }
+
+    // -------------------------------------------------------------- Kategorien
+
+    public void kategorieAnlegen(String name, Callback<Boolean> callback) {
+        starte(() -> {
+            List<Kategorie> vorhandene = kategorieDao.alle();
+            for (Kategorie kategorie : vorhandene) {
+                if (kategorie.name.equalsIgnoreCase(name)) {
+                    return false;
+                }
+            }
+            return kategorieDao.insert(new Kategorie(name, vorhandene.size())) > 0;
+        }, callback);
+    }
+
+    public void kategorieUmbenennen(Kategorie kategorie, String name) {
+        executor.execute(() -> {
+            kategorie.name = name;
+            kategorieDao.update(kategorie);
+        });
+    }
+
+    public void kategorieLoeschen(Kategorie kategorie) {
+        executor.execute(() -> kategorieDao.delete(kategorie));
+    }
+
+    public void kategorienVerschieben(List<Kategorie> reihenfolge) {
+        executor.execute(() -> {
+            for (int i = 0; i < reihenfolge.size(); i++) {
+                Kategorie kategorie = reihenfolge.get(i);
+                kategorie.reihenfolge = i;
+                kategorieDao.update(kategorie);
+            }
+        });
+    }
+
+    // --------------------------------------------------------------- Sicherung
+
+    public void ladeBestand(Callback<Bestand> callback) {
+        starte(() -> new Bestand(artikelDao.alle(), kategorieDao.alle(), protokollDao.alle()),
+                callback);
+    }
+
+    /** Ersetzt den gesamten Bestand durch die eingelesenen Daten. */
+    public void bestandErsetzen(Bestand bestand, Callback<Integer> callback) {
+        starte(() -> {
             db.runInTransaction(() -> {
-                // Artikel, Codes und Ausleihen haengen per Fremdschluessel an den
-                // Lagern und verschwinden dadurch mit.
-                lagerDao.deleteAll();
-                itemDao.deleteAll();
-                for (Lager lager : bestand.lager) {
-                    lagerDao.insert(lager);
+                protokollDao.alleLoeschen();
+                artikelDao.alleLoeschen();
+                kategorieDao.alleLoeschen();
+                for (Kategorie kategorie : bestand.kategorien) {
+                    kategorieDao.insert(kategorie);
                 }
-                for (Item item : bestand.items) {
-                    itemDao.insert(item);
+                for (Artikel artikel : bestand.artikel) {
+                    artikelDao.insert(artikel);
                 }
-                codeDao.insertAllIgnore(bestand.codes);
-                for (Verleih verleih : bestand.verleihe) {
-                    verleihDao.insert(verleih);
+                for (Protokoll eintrag : bestand.protokoll) {
+                    protokollDao.insert(eintrag);
                 }
             });
-            return true;
+            return bestand.artikel.size();
         }, callback);
     }
 
-    /** Fuegt importierte Daten zum bestehenden Bestand hinzu. */
-    public void ergaenzeUm(Bestand bestand, Callback<Integer> callback) {
-        run(() -> {
+    /** Fuegt eingelesene Artikel zum vorhandenen Bestand hinzu. */
+    public void bestandErgaenzen(Bestand bestand, Callback<Integer> callback) {
+        starte(() -> {
             final int[] neu = {0};
-            final java.util.Set<Long> erledigt = new java.util.HashSet<>();
             db.runInTransaction(() -> {
-                for (Lager lager : bestand.lager) {
-                    long importId = lager.importId;
-                    lager.id = 0;
-                    long lagerId = lagerDao.insert(lager);
-                    for (Item item : bestand.items) {
-                        if (item.lagerId != importId || !erledigt.add(item.id)) {
-                            continue;
-                        }
-                        long alteId = item.id;
-                        item.id = 0;
-                        item.lagerId = lagerId;
-                        long itemId = itemDao.insert(item);
-                        neu[0]++;
-                        for (Code code : bestand.codes) {
-                            if (code.itemId == alteId) {
-                                Code kopie = new Code(itemId, code.wert, code.typ);
-                                kopie.erfasstAm = code.erfasstAm;
-                                try {
-                                    codeDao.insert(kopie);
-                                } catch (SQLiteConstraintException ignored) {
-                                    // Code ist bereits vergeben - Artikel bleibt ohne ihn.
-                                }
-                            }
-                        }
-                        for (Verleih verleih : bestand.verleihe) {
-                            if (verleih.itemId == alteId) {
-                                verleih.id = 0;
-                                verleih.itemId = itemId;
-                                verleihDao.insert(verleih);
-                            }
-                        }
+                for (Kategorie kategorie : bestand.kategorien) {
+                    kategorie.id = 0;
+                    kategorieDao.insert(kategorie);
+                }
+                for (Artikel artikel : bestand.artikel) {
+                    if (artikel.rfidUid != null && artikelDao.nachKennung(artikel.rfidUid) != null) {
+                        // Kennung ist schon vergeben - Artikel ohne sie uebernehmen.
+                        artikel.rfidUid = null;
                     }
+                    artikel.id = 0;
+                    artikelDao.insert(artikel);
+                    neu[0]++;
                 }
             });
             return neu[0];
         }, callback);
     }
 
-    /** Setzt den Aenderungszeitstempel, damit Listen sich neu zeichnen. */
-    private void beruehren(long itemId) {
-        Item item = itemDao.getById(itemId);
-        if (item != null) {
-            item.geaendertAm = System.currentTimeMillis();
-            itemDao.update(item);
-        }
+    // ----------------------------------------------------------------- Hilfen
+
+    private void eintragen(Artikel artikel, String aktion, String alt, String neu, String nutzer) {
+        protokollDao.insert(Protokoll.fuer(artikel, aktion, alt, neu, nutzer));
     }
 
-    private <T> void run(java.util.concurrent.Callable<T> work, Callback<T> callback) {
+    private String schluessel(ArtikelStatus status) {
+        return status == null ? null : status.schluessel;
+    }
+
+    private boolean gleich(String a, String b) {
+        String linke = a == null ? "" : a.trim();
+        String rechte = b == null ? "" : b.trim();
+        return linke.equals(rechte);
+    }
+
+    private <T> void starte(java.util.concurrent.Callable<T> arbeit, Callback<T> callback) {
         executor.execute(() -> {
-            final T result;
+            final T ergebnis;
             try {
-                result = work.call();
+                ergebnis = arbeit.call();
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
-            mainHandler.post(() -> callback.onResult(result));
+            mainHandler.post(() -> callback.onResult(ergebnis));
         });
     }
 }

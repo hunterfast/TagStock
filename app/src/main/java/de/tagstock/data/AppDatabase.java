@@ -11,22 +11,26 @@ import androidx.room.migration.Migration;
 import androidx.sqlite.db.SupportSQLiteDatabase;
 
 @Database(
-        entities = {Lager.class, Item.class, Code.class, Verleih.class},
-        version = 2,
+        entities = {Artikel.class, Kategorie.class, Protokoll.class},
+        version = 3,
         exportSchema = true)
 @TypeConverters(Converters.class)
 public abstract class AppDatabase extends RoomDatabase {
 
     public static final String DB_NAME = "tagstock.db";
+
+    /** Vorschlaege, solange der Nutzer keine eigenen Kategorien gepflegt hat. */
+    static final String[] STANDARD_KATEGORIEN = {
+            "Elektronik", "Werkzeug", "Büromaterial", "Lager",
+            "Verbrauchsmaterial", "Möbel", "3D Drucker", "Sonstiges"};
+
     private static volatile AppDatabase instance;
 
-    public abstract LagerDao lagerDao();
+    public abstract ArtikelDao artikelDao();
 
-    public abstract ItemDao itemDao();
+    public abstract KategorieDao kategorieDao();
 
-    public abstract CodeDao codeDao();
-
-    public abstract VerleihDao verleihDao();
+    public abstract ProtokollDao protokollDao();
 
     public static AppDatabase getInstance(Context context) {
         if (instance == null) {
@@ -34,7 +38,13 @@ public abstract class AppDatabase extends RoomDatabase {
                 if (instance == null) {
                     instance = Room.databaseBuilder(
                                     context.getApplicationContext(), AppDatabase.class, DB_NAME)
-                            .addMigrations(MIGRATION_1_2)
+                            .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                            .addCallback(new Callback() {
+                                @Override
+                                public void onCreate(@NonNull SupportSQLiteDatabase db) {
+                                    kategorienAnlegen(db);
+                                }
+                            })
                             .build();
                 }
             }
@@ -49,17 +59,21 @@ public abstract class AppDatabase extends RoomDatabase {
         }
     }
 
+    private static void kategorienAnlegen(SupportSQLiteDatabase db) {
+        for (int i = 0; i < STANDARD_KATEGORIEN.length; i++) {
+            db.execSQL("INSERT OR IGNORE INTO `kategorien` (`name`, `reihenfolge`) VALUES (?, ?)",
+                    new Object[]{STANDARD_KATEGORIEN[i], i});
+        }
+    }
+
     /**
      * Version 1 hatte Code und Ausleihe direkt am Artikel. Version 2 zieht beides
      * in eigene Tabellen um: ein Artikel kann mehrere Codes haben, und Ausleihen
-     * bleiben als Historie erhalten. Der Status wird nicht mehr gespeichert,
-     * sondern aus den Stueckzahlen abgeleitet.
+     * bleiben als Historie erhalten.
      */
     public static final Migration MIGRATION_1_2 = new Migration(1, 2) {
         @Override
         public void migrate(@NonNull SupportSQLiteDatabase db) {
-            // Fremdschluessel erst am Ende der Transaktion pruefen, weil die
-            // Artikeltabelle zwischendurch neu aufgebaut wird.
             db.execSQL("PRAGMA defer_foreign_keys = TRUE");
 
             db.execSQL("CREATE TABLE IF NOT EXISTS `codes` ("
@@ -73,8 +87,6 @@ public abstract class AppDatabase extends RoomDatabase {
             db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_codes_wert` ON `codes` (`wert`)");
             db.execSQL("CREATE INDEX IF NOT EXISTS `index_codes_itemId` ON `codes` (`itemId`)");
 
-            // Bisherige Codes uebernehmen. Doppelt vergebene Werte fallen dabei
-            // weg - genau das soll der eindeutige Index kuenftig verhindern.
             db.execSQL("INSERT OR IGNORE INTO `codes` (`itemId`, `wert`, `typ`, `erfasstAm`)"
                     + " SELECT `id`, `code`,"
                     + " CASE WHEN `codeType` IN ('BARCODE', 'QR', 'NFC', 'MANUELL')"
@@ -94,7 +106,6 @@ public abstract class AppDatabase extends RoomDatabase {
                     + " ON UPDATE NO ACTION ON DELETE CASCADE )");
             db.execSQL("CREATE INDEX IF NOT EXISTS `index_verleih_itemId` ON `verleih` (`itemId`)");
 
-            // Laufende Ausleihen als offenen Vorgang uebernehmen.
             db.execSQL("INSERT INTO `verleih`"
                     + " (`itemId`, `person`, `menge`, `ausgeliehenAm`, `zurueckAm`, `notiz`)"
                     + " SELECT `id`,"
@@ -126,6 +137,114 @@ public abstract class AppDatabase extends RoomDatabase {
             db.execSQL("DROP TABLE `items`");
             db.execSQL("ALTER TABLE `items_neu` RENAME TO `items`");
             db.execSQL("CREATE INDEX IF NOT EXISTS `index_items_lagerId` ON `items` (`lagerId`)");
+        }
+    };
+
+    /**
+     * Version 3 folgt dem Aufbau der Weboberflaeche: ein Artikel, ein Status,
+     * Standort und Lagerort als Text, eine Kennung je Artikel. Aus dem Lager wird
+     * der Standort, aus dem ersten Code die Kennung, aus offenen Ausleihen der
+     * Status "verliehen". Die bisherige Ausleih-Historie wandert ins Protokoll.
+     *
+     * <p>Stueckzahlen entfallen: Ein Artikel mit Menge 5 wird zu einem Artikel.
+     */
+    public static final Migration MIGRATION_2_3 = new Migration(2, 3) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase db) {
+            db.execSQL("PRAGMA defer_foreign_keys = TRUE");
+
+            db.execSQL("CREATE TABLE IF NOT EXISTS `artikel` ("
+                    + "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, "
+                    + "`serverId` TEXT, "
+                    + "`teamId` TEXT, "
+                    + "`rfidUid` TEXT, "
+                    + "`name` TEXT NOT NULL, "
+                    + "`beschreibung` TEXT, "
+                    + "`kategorie` TEXT, "
+                    + "`standort` TEXT, "
+                    + "`lagerort` TEXT, "
+                    + "`fotoPfad` TEXT, "
+                    + "`bildUrl` TEXT, "
+                    + "`status` TEXT NOT NULL, "
+                    + "`verliehenAn` TEXT, "
+                    + "`rueckgabeDatum` INTEGER, "
+                    + "`zuletztGescannt` INTEGER, "
+                    + "`scanWarnung` TEXT NOT NULL, "
+                    + "`erstelltAm` INTEGER NOT NULL, "
+                    + "`geaendertAm` INTEGER NOT NULL, "
+                    + "`offen` INTEGER NOT NULL)");
+            db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_artikel_rfidUid`"
+                    + " ON `artikel` (`rfidUid`)");
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_artikel_serverId`"
+                    + " ON `artikel` (`serverId`)");
+
+            db.execSQL("INSERT INTO `artikel` (`id`, `rfidUid`, `name`, `beschreibung`,"
+                    + " `standort`, `lagerort`, `fotoPfad`, `status`, `verliehenAn`,"
+                    + " `scanWarnung`, `erstelltAm`, `geaendertAm`, `offen`)"
+                    + " SELECT i.`id`,"
+                    + " (SELECT c.`wert` FROM `codes` c WHERE c.`itemId` = i.`id`"
+                    + "   ORDER BY c.`erfasstAm` ASC LIMIT 1),"
+                    + " i.`name`,"
+                    + " TRIM(COALESCE(i.`beschreibung`, '')"
+                    + "   || CASE WHEN i.`notiz` IS NOT NULL AND TRIM(i.`notiz`) != ''"
+                    + "           THEN CHAR(10) || i.`notiz` ELSE '' END),"
+                    + " (SELECT l.`name` FROM `lager` l WHERE l.`id` = i.`lagerId`),"
+                    + " (SELECT l.`ort` FROM `lager` l WHERE l.`id` = i.`lagerId`),"
+                    + " i.`fotoPfad`,"
+                    + " CASE"
+                    + "   WHEN EXISTS (SELECT 1 FROM `verleih` v WHERE v.`itemId` = i.`id`"
+                    + "                AND v.`zurueckAm` IS NULL) THEN 'verliehen'"
+                    + "   WHEN i.`menge` > 0 AND i.`mengeVerloren` >= i.`menge`"
+                    + "        THEN 'nicht vorhanden'"
+                    + "   ELSE 'vorhanden' END,"
+                    + " (SELECT v.`person` FROM `verleih` v WHERE v.`itemId` = i.`id`"
+                    + "   AND v.`zurueckAm` IS NULL ORDER BY v.`ausgeliehenAm` ASC LIMIT 1),"
+                    + " '1j', i.`erstelltAm`, i.`geaendertAm`, 1"
+                    + " FROM `items` i");
+
+            db.execSQL("CREATE TABLE IF NOT EXISTS `kategorien` ("
+                    + "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, "
+                    + "`serverId` TEXT, "
+                    + "`teamId` TEXT, "
+                    + "`name` TEXT NOT NULL, "
+                    + "`reihenfolge` INTEGER NOT NULL)");
+            db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_kategorien_name`"
+                    + " ON `kategorien` (`name`)");
+            kategorienAnlegen(db);
+
+            db.execSQL("CREATE TABLE IF NOT EXISTS `protokoll` ("
+                    + "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, "
+                    + "`serverId` TEXT, "
+                    + "`artikelId` INTEGER NOT NULL, "
+                    + "`artikelName` TEXT NOT NULL, "
+                    + "`aktion` TEXT NOT NULL, "
+                    + "`alterWert` TEXT, "
+                    + "`neuerWert` TEXT, "
+                    + "`nutzer` TEXT, "
+                    + "`zeitpunkt` INTEGER NOT NULL, "
+                    + "`offen` INTEGER NOT NULL, "
+                    + "FOREIGN KEY(`artikelId`) REFERENCES `artikel`(`id`)"
+                    + " ON UPDATE NO ACTION ON DELETE CASCADE )");
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_protokoll_artikelId`"
+                    + " ON `protokoll` (`artikelId`)");
+
+            // Bisherige Ausleihen als Protokolleintraege erhalten.
+            db.execSQL("INSERT INTO `protokoll` (`artikelId`, `artikelName`, `aktion`,"
+                    + " `alterWert`, `neuerWert`, `nutzer`, `zeitpunkt`, `offen`)"
+                    + " SELECT v.`itemId`, COALESCE(i.`name`, ''), 'Verliehen', NULL,"
+                    + " v.`person`, NULL, v.`ausgeliehenAm`, 1"
+                    + " FROM `verleih` v LEFT JOIN `items` i ON i.`id` = v.`itemId`");
+            db.execSQL("INSERT INTO `protokoll` (`artikelId`, `artikelName`, `aktion`,"
+                    + " `alterWert`, `neuerWert`, `nutzer`, `zeitpunkt`, `offen`)"
+                    + " SELECT v.`itemId`, COALESCE(i.`name`, ''), 'Zurückgenommen',"
+                    + " v.`person`, NULL, NULL, v.`zurueckAm`, 1"
+                    + " FROM `verleih` v LEFT JOIN `items` i ON i.`id` = v.`itemId`"
+                    + " WHERE v.`zurueckAm` IS NOT NULL");
+
+            db.execSQL("DROP TABLE `codes`");
+            db.execSQL("DROP TABLE `verleih`");
+            db.execSQL("DROP TABLE `items`");
+            db.execSQL("DROP TABLE `lager`");
         }
     };
 }

@@ -18,7 +18,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
 import de.tagstock.R;
-import de.tagstock.data.CodeType;
 
 /** Kapselt das Lesen von NFC-Tags im Reader-Mode. */
 public final class NfcHelper {
@@ -74,7 +73,7 @@ public final class NfcHelper {
     public static ScanResult read(Tag tag) {
         String uid = toHex(tag.getId());
         String text = readNdefText(tag);
-        return new ScanResult(uid, CodeType.NFC, text);
+        return new ScanResult(uid, CodeArt.NFC, text);
     }
 
     public static String toHex(byte[] bytes) {

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+    <item
+        android:id="@+id/action_bearbeiten"
+        android:icon="@drawable/ic_pdf"
+        android:title="@string/action_edit"
+        app:showAsAction="never" />
+    <item
+        android:id="@+id/action_etikett"
+        android:title="@string/detail_etikett"
+        app:showAsAction="never" />
+    <item
+        android:id="@+id/action_leihbeleg"
+        android:title="@string/detail_leihbeleg"
+        app:showAsAction="never" />
+    <item
+        android:id="@+id/action_nfc"
+        android:title="@string/nfc_schreiben_aktion"
+        app:showAsAction="never" />
+    <item
+        android:id="@+id/action_loeschen"
+        android:title="@string/action_delete"
+        app:showAsAction="never" />
+</menu>

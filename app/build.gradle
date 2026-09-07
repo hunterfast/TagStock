@@ -76,6 +76,8 @@ dependencies {
     implementation 'com.google.android.material:material:1.12.0'
     implementation 'androidx.constraintlayout:constraintlayout:2.2.0'
     implementation 'androidx.recyclerview:recyclerview:1.3.2'
+    implementation 'androidx.swiperefreshlayout:swiperefreshlayout:1.1.0'
+    implementation 'androidx.fragment:fragment:1.8.5'
     implementation 'androidx.activity:activity:1.9.3'
 
     // Lifecycle / ViewModel / LiveData
@@ -94,6 +96,9 @@ dependencies {
 
     // ML Kit Barcode Scanning (gebuendelt, funktioniert offline)
     implementation 'com.google.mlkit:barcode-scanning:17.3.0'
+
+    // QR-Codes selbst erzeugen (Etiketten, Detailansicht)
+    implementation 'com.google.zxing:core:3.5.3'
 
     // Tests laufen auf der JVM; Robolectric stellt Android und SQLite bereit.
     testImplementation 'junit:junit:4.13.2'

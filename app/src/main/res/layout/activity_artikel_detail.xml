@@ -1,0 +1,380 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical">
+
+    <com.google.android.material.appbar.MaterialToolbar
+        android:id="@+id/toolbar"
+        android:layout_width="match_parent"
+        android:layout_height="?attr/actionBarSize"
+        android:background="?attr/colorSurface" />
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <ScrollView
+            android:id="@+id/scrollDetail"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <com.google.android.material.imageview.ShapeableImageView
+                    android:id="@+id/imageFoto"
+                    android:layout_width="match_parent"
+                    android:layout_height="180dp"
+                    android:background="?attr/colorSurfaceVariant"
+                    android:contentDescription="@string/foto"
+                    android:padding="24dp"
+                    android:scaleType="centerCrop"
+                    app:shapeAppearanceOverlay="@style/Shape.TagStock.Bild"
+                    tools:src="@drawable/ic_artikel" />
+
+                <TextView
+                    android:id="@+id/textName"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="14dp"
+                    android:textAppearance="?attr/textAppearanceHeadlineSmall"
+                    tools:text="Bosch Akkuschrauber" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:id="@+id/chipStatus"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:background="@drawable/status_pill"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:paddingStart="14dp"
+                        android:paddingTop="6dp"
+                        android:paddingEnd="14dp"
+                        android:paddingBottom="6dp"
+                        android:textAppearance="?attr/textAppearanceLabelMedium"
+                        android:textColor="@color/white"
+                        tools:text="Vorhanden" />
+
+                    <TextView
+                        android:id="@+id/textGescannt"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="10dp"
+                        android:layout_weight="1"
+                        android:gravity="end"
+                        android:textAppearance="?attr/textAppearanceBodySmall"
+                        tools:text="Zuletzt gescannt: 30.08.2026" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/textVermisst"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:background="@drawable/hinweis_hintergrund"
+                    android:padding="10dp"
+                    android:text="@string/detail_vermisst"
+                    android:textAppearance="?attr/textAppearanceBodySmall"
+                    android:textColor="@color/vermisst_text"
+                    android:visibility="gone" />
+
+                <TextView
+                    android:id="@+id/textBeschreibung"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:textAppearance="?attr/textAppearanceBodyMedium"
+                    tools:text="Mit zwei Akkus und Ladegerät." />
+
+                <!-- Eckdaten -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="14dp"
+                    android:orientation="vertical">
+
+                    <LinearLayout
+                        android:id="@+id/gruppeKennung"
+                        style="@style/Widget.TagStock.Datenzeile">
+
+                        <TextView
+                            style="@style/Widget.TagStock.Datenzeile.Label"
+                            android:text="@string/artikel_kennung" />
+
+                        <TextView
+                            android:id="@+id/textKennung"
+                            style="@style/Widget.TagStock.Datenzeile.Wert"
+                            android:fontFamily="monospace"
+                            tools:text="04E1A2B3C4D5" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:id="@+id/gruppeKategorie"
+                        style="@style/Widget.TagStock.Datenzeile">
+
+                        <TextView
+                            style="@style/Widget.TagStock.Datenzeile.Label"
+                            android:text="@string/artikel_kategorie" />
+
+                        <TextView
+                            android:id="@+id/textKategorie"
+                            style="@style/Widget.TagStock.Datenzeile.Wert"
+                            tools:text="Werkzeug" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:id="@+id/gruppeStandort"
+                        style="@style/Widget.TagStock.Datenzeile">
+
+                        <TextView
+                            style="@style/Widget.TagStock.Datenzeile.Label"
+                            android:text="@string/artikel_standort" />
+
+                        <TextView
+                            android:id="@+id/textStandort"
+                            style="@style/Widget.TagStock.Datenzeile.Wert"
+                            tools:text="Werkstatt" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/buttonStandortWechseln"
+                            style="@style/Widget.Material3.Button.TextButton"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:minWidth="0dp"
+                            android:text="@string/detail_wechseln" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:id="@+id/gruppeLagerort"
+                        style="@style/Widget.TagStock.Datenzeile">
+
+                        <TextView
+                            style="@style/Widget.TagStock.Datenzeile.Label"
+                            android:text="@string/artikel_lagerort" />
+
+                        <TextView
+                            android:id="@+id/textLagerort"
+                            style="@style/Widget.TagStock.Datenzeile.Wert"
+                            tools:text="Regal A3, Fach 2" />
+                    </LinearLayout>
+                </LinearLayout>
+
+                <!-- Verleih -->
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/cardVerliehen"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="14dp"
+                    android:visibility="gone"
+                    app:cardBackgroundColor="@color/warnung_hintergrund"
+                    app:cardCornerRadius="14dp"
+                    app:cardElevation="0dp"
+                    app:strokeColor="@color/warnung_rand"
+                    app:strokeWidth="1dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="14dp">
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="@string/artikel_verliehen_an"
+                            android:textAppearance="?attr/textAppearanceLabelSmall"
+                            android:textColor="@color/warnung_text" />
+
+                        <TextView
+                            android:id="@+id/textVerliehenAn"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:textAppearance="?attr/textAppearanceTitleSmall"
+                            tools:text="Max Mustermann" />
+
+                        <TextView
+                            android:id="@+id/textRueckgabe"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:textAppearance="?attr/textAppearanceBodySmall"
+                            android:textColor="@color/warnung_text"
+                            tools:text="Rückgabe bis 12.03.2026" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/buttonLeihbeleg"
+                            style="@style/Widget.Material3.Button.TextButton.Icon"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp"
+                            android:text="@string/detail_leihbeleg"
+                            app:icon="@drawable/ic_pdf" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <!-- QR-Code -->
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="14dp"
+                    app:cardCornerRadius="14dp"
+                    app:cardElevation="0dp"
+                    app:strokeColor="@color/karte_rand"
+                    app:strokeWidth="1dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="14dp">
+
+                        <LinearLayout
+                            android:id="@+id/headerQr"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:background="?attr/selectableItemBackground"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal">
+
+                            <TextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="@string/detail_qr"
+                                android:textAppearance="?attr/textAppearanceTitleSmall" />
+
+                            <TextView
+                                android:id="@+id/textQrAktion"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/detail_anzeigen"
+                                android:textAppearance="?attr/textAppearanceLabelMedium"
+                                android:textColor="?attr/colorPrimary" />
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:id="@+id/gruppeQr"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:gravity="center_horizontal"
+                            android:orientation="vertical"
+                            android:visibility="gone">
+
+                            <ImageView
+                                android:id="@+id/imageQr"
+                                android:layout_width="200dp"
+                                android:layout_height="200dp"
+                                android:layout_marginTop="12dp"
+                                android:background="@color/white"
+                                android:contentDescription="@string/detail_qr"
+                                android:padding="8dp" />
+
+                            <TextView
+                                android:id="@+id/textQrWert"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="6dp"
+                                android:fontFamily="monospace"
+                                android:textAppearance="?attr/textAppearanceBodySmall"
+                                tools:text="04E1A2B3C4D5" />
+
+                            <com.google.android.material.button.MaterialButton
+                                android:id="@+id/buttonQrSpeichern"
+                                style="@style/Widget.Material3.Button.TonalButton.Icon"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="8dp"
+                                android:text="@string/detail_etikett"
+                                app:icon="@drawable/ic_pdf" />
+                        </LinearLayout>
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <!-- Standort-Historie -->
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/cardHistorie"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="14dp"
+                    android:visibility="gone"
+                    app:cardCornerRadius="14dp"
+                    app:cardElevation="0dp"
+                    app:strokeColor="@color/karte_rand"
+                    app:strokeWidth="1dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="14dp">
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="@string/detail_historie"
+                            android:textAppearance="?attr/textAppearanceTitleSmall" />
+
+                        <LinearLayout
+                            android:id="@+id/containerHistorie"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="6dp"
+                            android:orientation="vertical" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <!-- Protokoll -->
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/cardProtokoll"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="14dp"
+                    android:visibility="gone"
+                    app:cardCornerRadius="14dp"
+                    app:cardElevation="0dp"
+                    app:strokeColor="@color/karte_rand"
+                    app:strokeWidth="1dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="14dp">
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="@string/detail_protokoll"
+                            android:textAppearance="?attr/textAppearanceTitleSmall" />
+
+                        <androidx.recyclerview.widget.RecyclerView
+                            android:id="@+id/recyclerProtokoll"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+            </LinearLayout>
+        </ScrollView>
+
+        <androidx.fragment.app.FragmentContainerView
+            android:id="@+id/formContainer"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:visibility="gone" />
+    </FrameLayout>
+</LinearLayout>

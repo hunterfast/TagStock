@@ -15,25 +15,22 @@ import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.Locale;
-import java.util.Map;
 
+import de.tagstock.data.Artikel;
+import de.tagstock.data.ArtikelStatus;
 import de.tagstock.data.Bestand;
-import de.tagstock.data.Code;
-import de.tagstock.data.CodeType;
-import de.tagstock.data.Item;
-import de.tagstock.data.Lager;
-import de.tagstock.data.Verleih;
+import de.tagstock.data.Kategorie;
+import de.tagstock.data.Protokoll;
+import de.tagstock.data.ScanWarnung;
 
 /**
- * Sicherung und Wiederherstellung des Bestands. JSON enthaelt alles und laesst
- * sich zurueckspielen, CSV ist die flache Liste fuer die Tabellenkalkulation.
- * Fotos bleiben aussen vor, sie liegen nur auf dem Geraet.
+ * Sicherung und Wiederherstellung des Bestands. Das JSON-Format entspricht den
+ * Feldern der Weboberflaeche, CSV ist die flache Liste fuer die Tabelle.
  */
 public final class Sicherung {
 
-    public static final int FORMAT_VERSION = 2;
+    public static final int FORMAT_VERSION = 3;
     private static final String TRENNER = ";";
 
     private Sicherung() {
@@ -47,202 +44,161 @@ public final class Sicherung {
         wurzel.put("version", FORMAT_VERSION);
         wurzel.put("erstelltAm", System.currentTimeMillis());
 
-        JSONArray lagerArray = new JSONArray();
-        for (Lager lager : bestand.lager) {
-            JSONObject o = new JSONObject();
-            o.put("id", lager.id);
-            o.put("name", lager.name);
-            o.put("beschreibung", lager.beschreibung == null ? JSONObject.NULL : lager.beschreibung);
-            o.put("ort", lager.ort == null ? JSONObject.NULL : lager.ort);
-            o.put("erstelltAm", lager.erstelltAm);
-            lagerArray.put(o);
+        JSONArray artikelArray = new JSONArray();
+        for (Artikel artikel : bestand.artikel) {
+            artikelArray.put(alsJson(artikel));
         }
-        wurzel.put("lager", lagerArray);
+        wurzel.put("artikel", artikelArray);
 
-        JSONArray itemArray = new JSONArray();
-        for (Item item : bestand.items) {
+        JSONArray kategorieArray = new JSONArray();
+        for (Kategorie kategorie : bestand.kategorien) {
             JSONObject o = new JSONObject();
-            o.put("id", item.id);
-            o.put("lagerId", item.lagerId);
-            o.put("name", item.name);
-            o.put("beschreibung", item.beschreibung == null ? JSONObject.NULL : item.beschreibung);
-            o.put("menge", item.menge);
-            o.put("mengeVerloren", item.mengeVerloren);
-            o.put("notiz", item.notiz == null ? JSONObject.NULL : item.notiz);
-            o.put("erstelltAm", item.erstelltAm);
-            o.put("geaendertAm", item.geaendertAm);
-            itemArray.put(o);
+            o.put("name", kategorie.name);
+            o.put("reihenfolge", kategorie.reihenfolge);
+            kategorieArray.put(o);
         }
-        wurzel.put("items", itemArray);
+        wurzel.put("kategorien", kategorieArray);
 
-        JSONArray codeArray = new JSONArray();
-        for (Code code : bestand.codes) {
+        JSONArray protokollArray = new JSONArray();
+        for (Protokoll eintrag : bestand.protokoll) {
             JSONObject o = new JSONObject();
-            o.put("itemId", code.itemId);
-            o.put("wert", code.wert);
-            o.put("typ", code.typ.name());
-            o.put("erfasstAm", code.erfasstAm);
-            codeArray.put(o);
+            o.put("artikel_id", eintrag.artikelId);
+            o.put("artikel_name", eintrag.artikelName);
+            o.put("aktion", eintrag.aktion);
+            o.put("alter_wert", text(eintrag.alterWert));
+            o.put("neuer_wert", text(eintrag.neuerWert));
+            o.put("nutzer", text(eintrag.nutzer));
+            o.put("zeitpunkt", eintrag.zeitpunkt);
+            protokollArray.put(o);
         }
-        wurzel.put("codes", codeArray);
-
-        JSONArray verleihArray = new JSONArray();
-        for (Verleih verleih : bestand.verleihe) {
-            JSONObject o = new JSONObject();
-            o.put("itemId", verleih.itemId);
-            o.put("person", verleih.person);
-            o.put("menge", verleih.menge);
-            o.put("ausgeliehenAm", verleih.ausgeliehenAm);
-            o.put("zurueckAm", verleih.zurueckAm == null ? JSONObject.NULL : verleih.zurueckAm);
-            o.put("notiz", verleih.notiz == null ? JSONObject.NULL : verleih.notiz);
-            verleihArray.put(o);
-        }
-        wurzel.put("verleih", verleihArray);
+        wurzel.put("protokoll", protokollArray);
 
         return wurzel.toString(2);
+    }
+
+    /** Ein Artikel im Format der Weboberflaeche. */
+    public static JSONObject alsJson(Artikel artikel) throws JSONException {
+        JSONObject o = new JSONObject();
+        o.put("id", artikel.id);
+        o.put("server_id", text(artikel.serverId));
+        o.put("rfid_uid", text(artikel.rfidUid));
+        o.put("name", artikel.name);
+        o.put("beschreibung", text(artikel.beschreibung));
+        o.put("kategorie", text(artikel.kategorie));
+        o.put("standort", text(artikel.standort));
+        o.put("lagerort", text(artikel.lagerort));
+        o.put("status", artikel.status.schluessel);
+        o.put("verliehen_an", text(artikel.verliehenAn));
+        o.put("rueckgabe_datum", artikel.rueckgabeDatum == null
+                ? JSONObject.NULL : artikel.rueckgabeDatum);
+        o.put("zuletzt_gescannt", artikel.zuletztGescannt == null
+                ? JSONObject.NULL : artikel.zuletztGescannt);
+        o.put("scan_warnung", artikel.scanWarnung.schluessel);
+        o.put("erstellt_am", artikel.erstelltAm);
+        o.put("geaendert_am", artikel.geaendertAm);
+        return o;
     }
 
     public static Bestand ausJson(String inhalt) throws JSONException {
         JSONObject wurzel = new JSONObject(inhalt);
         Bestand bestand = new Bestand();
 
-        JSONArray lagerArray = wurzel.optJSONArray("lager");
-        if (lagerArray != null) {
-            for (int i = 0; i < lagerArray.length(); i++) {
-                JSONObject o = lagerArray.getJSONObject(i);
-                Lager lager = new Lager();
-                lager.id = o.optLong("id");
-                lager.importId = lager.id;
-                lager.name = o.optString("name", "");
-                lager.beschreibung = textOderNull(o, "beschreibung");
-                lager.ort = textOderNull(o, "ort");
-                lager.erstelltAm = o.optLong("erstelltAm", System.currentTimeMillis());
-                bestand.lager.add(lager);
+        JSONArray artikelArray = wurzel.optJSONArray("artikel");
+        if (artikelArray != null) {
+            for (int i = 0; i < artikelArray.length(); i++) {
+                bestand.artikel.add(artikelAus(artikelArray.getJSONObject(i)));
             }
         }
 
-        JSONArray itemArray = wurzel.optJSONArray("items");
-        if (itemArray != null) {
-            for (int i = 0; i < itemArray.length(); i++) {
-                JSONObject o = itemArray.getJSONObject(i);
-                Item item = new Item();
-                item.id = o.optLong("id");
-                item.lagerId = o.optLong("lagerId");
-                item.name = o.optString("name", "");
-                item.beschreibung = textOderNull(o, "beschreibung");
-                item.menge = o.optInt("menge", 1);
-                item.mengeVerloren = o.optInt("mengeVerloren", 0);
-                item.notiz = textOderNull(o, "notiz");
-                item.erstelltAm = o.optLong("erstelltAm", System.currentTimeMillis());
-                item.geaendertAm = o.optLong("geaendertAm", item.erstelltAm);
-                bestand.items.add(item);
-            }
-        }
-
-        JSONArray codeArray = wurzel.optJSONArray("codes");
-        if (codeArray != null) {
-            for (int i = 0; i < codeArray.length(); i++) {
-                JSONObject o = codeArray.getJSONObject(i);
-                String wert = o.optString("wert", "");
-                if (wert.isEmpty()) {
-                    continue;
+        JSONArray kategorieArray = wurzel.optJSONArray("kategorien");
+        if (kategorieArray != null) {
+            for (int i = 0; i < kategorieArray.length(); i++) {
+                JSONObject o = kategorieArray.getJSONObject(i);
+                String name = o.optString("name", "");
+                if (!name.isEmpty()) {
+                    bestand.kategorien.add(new Kategorie(name, o.optInt("reihenfolge", i)));
                 }
-                Code code = new Code(o.optLong("itemId"), wert,
-                        CodeType.fromName(o.optString("typ")));
-                code.erfasstAm = o.optLong("erfasstAm", System.currentTimeMillis());
-                bestand.codes.add(code);
             }
         }
 
-        JSONArray verleihArray = wurzel.optJSONArray("verleih");
-        if (verleihArray != null) {
-            for (int i = 0; i < verleihArray.length(); i++) {
-                JSONObject o = verleihArray.getJSONObject(i);
-                Verleih verleih = new Verleih();
-                verleih.itemId = o.optLong("itemId");
-                verleih.person = o.optString("person", "");
-                verleih.menge = o.optInt("menge", 1);
-                verleih.ausgeliehenAm = o.optLong("ausgeliehenAm", System.currentTimeMillis());
-                verleih.zurueckAm = o.isNull("zurueckAm") ? null : o.optLong("zurueckAm");
-                verleih.notiz = textOderNull(o, "notiz");
-                bestand.verleihe.add(verleih);
+        JSONArray protokollArray = wurzel.optJSONArray("protokoll");
+        if (protokollArray != null) {
+            for (int i = 0; i < protokollArray.length(); i++) {
+                JSONObject o = protokollArray.getJSONObject(i);
+                Protokoll eintrag = new Protokoll();
+                eintrag.artikelId = o.optLong("artikel_id");
+                eintrag.artikelName = o.optString("artikel_name", "");
+                eintrag.aktion = o.optString("aktion", "");
+                eintrag.alterWert = textOderNull(o, "alter_wert");
+                eintrag.neuerWert = textOderNull(o, "neuer_wert");
+                eintrag.nutzer = textOderNull(o, "nutzer");
+                eintrag.zeitpunkt = o.optLong("zeitpunkt", System.currentTimeMillis());
+                bestand.protokoll.add(eintrag);
             }
         }
         return bestand;
     }
 
+    /** Liest einen Artikel aus JSON - auch aus einer Server-Antwort. */
+    public static Artikel artikelAus(JSONObject o) {
+        Artikel artikel = new Artikel();
+        artikel.id = o.optLong("id");
+        artikel.serverId = textOderNull(o, "server_id");
+        artikel.rfidUid = textOderNull(o, "rfid_uid");
+        artikel.name = o.optString("name", "");
+        artikel.beschreibung = textOderNull(o, "beschreibung");
+        artikel.kategorie = textOderNull(o, "kategorie");
+        artikel.standort = textOderNull(o, "standort");
+        artikel.lagerort = textOderNull(o, "lagerort");
+        artikel.status = ArtikelStatus.vonSchluessel(o.optString("status"));
+        artikel.verliehenAn = textOderNull(o, "verliehen_an");
+        artikel.rueckgabeDatum = o.isNull("rueckgabe_datum") ? null : o.optLong("rueckgabe_datum");
+        artikel.zuletztGescannt = o.isNull("zuletzt_gescannt") ? null : o.optLong("zuletzt_gescannt");
+        artikel.scanWarnung = ScanWarnung.vonSchluessel(o.optString("scan_warnung"));
+        artikel.erstelltAm = o.optLong("erstellt_am", System.currentTimeMillis());
+        artikel.geaendertAm = o.optLong("geaendert_am", artikel.erstelltAm);
+        return artikel;
+    }
+
+    private static Object text(String wert) {
+        return wert == null ? JSONObject.NULL : wert;
+    }
+
     private static String textOderNull(JSONObject o, String schluessel) {
-        return o.isNull(schluessel) ? null : o.optString(schluessel, null);
+        if (o.isNull(schluessel)) {
+            return null;
+        }
+        String wert = o.optString(schluessel, "");
+        return wert.isEmpty() ? null : wert;
     }
 
     // --------------------------------------------------------------------- CSV
 
-    /** Flache Artikelliste mit Stueckzahlen je Zustand. */
-    public static String alsCsv(Bestand bestand) {
-        Map<Long, String> lagerNamen = new HashMap<>();
-        for (Lager lager : bestand.lager) {
-            lagerNamen.put(lager.id, lager.name);
-        }
-
-        Map<Long, Integer> verliehen = new HashMap<>();
-        Map<Long, StringBuilder> personen = new HashMap<>();
-        for (Verleih verleih : bestand.verleihe) {
-            if (verleih.zurueckAm != null) {
-                continue;
-            }
-            Integer bisher = verliehen.get(verleih.itemId);
-            verliehen.put(verleih.itemId, (bisher == null ? 0 : bisher) + verleih.menge);
-            StringBuilder namen = personen.get(verleih.itemId);
-            if (namen == null) {
-                namen = new StringBuilder();
-                personen.put(verleih.itemId, namen);
-            }
-            if (namen.length() > 0) {
-                namen.append(", ");
-            }
-            namen.append(verleih.person);
-        }
-
-        Map<Long, StringBuilder> codes = new HashMap<>();
-        for (Code code : bestand.codes) {
-            StringBuilder werte = codes.get(code.itemId);
-            if (werte == null) {
-                werte = new StringBuilder();
-                codes.put(code.itemId, werte);
-            }
-            if (werte.length() > 0) {
-                werte.append(" | ");
-            }
-            werte.append(code.wert);
-        }
-
+    public static String alsCsv(Context context, Bestand bestand) {
         SimpleDateFormat datum = new SimpleDateFormat("dd.MM.yyyy", Locale.GERMANY);
         StringBuilder csv = new StringBuilder();
-        // Kopfzeile mit BOM, damit Excel die Umlaute richtig liest.
         csv.append('\uFEFF');
-        csv.append(zeile("Lager", "Artikel", "Beschreibung", "Gesamt", "Vorhanden", "Verliehen",
-                "Verloren", "Verliehen an", "Codes", "Notiz", "Geaendert am"));
+        csv.append(zeile("Name", "Beschreibung", "Kategorie", "Standort", "Lagerort", "Status",
+                "Verliehen an", "Rückgabe", "Kennung", "Zuletzt gescannt", "Geändert am"));
 
-        for (Item item : bestand.items) {
-            int istVerliehen = verliehen.containsKey(item.id) ? verliehen.get(item.id) : 0;
-            int vorhanden = Math.max(0, item.menge - istVerliehen - item.mengeVerloren);
+        for (Artikel artikel : bestand.artikel) {
             csv.append(zeile(
-                    text(lagerNamen.get(item.lagerId)),
-                    item.name,
-                    text(item.beschreibung),
-                    String.valueOf(item.menge),
-                    String.valueOf(vorhanden),
-                    String.valueOf(istVerliehen),
-                    String.valueOf(item.mengeVerloren),
-                    personen.containsKey(item.id) ? personen.get(item.id).toString() : "",
-                    codes.containsKey(item.id) ? codes.get(item.id).toString() : "",
-                    text(item.notiz),
-                    datum.format(new Date(item.geaendertAm))));
+                    artikel.name,
+                    feldText(artikel.beschreibung),
+                    feldText(artikel.kategorie),
+                    feldText(artikel.standort),
+                    feldText(artikel.lagerort),
+                    context.getString(artikel.status.labelRes),
+                    feldText(artikel.verliehenAn),
+                    artikel.rueckgabeDatum == null ? "" : datum.format(new Date(artikel.rueckgabeDatum)),
+                    feldText(artikel.rfidUid),
+                    artikel.zuletztGescannt == null ? "" : datum.format(new Date(artikel.zuletztGescannt)),
+                    datum.format(new Date(artikel.geaendertAm))));
         }
         return csv.toString();
     }
 
-    private static String text(String wert) {
+    private static String feldText(String wert) {
         return wert == null ? "" : wert;
     }
 
@@ -295,10 +251,8 @@ public final class Sicherung {
         return inhalt.toString();
     }
 
-    /** Dateiname mit Datum, z. B. tagstock-2026-08-30.json. */
     public static String dateiname(String endung) {
-        String datum = new SimpleDateFormat("yyyy-MM-dd", Locale.GERMANY)
-                .format(new Date());
+        String datum = new SimpleDateFormat("yyyy-MM-dd", Locale.GERMANY).format(new Date());
         return "tagstock-" + datum + "." + endung;
     }
 }

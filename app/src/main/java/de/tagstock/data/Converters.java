@@ -2,16 +2,26 @@ package de.tagstock.data;
 
 import androidx.room.TypeConverter;
 
-/** Wandelt die Codeart fuer die Ablage in der Datenbank um. */
+/** Wandelt die Aufzaehlungen fuer die Ablage in der Datenbank um. */
 public final class Converters {
 
     @TypeConverter
-    public static String fromCodeType(CodeType type) {
-        return type == null ? CodeType.MANUELL.name() : type.name();
+    public static String vonStatus(ArtikelStatus status) {
+        return status == null ? ArtikelStatus.VORHANDEN.schluessel : status.schluessel;
     }
 
     @TypeConverter
-    public static CodeType toCodeType(String name) {
-        return CodeType.fromName(name);
+    public static ArtikelStatus zuStatus(String wert) {
+        return ArtikelStatus.vonSchluessel(wert);
+    }
+
+    @TypeConverter
+    public static String vonScanWarnung(ScanWarnung warnung) {
+        return warnung == null ? ScanWarnung.JAHR.schluessel : warnung.schluessel;
+    }
+
+    @TypeConverter
+    public static ScanWarnung zuScanWarnung(String wert) {
+        return ScanWarnung.vonSchluessel(wert);
     }
 }
