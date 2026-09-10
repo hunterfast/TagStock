@@ -175,9 +175,15 @@ public class BestandFragment extends Fragment implements ArtikelAdapter.Listener
                 Toast.makeText(requireContext(), ergebnis.fehler, Toast.LENGTH_LONG).show();
                 return;
             }
-            Toast.makeText(requireContext(), getString(R.string.sync_fertig,
-                            ergebnis.hochgeladen, ergebnis.uebernommen),
-                    Toast.LENGTH_SHORT).show();
+            String meldung = getString(R.string.sync_fertig,
+                    ergebnis.hochgeladen, ergebnis.uebernommen);
+            if (!ergebnis.gruende.isEmpty()) {
+                // Meist eine doppelt vergebene Kennung - das gehoert vor Augen.
+                meldung += "\n" + getString(R.string.sync_abgelehnt_hinweis,
+                        ergebnis.abgelehnt, ergebnis.gruende.get(0));
+            }
+            Toast.makeText(requireContext(), meldung,
+                    ergebnis.gruende.isEmpty() ? Toast.LENGTH_SHORT : Toast.LENGTH_LONG).show();
         });
     }
 

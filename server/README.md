@@ -57,6 +57,9 @@ curl http://<server-ip>:8080/api/v1/status
 | `TAGSTOCK_PORT` | Port im Container | `8080` |
 | `TAGSTOCK_REGISTRIERUNGSCODE` | Wenn gesetzt, braucht jede Registrierung nach der ersten diesen Code | leer |
 | `TAGSTOCK_TOKEN_TAGE` | Gültigkeit einer Anmeldung in Tagen | `180` |
+| `TAGSTOCK_GTIN_DIENST` | Nachschlagedienst für Produktdaten: `aus`, `opengtindb` oder `eansearch` | `aus` |
+| `TAGSTOCK_GTIN_SCHLUESSEL` | Zugangsschlüssel des Dienstes, falls nötig | leer |
+| `TAGSTOCK_GTIN_FEHLSCHLAG_TAGE` | So lange gilt ein Fehlschlag, bevor erneut gefragt wird | `7` |
 
 Das **erste Konto** darf sich immer registrieren – danach greift der Code, falls
 gesetzt. Ohne Code kann jeder, der den Server erreicht, ein Konto anlegen; setze
@@ -100,6 +103,7 @@ Alle Antworten sind JSON, die Anmeldung läuft über
 | `GET/POST/PUT/DELETE` | `/api/v1/teams/{id}/kategorien/…` | Kategorien |
 | `POST/DELETE` | `/api/v1/teams/{id}/artikel/{id}/bild` | Artikelbild ablegen oder entfernen |
 | `GET` | `/api/v1/teams/{id}/bilder/{id}` | Artikelbild abholen |
+| `GET` | `/api/v1/gtin/{nummer}` | Produktdaten zu einer Handelsnummer |
 | `GET/POST` | `/api/v1/teams/{id}/sync` | Abgleich mit der App |
 | `GET/POST` | `/api/v1/teams/{id}/anfragen/…` | Leih-Anfragen |
 
@@ -117,6 +121,28 @@ zurück, die dann am Artikel hängt:
 Ein neues Bild ersetzt das vorherige, und mit dem Artikel verschwindet auch
 seine Datei. Auf den Geräten bleibt nur ein Zwischenspeicher, den Android
 jederzeit leeren darf.
+
+### Produktdaten zu einer GTIN
+
+Scannt jemand einen Hersteller-Barcode, kann die App den Produktnamen
+vorschlagen. Gefragt wird **der Server**, nicht der Anbieter direkt: so bleibt
+ein etwaiger Zugangsschlüssel hier, und jede Nummer geht höchstens einmal nach
+draußen – danach steht sie in der Tabelle `gtin_cache` und gilt für alle Geräte.
+Auch ein Fehlschlag wird gemerkt (Standard sieben Tage), damit dieselbe Nummer
+nicht bei jedem Scan wieder abgefragt wird.
+
+Ohne `TAGSTOCK_GTIN_DIENST` fragt der Server **nichts** nach außen und antwortet
+mit `503`; die App bietet das Nachschlagen dann gar nicht erst an (`/status`
+meldet `gtinDienst: false`). Eingebaut sind zwei Anbieter:
+
+- `opengtindb` – [opengtindb.org](https://opengtindb.org/), frei nach dem
+  Wiki-Prinzip. Für den Dauerbetrieb eine eigene Kennung eintragen.
+- `eansearch` – [ean-search.org](https://www.ean-search.org/), größere Abdeckung,
+  braucht einen kostenpflichtigen Zugangsschlüssel.
+
+Rechne bei Werkzeug und Technik mit mäßigen Trefferquoten – frei zugängliche
+Datenbanken decken vor allem Lebensmittel und Drogerie ab. Ein Vorschlag
+ersetzt nie eine Eingabe, er steht nur zur Übernahme bereit.
 
 ### Abgleich
 

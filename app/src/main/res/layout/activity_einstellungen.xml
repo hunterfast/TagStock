@@ -100,6 +100,21 @@
                 android:layout_marginTop="8dp"
                 android:text="@string/server_titel" />
 
+            <com.google.android.material.materialswitch.MaterialSwitch
+                android:id="@+id/schalterNachschlagen"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:text="@string/einstellungen_nachschlagen" />
+
+            <TextView
+                android:id="@+id/textNachschlagenHinweis"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/einstellungen_nachschlagen_hinweis"
+                android:textAppearance="?attr/textAppearanceBodySmall"
+                android:textColor="?attr/colorOnSurfaceVariant" />
+
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/buttonExportJson"
                 style="@style/Widget.Material3.Button.OutlinedButton"

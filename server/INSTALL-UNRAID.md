@@ -234,6 +234,25 @@ bleiben unberührt.
 
 ---
 
+## 7b. Produktdaten nachschlagen (freiwillig)
+
+Beim Scannen eines Hersteller-Barcodes kann der Server den Produktnamen
+vorschlagen. Standardmäßig ist das **aus** – der Server fragt dann nichts nach
+außen. Zum Einschalten eine Variable ergänzen (Weg A in der Compose-Datei,
+Weg B über *Edit* am Container):
+
+| Key | Value |
+|---|---|
+| `TAGSTOCK_GTIN_DIENST` | `opengtindb` |
+| `TAGSTOCK_GTIN_SCHLUESSEL` | Kennung von opengtindb.org, sonst leer |
+
+In der App zusätzlich *Einstellungen → Produktdaten nachschlagen* einschalten.
+Jede Nummer geht höchstens einmal nach draußen, danach bedient der Server sie
+aus seinem Zwischenspeicher. Bei Werkzeug und Technik sind die Trefferquoten
+mäßig; gut abgedeckt sind Lebensmittel und Drogerie.
+
+---
+
 ## 8. Sicherung
 
 Alles liegt in einem Ordner:

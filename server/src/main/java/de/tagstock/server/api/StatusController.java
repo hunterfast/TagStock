@@ -1,5 +1,7 @@
 package de.tagstock.server.api;
 
+import de.tagstock.server.dienst.Produktsuche;
+
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -17,9 +19,11 @@ public class StatusController {
     public static final int API_VERSION = 1;
 
     private final JdbcTemplate jdbc;
+    private final Produktsuche produktsuche;
 
-    public StatusController(JdbcTemplate jdbc) {
+    public StatusController(JdbcTemplate jdbc, Produktsuche produktsuche) {
         this.jdbc = jdbc;
+        this.produktsuche = produktsuche;
     }
 
     @GetMapping("/status")
@@ -31,6 +35,8 @@ public class StatusController {
         Integer konten = jdbc.queryForObject("SELECT COUNT(*) FROM benutzer", Integer.class);
         // Ohne Konten zeigt die App den Hinweis, das erste Konto anzulegen.
         ergebnis.put("eingerichtet", konten != null && konten > 0);
+        // Damit die App das Nachschlagen gar nicht erst anbietet, wenn es fehlt.
+        ergebnis.put("gtinDienst", produktsuche.eingeschaltet());
         return ergebnis;
     }
 }

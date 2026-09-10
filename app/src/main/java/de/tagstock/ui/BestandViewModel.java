@@ -152,8 +152,22 @@ public class BestandViewModel extends AndroidViewModel {
                 || enthaelt(artikel.verliehenAn, suche);
     }
 
+    /**
+     * Enthaelt-Pruefung ohne Ruecksicht auf Gross- und Kleinschreibung - und ohne
+     * fuer jedes Feld eine kleingeschriebene Kopie anzulegen. Bei jedem Tastendruck
+     * laeuft das ueber den ganzen Bestand, da zaehlt jede Zuweisung.
+     */
     private static boolean enthaelt(@Nullable String wert, String suche) {
-        return wert != null && wert.toLowerCase(Locale.getDefault()).contains(suche);
+        if (wert == null) {
+            return false;
+        }
+        int letzte = wert.length() - suche.length();
+        for (int i = 0; i <= letzte; i++) {
+            if (wert.regionMatches(true, i, suche, 0, suche.length())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static boolean gleich(@Nullable String wert, String erwartet) {

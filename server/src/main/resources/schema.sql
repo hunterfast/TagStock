@@ -102,6 +102,18 @@ CREATE TABLE IF NOT EXISTS protokoll (
 CREATE INDEX IF NOT EXISTS idx_protokoll_team ON protokoll (team_id, zeitpunkt);
 CREATE INDEX IF NOT EXISTS idx_protokoll_artikel ON protokoll (artikel_id);
 
+-- Nachgeschlagene Produktdaten zu einer GTIN. Jede Nummer wird nur einmal
+-- ausserhalb erfragt; danach kennt der Server sie fuer alle Geraete.
+CREATE TABLE IF NOT EXISTS gtin_cache (
+    gtin      TEXT PRIMARY KEY,
+    gefunden  INTEGER NOT NULL DEFAULT 0,
+    name      TEXT,
+    marke     TEXT,
+    kategorie TEXT,
+    quelle    TEXT,
+    geholt_am INTEGER NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS anfragen (
     id                 TEXT PRIMARY KEY,
     team_id            TEXT NOT NULL,

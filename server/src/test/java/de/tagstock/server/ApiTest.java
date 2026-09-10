@@ -473,4 +473,19 @@ class ApiTest {
         assertTrue(ich.get("benutzer").get("passwort") == null
                 || ich.get("benutzer").get("passwort").isNull(), "Antwort: " + ich);
     }
+
+    @Test
+    void gtinNachschlagenBrauchtEinenDienst() throws Exception {
+        String token = neuesKonto(email());
+
+        // Ohne Anmeldung gar nichts.
+        senden(get("/api/v1/gtin/4006381333931"), 401);
+        // Keine gueltige Nummer.
+        senden(mitToken(get("/api/v1/gtin/abc"), token), 400);
+        // In den Tests ist kein Dienst eingerichtet - der Server sagt das deutlich.
+        senden(mitToken(get("/api/v1/gtin/4006381333931"), token), 503);
+
+        JsonNode status = senden(get("/api/v1/status"), 200);
+        assertEquals(false, status.get("gtinDienst").asBoolean());
+    }
 }

@@ -169,6 +169,11 @@ public class ServerClient {
         hole("DELETE", "/teams/" + teamId + "/kategorien/" + kategorieId, null);
     }
 
+    /** Produktdaten zu einer Handelsnummer; der Server haelt einen Zwischenspeicher. */
+    public JSONObject gtin(String nummer) throws IOException, JSONException {
+        return objekt(hole("GET", "/gtin/" + nummer, null));
+    }
+
     // ------------------------------------------------------------------ Bilder
 
     /**

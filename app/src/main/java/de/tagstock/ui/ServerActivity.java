@@ -272,6 +272,10 @@ public class ServerActivity extends AppCompatActivity {
             if (ergebnis.bilder > 0) {
                 meldung += getString(R.string.server_abgleich_bilder, ergebnis.bilder);
             }
+            if (!ergebnis.gruende.isEmpty()) {
+                meldung += "\n" + getString(R.string.sync_abgelehnt_hinweis, ergebnis.abgelehnt,
+                        ergebnis.gruende.get(0));
+            }
             Toast.makeText(this, meldung, Toast.LENGTH_LONG).show();
         });
     }

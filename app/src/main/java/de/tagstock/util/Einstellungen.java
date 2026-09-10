@@ -22,6 +22,7 @@ public final class Einstellungen {
     private static final String SCHLUESSEL_TEAM_NAME = "teamName";
     private static final String SCHLUESSEL_ROLLE = "teamRolle";
     private static final String SCHLUESSEL_SYNC = "letzterSync";
+    private static final String SCHLUESSEL_GTIN = "gtinNachschlagen";
 
     private Einstellungen() {
     }
@@ -103,6 +104,15 @@ public final class Einstellungen {
 
     public static void setzeLetztenSync(Context context, long zeitpunkt) {
         prefs(context).edit().putLong(SCHLUESSEL_SYNC, zeitpunkt).apply();
+    }
+
+    /** true, wenn der Server bei Handelsnummern den Produktnamen nachschlagen darf. */
+    public static boolean gtinNachschlagen(Context context) {
+        return prefs(context).getBoolean(SCHLUESSEL_GTIN, false);
+    }
+
+    public static void setzeGtinNachschlagen(Context context, boolean an) {
+        prefs(context).edit().putBoolean(SCHLUESSEL_GTIN, an).apply();
     }
 
     public static void setzeServer(Context context, String url, String token) {

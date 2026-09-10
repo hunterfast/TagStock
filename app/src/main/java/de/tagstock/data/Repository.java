@@ -111,6 +111,16 @@ public class Repository {
         starte(kategorieDao::alle, callback);
     }
 
+    /**
+     * Direkte Suche nach einer Kennung. Blockiert und gehoert deshalb in einen
+     * Hintergrund-Thread - etwa den, in dem ein NFC-Tag verarbeitet wird.
+     */
+    @androidx.annotation.WorkerThread
+    @Nullable
+    public Artikel kennungDirekt(String wert) {
+        return wert == null || wert.trim().isEmpty() ? null : artikelDao.nachKennung(wert.trim());
+    }
+
     /** Sucht den Artikel zu einem gescannten Wert; prueft mehrere Kandidaten. */
     public void findeNachKennung(List<String> werte, Callback<Artikel> callback) {
         starte(() -> {
@@ -229,7 +239,8 @@ public class Repository {
     /** Setzt den Status mehrerer Artikel in einem Rutsch. */
     public void mehrfachStatus(List<Long> ids, ArtikelStatus status, String nutzer,
                                Callback<Integer> callback) {
-        starte(() -> {
+        // In einer Transaktion: sonst schreibt SQLite jede Zeile einzeln auf die Platte.
+        starte(() -> db.runInTransaction(() -> {
             int geaendert = 0;
             for (Long id : ids) {
                 Artikel artikel = artikelDao.nachId(id);
@@ -249,13 +260,13 @@ public class Repository {
                 geaendert++;
             }
             return geaendert;
-        }, callback);
+        }), callback);
     }
 
     /** Verschiebt mehrere Artikel an einen anderen Standort. */
     public void mehrfachStandort(List<Long> ids, String standort, String nutzer,
                                  Callback<Integer> callback) {
-        starte(() -> {
+        starte(() -> db.runInTransaction(() -> {
             int geaendert = 0;
             for (Long id : ids) {
                 Artikel artikel = artikelDao.nachId(id);
@@ -271,7 +282,7 @@ public class Repository {
                 geaendert++;
             }
             return geaendert;
-        }, callback);
+        }), callback);
     }
 
     /**

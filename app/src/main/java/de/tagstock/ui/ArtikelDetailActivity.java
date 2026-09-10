@@ -35,9 +35,9 @@ import de.tagstock.util.Einstellungen;
 import de.tagstock.util.Formatter;
 import de.tagstock.util.FotoLader;
 import de.tagstock.util.Fotos;
-import de.tagstock.util.Serverbilder;
 import de.tagstock.util.Hintergrund;
 import de.tagstock.util.NfcHelper;
+import de.tagstock.util.Serverbilder;
 import de.tagstock.util.PdfErzeuger;
 import de.tagstock.util.QrErzeuger;
 import de.tagstock.util.Sicherung;
@@ -55,6 +55,9 @@ public class ArtikelDetailActivity extends AppCompatActivity {
     @Nullable
     private Artikel artikel;
     private boolean qrSichtbar;
+    /** Wert, zu dem das angezeigte QR-Bild gehoert. */
+    @Nullable
+    private String qrWert;
     private boolean bearbeitet;
     @Nullable
     private androidx.appcompat.app.AlertDialog nfcDialog;
@@ -185,11 +188,21 @@ public class ArtikelDetailActivity extends AppCompatActivity {
         if (!qrSichtbar || artikel == null) {
             return;
         }
-        Bitmap qr = QrErzeuger.erzeuge(artikel.qrWert(), 480);
-        if (qr != null) {
-            binding.imageQr.setImageBitmap(qr);
+        String wert = artikel.qrWert();
+        binding.textQrWert.setText(wert);
+        if (wert.equals(qrWert)) {
+            // Der Code haengt schon in der Ansicht; jede Neuzeichnung spart Rechnerei.
+            return;
         }
-        binding.textQrWert.setText(artikel.qrWert());
+        Hintergrund.starte(() -> QrErzeuger.erzeuge(wert, 480), qr -> {
+            if (qr == null || !wert.equals(artikel == null ? null : artikel.qrWert())) {
+                return;
+            }
+            qrWert = wert;
+            binding.imageQr.setImageBitmap(qr);
+        }, fehler -> {
+            // Ohne QR-Bild bleibt der Wert als Text stehen.
+        });
     }
 
     /** Aus dem Protokoll die Standortwechsel als Verlauf darstellen. */
@@ -449,25 +462,76 @@ public class ArtikelDetailActivity extends AppCompatActivity {
                 .show();
 
         String inhalt = "TagStock #" + artikel.id + " " + artikel.name;
+        Artikel dieser = artikel;
         NfcHelper.enableReader(this, tag -> {
-            NfcHelper.Schreibergebnis ergebnis = NfcHelper.schreibe(tag, inhalt);
+            // Laeuft schon im Hintergrund - hier darf nachgesehen und geschrieben werden.
             String kennung = NfcHelper.toHex(tag.getId());
+            Artikel belegt = repository.kennungDirekt(kennung);
+            if (belegt != null && belegt.id != dieser.id) {
+                // Ein fremder Tag wird nicht ueberschrieben.
+                runOnUiThread(() -> {
+                    nfcBeenden();
+                    tagGehoertAnderem(belegt);
+                });
+                return;
+            }
+            NfcHelper.Schreibergebnis ergebnis = NfcHelper.schreibe(tag, inhalt);
             runOnUiThread(() -> {
                 Toast.makeText(this, ergebnis.meldungRes, Toast.LENGTH_LONG).show();
-                if (ergebnis == NfcHelper.Schreibergebnis.OK && artikel != null
-                        && (artikel.rfidUid == null || artikel.rfidUid.isEmpty())) {
-                    Artikel mitKennung = artikel.kopie();
-                    mitKennung.rfidUid = kennung;
-                    repository.speichern(mitKennung, artikel, Einstellungen.nutzer(this),
-                            gespeichert -> {
-                                if (!gespeichert.erfolgreich) {
-                                    Toast.makeText(this, R.string.kennung_belegt_unbekannt,
-                                            Toast.LENGTH_LONG).show();
-                                }
-                            });
-                }
                 nfcBeenden();
+                if (ergebnis != NfcHelper.Schreibergebnis.OK || artikel == null) {
+                    return;
+                }
+                if (artikel.rfidUid == null || artikel.rfidUid.isEmpty()) {
+                    kennungUebernehmen(kennung);
+                } else if (!artikel.rfidUid.equals(kennung)) {
+                    kennungErsetzenFragen(kennung);
+                }
             });
+        });
+    }
+
+    /** Der Tag steckt schon an einem anderen Artikel - zeigen, an welchem. */
+    private void tagGehoertAnderem(Artikel belegt) {
+        new MaterialAlertDialogBuilder(this)
+                .setTitle(R.string.kennung_belegt_titel)
+                .setMessage(getString(R.string.nfc_tag_belegt, belegt.name))
+                .setNegativeButton(R.string.action_ok, null)
+                .setPositiveButton(R.string.treffer_oeffnen, (dialog, welcher) ->
+                        startActivity(intent(this, belegt.id)))
+                .show();
+    }
+
+    private void kennungErsetzenFragen(String kennung) {
+        if (artikel == null) {
+            return;
+        }
+        new MaterialAlertDialogBuilder(this)
+                .setTitle(R.string.nfc_kennung_ersetzen_titel)
+                .setMessage(getString(R.string.nfc_kennung_ersetzen_text, artikel.name,
+                        artikel.rfidUid))
+                .setNegativeButton(R.string.action_cancel, null)
+                .setPositiveButton(R.string.nfc_kennung_ersetzen,
+                        (dialog, welcher) -> kennungUebernehmen(kennung))
+                .show();
+    }
+
+    private void kennungUebernehmen(String kennung) {
+        if (artikel == null) {
+            return;
+        }
+        Artikel mitKennung = artikel.kopie();
+        mitKennung.rfidUid = kennung;
+        repository.speichern(mitKennung, artikel, Einstellungen.nutzer(this), gespeichert -> {
+            if (gespeichert.erfolgreich) {
+                return;
+            }
+            if (gespeichert.kennungBelegtVon != null) {
+                tagGehoertAnderem(gespeichert.kennungBelegtVon);
+            } else {
+                Toast.makeText(this, R.string.kennung_belegt_unbekannt,
+                        Toast.LENGTH_LONG).show();
+            }
         });
     }
 

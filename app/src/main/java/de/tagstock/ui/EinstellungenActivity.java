@@ -69,6 +69,9 @@ public class EinstellungenActivity extends AppCompatActivity {
 
         binding.buttonKategorien.setOnClickListener(v ->
                 startActivity(new Intent(this, KategorienActivity.class)));
+        binding.schalterNachschlagen.setChecked(Einstellungen.gtinNachschlagen(this));
+        binding.schalterNachschlagen.setOnCheckedChangeListener((knopf, an) ->
+                Einstellungen.setzeGtinNachschlagen(this, an));
         binding.buttonServer.setOnClickListener(v ->
                 startActivity(new Intent(this, ServerActivity.class)));
 

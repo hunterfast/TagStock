@@ -4,6 +4,7 @@ import android.app.DatePickerDialog;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Looper;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -35,7 +36,10 @@ import de.tagstock.util.Einstellungen;
 import de.tagstock.util.Formatter;
 import de.tagstock.util.FotoLader;
 import de.tagstock.util.Fotos;
+import de.tagstock.util.Gtin;
+import de.tagstock.util.Hintergrund;
 import de.tagstock.util.ScanResult;
+import de.tagstock.util.ServerClient;
 
 /** Formular zum Anlegen und Bearbeiten eines Artikels. */
 public class ArtikelFormFragment extends Fragment {
@@ -62,6 +66,14 @@ public class ArtikelFormFragment extends Fragment {
     private final List<String> neueFotos = new ArrayList<>();
     private Long rueckgabeDatum;
     private final List<String> kategorien = new ArrayList<>();
+
+    /** Die Kennung wird waehrend der Eingabe geprueft - verzoegert, nicht bei jedem Zeichen. */
+    private final android.os.Handler pruefer = new android.os.Handler(Looper.getMainLooper());
+    private final Runnable kennungPruefen = this::kennungPruefen;
+    @Nullable
+    private Artikel kennungGehoertZu;
+    @Nullable
+    private String vorschlagName;
 
     private final ActivityResultLauncher<Intent> scanLauncher = registerForActivityResult(
             new ActivityResultContracts.StartActivityForResult(), ergebnis -> {
@@ -131,6 +143,33 @@ public class ArtikelFormFragment extends Fragment {
         });
         binding.buttonKennungScannen.setOnClickListener(v ->
                 scanLauncher.launch(ScannerActivity.intent(requireContext())));
+        binding.editKennung.addTextChangedListener(new android.text.TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int anzahl, int nach) {
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int vorher, int anzahl) {
+            }
+
+            @Override
+            public void afterTextChanged(android.text.Editable s) {
+                pruefer.removeCallbacks(kennungPruefen);
+                pruefer.postDelayed(kennungPruefen, 350L);
+            }
+        });
+        binding.buttonKennungOeffnen.setOnClickListener(v -> {
+            if (kennungGehoertZu != null) {
+                startActivity(ArtikelDetailActivity.intent(requireContext(),
+                        kennungGehoertZu.id));
+            }
+        });
+        binding.buttonVorschlagUebernehmen.setOnClickListener(v -> {
+            if (vorschlagName != null) {
+                binding.editName.setText(vorschlagName);
+                binding.gruppeVorschlag.setVisibility(View.GONE);
+            }
+        });
         binding.buttonSpeichern.setOnClickListener(v -> speichern());
         binding.editRueckgabe.setOnClickListener(v -> datumWaehlen());
         binding.inputRueckgabe.setEndIconOnClickListener(v -> {
@@ -173,6 +212,110 @@ public class ArtikelFormFragment extends Fragment {
             return;
         }
         binding.editKennung.setText(kennung);
+    }
+
+    // ------------------------------------------------------------------ Kennung
+
+    /**
+     * Prueft die eingegebene Kennung: Ist sie schon vergeben, steht hier, zu
+     * welchem Artikel sie gehoert. Sieht sie nach einer Handelsnummer aus,
+     * wird die Pruefziffer nachgerechnet und - falls eingeschaltet - der Name
+     * beim Server nachgeschlagen.
+     */
+    private void kennungPruefen() {
+        if (binding == null) {
+            return;
+        }
+        String kennung = text(binding.editKennung.getText());
+        kennungGehoertZu = null;
+        binding.buttonKennungOeffnen.setVisibility(View.GONE);
+        binding.gruppeVorschlag.setVisibility(View.GONE);
+        vorschlagName = null;
+
+        if (kennung.isEmpty()) {
+            binding.textKennungHinweis.setVisibility(View.GONE);
+            return;
+        }
+
+        hinweisZurNummer(kennung);
+
+        repository.findeNachKennung(java.util.Collections.singletonList(kennung), treffer -> {
+            if (binding == null) {
+                return;
+            }
+            boolean fremd = treffer != null && treffer.id != artikelId;
+            kennungGehoertZu = fremd ? treffer : null;
+            binding.buttonKennungOeffnen.setVisibility(fremd ? View.VISIBLE : View.GONE);
+            if (fremd) {
+                binding.textKennungHinweis.setVisibility(View.VISIBLE);
+                String wo = Formatter.zeile(requireContext(), treffer);
+                binding.textKennungHinweis.setText(wo.isEmpty()
+                        ? getString(R.string.kennung_belegt_kurz, treffer.name)
+                        : getString(R.string.kennung_belegt_kurz_wo, treffer.name, wo));
+                binding.textKennungHinweis.setTextColor(hinweisFarbe(true));
+                return;
+            }
+            hinweisZurNummer(kennung);
+            nachschlagen(kennung);
+        });
+    }
+
+    /** Zeigt Art und Herkunft der Nummer, oder dass die Pruefziffer nicht stimmt. */
+    private void hinweisZurNummer(String kennung) {
+        String art = Gtin.art(kennung);
+        if (art == null) {
+            binding.textKennungHinweis.setVisibility(View.GONE);
+            return;
+        }
+        String text;
+        boolean fehler = !Gtin.pruefzifferStimmt(kennung);
+        if (fehler) {
+            text = getString(R.string.kennung_pruefziffer_falsch, art);
+        } else {
+            String herkunft = Gtin.herkunft(kennung);
+            text = herkunft == null ? art : art + " · " + herkunft;
+        }
+        binding.textKennungHinweis.setVisibility(View.VISIBLE);
+        binding.textKennungHinweis.setText(text);
+        binding.textKennungHinweis.setTextColor(hinweisFarbe(fehler));
+    }
+
+    /** Rot fuer Warnungen, sonst die gedaempfte Schriftfarbe des Hinweises. */
+    private int hinweisFarbe(boolean warnung) {
+        return warnung
+                ? androidx.core.content.ContextCompat.getColor(requireContext(),
+                        R.color.status_fehlt)
+                : binding.textVorschlag.getCurrentTextColor();
+    }
+
+    /** Fragt den Server nach dem Produktnamen - nur wenn das Feld noch leer ist. */
+    private void nachschlagen(String kennung) {
+        if (!Einstellungen.gtinNachschlagen(requireContext())
+                || !Einstellungen.serverAktiv(requireContext())
+                || !Gtin.pruefzifferStimmt(kennung) || Gtin.intern(kennung)
+                || !text(binding.editName.getText()).isEmpty()) {
+            return;
+        }
+        String url = Einstellungen.serverUrl(requireContext());
+        String token = Einstellungen.token(requireContext());
+        if (url == null || token == null) {
+            return;
+        }
+        Hintergrund.starte(() -> new ServerClient(url, token).gtin(kennung), antwort -> {
+            if (binding == null || antwort == null || !antwort.optBoolean("gefunden")) {
+                return;
+            }
+            String name = antwort.optString("name", "");
+            if (name.isEmpty() || !kennung.equals(text(binding.editKennung.getText()))
+                    || !text(binding.editName.getText()).isEmpty()) {
+                return;
+            }
+            vorschlagName = name;
+            binding.textVorschlag.setText(getString(R.string.vorschlag_text, name));
+            binding.gruppeVorschlag.setVisibility(View.VISIBLE);
+        }, fehler -> {
+            // Kein Treffer, kein Dienst, kein Netz - dann eben ohne Vorschlag.
+        });
     }
 
     // ---------------------------------------------------------------- Bestueckung
@@ -437,6 +580,7 @@ public class ArtikelFormFragment extends Fragment {
 
     @Override
     public void onDestroyView() {
+        pruefer.removeCallbacks(kennungPruefen);
         binding = null;
         super.onDestroyView();
     }

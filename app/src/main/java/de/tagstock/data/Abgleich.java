@@ -30,6 +30,8 @@ public final class Abgleich {
         public int uebernommen;
         public int geloescht;
         public int bilder;
+        /** Warum der Server etwas nicht angenommen hat - fuer die Meldung. */
+        public final List<String> gruende = new ArrayList<>();
         @Nullable
         public String fehler;
         public boolean abgemeldet;
@@ -73,8 +75,13 @@ public final class Abgleich {
 
                 JSONArray offeneEintraege = new JSONArray();
                 List<Long> gesendeteEintraege = new ArrayList<>();
+                java.util.Map<Long, String> kennungen = new java.util.HashMap<>();
                 for (Protokoll eintrag : protokollDao.offene()) {
-                    offeneEintraege.put(alsJson(eintrag, artikelDao));
+                    if (!kennungen.containsKey(eintrag.artikelId)) {
+                        Artikel dazu = artikelDao.nachId(eintrag.artikelId);
+                        kennungen.put(eintrag.artikelId, dazu == null ? null : dazu.serverId);
+                    }
+                    offeneEintraege.put(alsJson(eintrag, kennungen.get(eintrag.artikelId)));
                     gesendeteEintraege.add(eintrag.id);
                 }
 
@@ -134,11 +141,10 @@ public final class Abgleich {
         return o;
     }
 
-    private static JSONObject alsJson(Protokoll eintrag, ArtikelDao artikelDao)
+    private static JSONObject alsJson(Protokoll eintrag, @Nullable String artikelServerId)
             throws JSONException {
         JSONObject o = new JSONObject();
-        Artikel artikel = artikelDao.nachId(eintrag.artikelId);
-        o.put("artikelId", artikel == null ? null : artikel.serverId);
+        o.put("artikelId", artikelServerId);
         o.put("artikelName", eintrag.artikelName);
         o.put("aktion", eintrag.aktion);
         o.put("alterWert", eintrag.alterWert);
@@ -230,6 +236,10 @@ public final class Abgleich {
                 ergebnis.hochgeladen++;
             } else {
                 ergebnis.abgelehnt++;
+                String grund = zuordnung.isNull("grund") ? null : zuordnung.optString("grund");
+                if (grund != null && !grund.isEmpty() && !ergebnis.gruende.contains(grund)) {
+                    ergebnis.gruende.add(grund);
+                }
             }
         }
     }
@@ -307,6 +317,7 @@ public final class Abgleich {
         if (kategorien == null) {
             return;
         }
+        List<Kategorie> alle = new ArrayList<>(kategorieDao.alle());
         for (int i = 0; i < kategorien.length(); i++) {
             JSONObject o = kategorien.optJSONObject(i);
             if (o == null) {
@@ -318,7 +329,6 @@ public final class Abgleich {
                 continue;
             }
 
-            List<Kategorie> alle = kategorieDao.alle();
             Kategorie treffer = null;
             for (Kategorie kategorie : alle) {
                 if (serverId.equals(kategorie.serverId)
@@ -331,6 +341,7 @@ public final class Abgleich {
             if (o.optBoolean("geloescht")) {
                 if (treffer != null) {
                     kategorieDao.delete(treffer);
+                    alle.remove(treffer);
                 }
                 continue;
             }
@@ -342,6 +353,7 @@ public final class Abgleich {
                     neue.serverId = serverId;
                     neue.teamId = teamId;
                     kategorieDao.insert(neue);
+                    alle.add(neue);
                     continue;
                 }
                 treffer.serverId = serverId;
