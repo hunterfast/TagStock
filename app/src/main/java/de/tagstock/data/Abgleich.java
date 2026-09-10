@@ -35,6 +35,8 @@ public final class Abgleich {
         @Nullable
         public String fehler;
         public boolean abgemeldet;
+        /** true, wenn gerade schon ein Abgleich lief - dann war das hier kein Fehler. */
+        public boolean laeuftSchon;
 
         public boolean erfolgreich() {
             return fehler == null;
@@ -44,74 +46,119 @@ public final class Abgleich {
     private Abgleich() {
     }
 
-    /** Fuehrt einen vollstaendigen Abgleich aus. */
+    /** Fuehrt einen vollstaendigen Abgleich aus; die Antwort kommt im Hauptthread. */
     public static void ausfuehren(Context context, Repository.Callback<Ergebnis> callback) {
         Repository repository = Repository.getInstance(context);
+        Ergebnis vorab = vorpruefung(context);
+        if (vorab != null) {
+            callback.onResult(vorab);
+            return;
+        }
+        repository.imHintergrund((artikelDao, kategorieDao, protokollDao) ->
+                durchfuehren(context, artikelDao, kategorieDao, protokollDao), callback);
+    }
+
+    /**
+     * Derselbe Abgleich, nur blockierend - dafuer aus einem Hintergrund-Thread
+     * aufzurufen. Nutzt die geplante Uebertragung, sobald wieder Netz da ist.
+     */
+    @androidx.annotation.WorkerThread
+    public static Ergebnis jetzt(Context context) {
+        Ergebnis vorab = vorpruefung(context);
+        if (vorab != null) {
+            return vorab;
+        }
+        try {
+            return Repository.getInstance(context).sofort(
+                    (artikelDao, kategorieDao, protokollDao) ->
+                            durchfuehren(context, artikelDao, kategorieDao, protokollDao));
+        } catch (Exception fehler) {
+            Ergebnis ergebnis = new Ergebnis();
+            ergebnis.fehler = fehler.getMessage() == null
+                    ? "Abgleich fehlgeschlagen" : fehler.getMessage();
+            return ergebnis;
+        }
+    }
+
+    /** Ergebnis mit Fehler, wenn gar kein Abgleich moeglich ist - sonst null. */
+    @Nullable
+    private static Ergebnis vorpruefung(Context context) {
+        if (Einstellungen.serverUrl(context) == null || Einstellungen.token(context) == null
+                || Einstellungen.teamId(context) == null) {
+            Ergebnis ergebnis = new Ergebnis();
+            ergebnis.fehler = "Kein Server eingerichtet";
+            return ergebnis;
+        }
+        return null;
+    }
+
+    /** Zwei Abgleiche gleichzeitig braucht niemand - der zweite wartet nicht, er faellt aus. */
+    private static final java.util.concurrent.atomic.AtomicBoolean LAEUFT =
+            new java.util.concurrent.atomic.AtomicBoolean(false);
+
+    private static Ergebnis durchfuehren(Context context, ArtikelDao artikelDao,
+                                         KategorieDao kategorieDao, ProtokollDao protokollDao) {
+        Ergebnis ergebnis = new Ergebnis();
+        if (!LAEUFT.compareAndSet(false, true)) {
+            ergebnis.fehler = "Abgleich laeuft bereits";
+            ergebnis.laeuftSchon = true;
+            return ergebnis;
+        }
         String url = Einstellungen.serverUrl(context);
         String token = Einstellungen.token(context);
         String teamId = Einstellungen.teamId(context);
-
-        Ergebnis ergebnis = new Ergebnis();
-        if (url == null || token == null || teamId == null) {
-            ergebnis.fehler = "Kein Server eingerichtet";
-            callback.onResult(ergebnis);
-            return;
-        }
-
         long seit = Einstellungen.letzterSync(context);
         ServerClient client = new ServerClient(url, token);
+        try {
+            // Zuerst die Bilder der bereits bekannten Artikel, damit die
+            // Adresse gleich mit hochgeht.
+            bilderHochladen(context, client, teamId, artikelDao, ergebnis);
 
-        repository.imHintergrund((artikelDao, kategorieDao, protokollDao) -> {
-            try {
-                // Zuerst die Bilder der bereits bekannten Artikel, damit die
-                // Adresse gleich mit hochgeht.
-                bilderHochladen(context, client, teamId, artikelDao, ergebnis);
-
-                JSONArray offeneArtikel = new JSONArray();
-                List<Artikel> offene = artikelDao.offene();
-                for (Artikel artikel : offene) {
-                    offeneArtikel.put(alsJson(artikel));
-                }
-
-                JSONArray offeneEintraege = new JSONArray();
-                List<Long> gesendeteEintraege = new ArrayList<>();
-                java.util.Map<Long, String> kennungen = new java.util.HashMap<>();
-                for (Protokoll eintrag : protokollDao.offene()) {
-                    if (!kennungen.containsKey(eintrag.artikelId)) {
-                        Artikel dazu = artikelDao.nachId(eintrag.artikelId);
-                        kennungen.put(eintrag.artikelId, dazu == null ? null : dazu.serverId);
-                    }
-                    offeneEintraege.put(alsJson(eintrag, kennungen.get(eintrag.artikelId)));
-                    gesendeteEintraege.add(eintrag.id);
-                }
-
-                JSONObject antwort = client.abgleichSenden(teamId, seit, offeneArtikel,
-                        offeneEintraege);
-
-                zuordnungenAnwenden(antwort.optJSONArray("zuordnungen"), artikelDao, ergebnis);
-                serverstandUebernehmen(antwort.optJSONArray("artikel"), teamId, artikelDao,
-                        ergebnis);
-                kategorienUebernehmen(antwort.optJSONArray("kategorien"), teamId, kategorieDao);
-
-                if (!gesendeteEintraege.isEmpty()) {
-                    protokollDao.alsGesendetMarkieren(gesendeteEintraege);
-                }
-
-                // Neu angelegte Artikel haben jetzt eine Server-Kennung - ihre
-                // Bilder koennen nachgereicht werden.
-                bilderHochladen(context, client, teamId, artikelDao, ergebnis);
-
-                long stand = antwort.optLong("stand", System.currentTimeMillis());
-                Einstellungen.setzeLetztenSync(context, stand);
-            } catch (ServerClient.ServerFehler fehler) {
-                ergebnis.fehler = fehler.getMessage();
-                ergebnis.abgemeldet = fehler.istAbgemeldet();
-            } catch (Exception fehler) {
-                ergebnis.fehler = fehler.getMessage() == null
-                        ? "Server nicht erreichbar" : fehler.getMessage();
+            JSONArray offeneArtikel = new JSONArray();
+            List<Artikel> offene = artikelDao.offene();
+            for (Artikel artikel : offene) {
+                offeneArtikel.put(alsJson(artikel));
             }
-            return ergebnis;
-        }, callback);
+
+            JSONArray offeneEintraege = new JSONArray();
+            List<Long> gesendeteEintraege = new ArrayList<>();
+            java.util.Map<Long, String> kennungen = new java.util.HashMap<>();
+            for (Protokoll eintrag : protokollDao.offene()) {
+                if (!kennungen.containsKey(eintrag.artikelId)) {
+                    Artikel dazu = artikelDao.nachId(eintrag.artikelId);
+                    kennungen.put(eintrag.artikelId, dazu == null ? null : dazu.serverId);
+                }
+                offeneEintraege.put(alsJson(eintrag, kennungen.get(eintrag.artikelId)));
+                gesendeteEintraege.add(eintrag.id);
+            }
+
+            JSONObject antwort = client.abgleichSenden(teamId, seit, offeneArtikel,
+                    offeneEintraege);
+
+            zuordnungenAnwenden(antwort.optJSONArray("zuordnungen"), artikelDao, ergebnis);
+            serverstandUebernehmen(antwort.optJSONArray("artikel"), teamId, artikelDao, ergebnis);
+            kategorienUebernehmen(antwort.optJSONArray("kategorien"), teamId, kategorieDao);
+
+            if (!gesendeteEintraege.isEmpty()) {
+                protokollDao.alsGesendetMarkieren(gesendeteEintraege);
+            }
+
+            // Neu angelegte Artikel haben jetzt eine Server-Kennung - ihre
+            // Bilder koennen nachgereicht werden.
+            bilderHochladen(context, client, teamId, artikelDao, ergebnis);
+
+            long stand = antwort.optLong("stand", System.currentTimeMillis());
+            Einstellungen.setzeLetztenSync(context, stand);
+        } catch (ServerClient.ServerFehler fehler) {
+            ergebnis.fehler = fehler.getMessage();
+            ergebnis.abgemeldet = fehler.istAbgemeldet();
+        } catch (Exception fehler) {
+            ergebnis.fehler = fehler.getMessage() == null
+                    ? "Server nicht erreichbar" : fehler.getMessage();
+        } finally {
+            LAEUFT.set(false);
+        }
+        return ergebnis;
     }
 
     // ------------------------------------------------------------------ Senden

@@ -492,9 +492,15 @@ public class ArtikelFormFragment extends Fragment {
             Toast.makeText(requireContext(), R.string.artikel_gespeichert,
                     Toast.LENGTH_SHORT).show();
             if (Einstellungen.serverAktiv(requireContext())) {
-                // Im Hintergrund weiterreichen, damit vor allem das Bild
-                // zeitnah auf dem Server landet.
-                Abgleich.ausfuehren(requireContext().getApplicationContext(), unwichtig -> { });
+                // Sofort weiterreichen, damit vor allem das Bild zeitnah auf dem
+                // Server landet. Klappt das nicht, ist es schon vorgemerkt.
+                Abgleich.ausfuehren(requireContext().getApplicationContext(), abgleich -> {
+                    if (binding == null || abgleich.erfolgreich() || abgleich.laeuftSchon) {
+                        return;
+                    }
+                    Toast.makeText(requireContext(), R.string.server_uebertragung_geplant,
+                            Toast.LENGTH_SHORT).show();
+                });
             }
             if (getActivity() instanceof ArtikelDetailActivity) {
                 ((ArtikelDetailActivity) getActivity()).bearbeitenBeenden();

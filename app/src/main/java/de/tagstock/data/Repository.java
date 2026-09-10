@@ -8,6 +8,8 @@ import android.os.Looper;
 import androidx.annotation.Nullable;
 import androidx.lifecycle.LiveData;
 
+import de.tagstock.util.Abgleichplaner;
+
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -40,12 +42,14 @@ public class Repository {
 
     private final AppDatabase db;
     private final ArtikelDao artikelDao;
+    private final Context context;
     private final KategorieDao kategorieDao;
     private final ProtokollDao protokollDao;
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
 
     private Repository(Context context) {
+        this.context = context.getApplicationContext();
         db = AppDatabase.getInstance(context);
         artikelDao = db.artikelDao();
         kategorieDao = db.kategorieDao();
@@ -75,6 +79,12 @@ public class Repository {
      */
     public <T> void imHintergrund(Arbeit<T> arbeit, Callback<T> callback) {
         starte(() -> arbeit.mache(artikelDao, kategorieDao, protokollDao), callback);
+    }
+
+    /** Dieselbe Aufgabe blockierend - fuer Aufrufer, die schon im Hintergrund laufen. */
+    @androidx.annotation.WorkerThread
+    public <T> T sofort(Arbeit<T> arbeit) throws Exception {
+        return arbeit.mache(artikelDao, kategorieDao, protokollDao);
     }
 
     // ---------------------------------------------------------------- Abfragen
@@ -119,6 +129,11 @@ public class Repository {
     @Nullable
     public Artikel kennungDirekt(String wert) {
         return wert == null || wert.trim().isEmpty() ? null : artikelDao.nachKennung(wert.trim());
+    }
+
+    /** Wie viele Artikel warten noch auf die Uebertragung zum Server? */
+    public void zaehleOffene(Callback<Integer> callback) {
+        starte(artikelDao::anzahlOffene, callback);
     }
 
     /** Sucht den Artikel zu einem gescannten Wert; prueft mehrere Kandidaten. */
@@ -425,8 +440,14 @@ public class Repository {
 
     // ----------------------------------------------------------------- Hilfen
 
+    /**
+     * Jede Aenderung landet im Protokoll - und ist damit auch der richtige Ort,
+     * um die Uebertragung zum Server vorzumerken. Ohne Netz wartet sie, bis
+     * wieder eine Verbindung da ist.
+     */
     private void eintragen(Artikel artikel, String aktion, String alt, String neu, String nutzer) {
         protokollDao.insert(Protokoll.fuer(artikel, aktion, alt, neu, nutzer));
+        Abgleichplaner.vormerken(context);
     }
 
     private String schluessel(ArtikelStatus status) {

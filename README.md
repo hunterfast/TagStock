@@ -66,6 +66,11 @@ legst ein Team an oder trittst per Einladungscode einem bei.
 - **Abgleich** per Ziehen in der Bestandsliste oder auf Knopfdruck: eigene
   Änderungen hoch, fremde herunter. Bei Doppeländerungen gewinnt der jüngere
   Zeitstempel; Löschungen kommen als Merkmal mit.
+- **Ohne Netz geht die Arbeit weiter.** Was offline angelegt oder geändert wird,
+  merkt sich die App und überträgt es selbst, sobald wieder eine Verbindung
+  besteht – auch wenn die App inzwischen geschlossen wurde (WorkManager mit
+  Netzbedingung, dazu ein Durchlauf alle drei Stunden als Sicherheitsnetz). In
+  den Servereinstellungen steht, wie viel noch wartet.
 - **Artikelbilder** liegen auf dem Server. Die App verkleinert eine Aufnahme,
   lädt sie beim Abgleich hoch und hält auf dem Gerät nur einen
   Zwischenspeicher.

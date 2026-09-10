@@ -240,6 +240,15 @@
                     android:textAppearance="?attr/textAppearanceBodySmall"
                     tools:text="Zuletzt abgeglichen: 30.08.2026, 12:04" />
 
+                <TextView
+                    android:id="@+id/textOffen"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:textAppearance="?attr/textAppearanceBodySmall"
+                    android:visibility="gone"
+                    tools:text="3 Änderungen warten auf die Übertragung"
+                    tools:visibility="visible" />
+
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/buttonAbgleich"
                     android:layout_width="match_parent"

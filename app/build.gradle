@@ -84,6 +84,9 @@ dependencies {
     implementation 'androidx.lifecycle:lifecycle-viewmodel:2.8.7'
     implementation 'androidx.lifecycle:lifecycle-livedata:2.8.7'
 
+    // Hintergrundarbeit: Abgleich nachholen, sobald wieder Netz da ist
+    implementation 'androidx.work:work-runtime:2.9.1'
+
     // Room (lokale Datenbank)
     implementation 'androidx.room:room-runtime:2.6.1'
     annotationProcessor 'androidx.room:room-compiler:2.6.1'

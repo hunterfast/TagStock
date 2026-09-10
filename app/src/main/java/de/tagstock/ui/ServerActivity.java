@@ -16,8 +16,10 @@ import org.json.JSONObject;
 
 import de.tagstock.R;
 import de.tagstock.data.Abgleich;
+import de.tagstock.data.Repository;
 import de.tagstock.databinding.ActivityServerBinding;
 import de.tagstock.util.Dialogs;
+import de.tagstock.util.Abgleichplaner;
 import de.tagstock.util.Einstellungen;
 import de.tagstock.util.Hintergrund;
 import de.tagstock.util.ServerClient;
@@ -87,6 +89,15 @@ public class ServerActivity extends AppCompatActivity {
                 ? getString(R.string.server_nie_abgeglichen)
                 : getString(R.string.server_letzter_abgleich,
                 de.tagstock.util.Formatter.datumZeit(this, letzter)));
+
+        Repository.getInstance(this).zaehleOffene(anzahl -> {
+            binding.textOffen.setVisibility(anzahl == null || anzahl == 0
+                    ? View.GONE : View.VISIBLE);
+            if (anzahl != null && anzahl > 0) {
+                binding.textOffen.setText(getResources().getQuantityString(
+                        R.plurals.server_offene_aenderungen, anzahl, anzahl));
+            }
+        });
     }
 
     private String adresse() {
@@ -153,6 +164,7 @@ public class ServerActivity extends AppCompatActivity {
         }, antwort -> {
             arbeitet(false);
             Einstellungen.setzeServer(this, url, antwort.optString("token"));
+            Abgleichplaner.regelmaessigPlanen(this);
             JSONArray teams = antwort.optJSONArray("teams");
             if (teams != null && teams.length() == 1) {
                 teamUebernehmen(teams.optJSONObject(0));
@@ -165,6 +177,7 @@ public class ServerActivity extends AppCompatActivity {
     }
 
     private void abmelden() {
+        Abgleichplaner.abbrechen(this);
         String url = Einstellungen.serverUrl(this);
         String token = Einstellungen.token(this);
         Einstellungen.abmelden(this);
@@ -260,7 +273,11 @@ public class ServerActivity extends AppCompatActivity {
             arbeitet(false);
             zeichnen();
             if (!ergebnis.erfolgreich()) {
-                Toast.makeText(this, ergebnis.fehler, Toast.LENGTH_LONG).show();
+                Toast.makeText(this, ergebnis.laeuftSchon
+                                ? getString(R.string.server_abgleich_laeuft)
+                                : ergebnis.fehler + "\n"
+                                + getString(R.string.server_uebertragung_geplant),
+                        Toast.LENGTH_LONG).show();
                 if (ergebnis.abgemeldet) {
                     Einstellungen.abmelden(this);
                     zeichnen();

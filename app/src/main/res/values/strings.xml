@@ -317,6 +317,12 @@
     <string name="server_jetzt_abgleichen">Jetzt abgleichen</string>
     <string name="server_abgleich_fertig">%1$d gesendet, %2$d übernommen, %3$d abgelehnt</string>
     <string name="server_abgleich_bilder">, %1$d Bilder</string>
+    <string name="server_abgleich_laeuft">Abgleich läuft schon</string>
+    <string name="server_uebertragung_geplant">Ohne Verbindung – wird nachgeholt, sobald der Server erreichbar ist.</string>
+    <plurals name="server_offene_aenderungen">
+        <item quantity="one">Eine Änderung wartet auf die Übertragung</item>
+        <item quantity="other">%1$d Änderungen warten auf die Übertragung</item>
+    </plurals>
     <string name="foto_server_hinweis">Wird beim nächsten Abgleich auf den Server geladen.</string>
 
     <!-- Anfragen -->

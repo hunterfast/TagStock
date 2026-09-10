@@ -11,6 +11,7 @@
     <uses-feature android:name="android.hardware.nfc" android:required="false" />
 
     <application
+        android:name=".TagStockApp"
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
         android:networkSecurityConfig="@xml/netzwerk"

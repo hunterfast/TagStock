@@ -172,7 +172,12 @@ public class BestandFragment extends Fragment implements ArtikelAdapter.Listener
             }
             binding.swipeRefresh.setRefreshing(false);
             if (!ergebnis.erfolgreich()) {
-                Toast.makeText(requireContext(), ergebnis.fehler, Toast.LENGTH_LONG).show();
+                // Ohne Verbindung ist nichts verloren: die Aenderungen sind vorgemerkt.
+                Toast.makeText(requireContext(), ergebnis.laeuftSchon
+                        ? getString(R.string.server_abgleich_laeuft)
+                        : ergebnis.fehler + "\n"
+                        + getString(R.string.server_uebertragung_geplant),
+                        Toast.LENGTH_LONG).show();
                 return;
             }
             String meldung = getString(R.string.sync_fertig,

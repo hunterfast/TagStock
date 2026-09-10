@@ -75,6 +75,8 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
+        // Offline Angelegtes nachreichen, sobald die App wieder offen ist.
+        de.tagstock.util.Abgleichplaner.vormerken(this);
         titelAktualisieren();
         NfcHelper.enableReader(this, tag -> {
             ScanResult ergebnis = NfcHelper.read(tag);
