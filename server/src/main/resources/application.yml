@@ -35,8 +35,16 @@ tagstock:
   update-pruefen: ${TAGSTOCK_UPDATE_PRUEFEN:true}
   # Woher der Vergleich kommt; leer heisst: der Zweig auf GitHub.
   update-quelle: ${TAGSTOCK_UPDATE_QUELLE:}
-  # Hier darf eine tagstock.apk liegen, die die App an die Geraete verteilt.
+  # Hier liegen die App-Fassungen: app/aktuell und app/vorher.
   app-ordner: ${TAGSTOCK_APP_ORDNER:/data/app}
+  # Der Server holt sich die neueste App selbst - nur wenn er sie nicht hat.
+  app-holen: ${TAGSTOCK_APP_HOLEN:true}
+  # Woher; leer heisst: die Veroeffentlichungen dieses Projekts auf GitHub.
+  app-quelle: ${TAGSTOCK_APP_QUELLE:}
+  # Lesezugriff auf das Projekt. Ohne ihn holt der Server nichts von selbst.
+  github-token: ${TAGSTOCK_GITHUB_TOKEN:}
+  # Sicherungen der Datenbank vor jedem Wechsel der App-Fassung.
+  sicherungen-ordner: ${TAGSTOCK_SICHERUNGEN:/data/sicherungen}
   # Token laufen nach dieser Zeit ab (Tage).
   token-gueltigkeit-tage: ${TAGSTOCK_TOKEN_TAGE:180}
   # Wenn gesetzt, koennen sich nur Personen mit diesem Code registrieren.

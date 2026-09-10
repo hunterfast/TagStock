@@ -326,23 +326,64 @@ Soll der Server gar nicht nach draußen schauen, setze
 
 ## 9b. Die App über den Server verteilen
 
-Damit die Handys nicht einzeln bei GitHub laden müssen, kann der Server die APK
-selbst ausliefern:
+Damit die Handys nicht einzeln bei GitHub laden müssen, hält der Server die App
+bereit – die aktuelle **und** die vorherige Fassung, damit ein Gerät zurück kann,
+wenn mit der neuen etwas nicht stimmt.
 
-1. APK aus dem Build holen und ablegen als
-   `/mnt/user/appdata/tagstock/app/tagstock.apk`.
-2. Daneben freiwillig eine `app.json` mit der Version:
+### Selbst holen lassen (empfohlen)
 
-   ```json
-   {"versionCode": 2, "versionName": "2.0", "hinweis": "Bilder auf dem Server"}
-   ```
+Weil das Projekt nicht öffentlich ist, braucht der Server einen Lesezugriff:
 
-3. Rechte setzen: `chown -R 99:100 /mnt/user/appdata/tagstock/app`
+1. Auf GitHub: *Settings → Developer settings → Personal access tokens →
+   Fine-grained tokens → Generate new token*.
+2. *Repository access* auf **Only select repositories → hunterfast/TagStock**,
+   unter *Permissions → Repository permissions* die Berechtigung
+   **Contents: Read-only** setzen. Mehr braucht er nicht.
+3. Token kopieren und am Container als Variable eintragen:
 
-Die App prüft unter *Einstellungen → Version*, ob dort eine höhere
-`versionCode` liegt, und bietet dann den Download an. Ohne `app.json` liefert
-der Server die Datei trotzdem aus – nur ohne Versionsvergleich. Direkt im
-Browser: `http://<server-ip>:8080/api/v1/app/tagstock.apk`
+   | Key | Value |
+   |---|---|
+   | `TAGSTOCK_GITHUB_TOKEN` | `github_pat_…` |
+
+Danach sieht der Server beim Start und alle sechs Stunden nach. Ist dort eine
+höhere `versionCode` als die, die er hat, lädt er die Datei – sonst rührt er
+sich nicht. Vor jedem Wechsel legt er eine Sicherung der Datenbank unter
+`/mnt/user/appdata/tagstock/sicherungen/` an; die letzten zehn bleiben liegen.
+
+Sofort nachsehen lassen (statt auf den Takt zu warten) geht aus der App heraus
+über *Einstellungen → Nach Aktualisierungen sehen*.
+
+### Von Hand ablegen
+
+Geht genauso, etwa ohne Token:
+
+```
+/mnt/user/appdata/tagstock/app/aktuell/tagstock.apk
+/mnt/user/appdata/tagstock/app/aktuell/app.json
+/mnt/user/appdata/tagstock/app/vorher/tagstock.apk     (freiwillig)
+/mnt/user/appdata/tagstock/app/vorher/app.json
+```
+
+Die `app.json` sieht so aus:
+
+```json
+{"versionCode": 2, "versionName": "2.0", "hinweis": "Was sich geändert hat …"}
+```
+
+Danach `chown -R 99:100 /mnt/user/appdata/tagstock/app` nicht vergessen.
+
+### Auf dem Handy
+
+Unter *Einstellungen → Version* steht, welche Fassung läuft und ob eine neuere
+bereitliegt. Ein Tipp darauf zeigt den Änderungshinweis; nach dem Bestätigen
+legt die App eine Sicherung des Bestands an, lädt die Datei vom Server und
+übergibt sie dem System – installiert wird erst nach dem Systemdialog.
+
+**Zurück auf die vorherige Fassung:** Android installiert keine ältere Fassung
+über eine neuere. Die App lädt sie deshalb in den Download-Ordner, wo sie das
+Deinstallieren übersteht; danach TagStock deinstallieren, die Datei im
+Dateimanager öffnen und wieder am Server anmelden – der Bestand kommt vom
+Server zurück.
 
 ---
 

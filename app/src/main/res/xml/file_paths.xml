@@ -5,4 +5,15 @@
     <files-path
         name="fotos"
         path="fotos/" />
+
+    <!-- Heruntergeladene App-Fassungen: nur diesen Ordner sieht die
+         Installationsanwendung, sonst nichts. -->
+    <files-path
+        name="app-fassungen"
+        path="fassungen/" />
+
+    <!-- Sicherungen vor einem Wechsel der Fassung - zum Weitergeben. -->
+    <external-files-path
+        name="sicherungen"
+        path="sicherungen/" />
 </paths>

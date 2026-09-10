@@ -179,11 +179,6 @@ public class ServerClient {
         return objekt(hole("POST", "/aktualisierung/pruefen", new JSONObject()));
     }
 
-    /** Adresse, unter der die App-Datei liegt - zum Oeffnen im Browser. */
-    public String appAdresse() {
-        return wurzel + "/api/v1/app/tagstock.apk";
-    }
-
     /** Produktdaten zu einer Handelsnummer; der Server haelt einen Zwischenspeicher. */
     public JSONObject gtin(String nummer) throws IOException, JSONException {
         return objekt(hole("GET", "/gtin/" + nummer, null));

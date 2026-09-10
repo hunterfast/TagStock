@@ -181,6 +181,15 @@
                 tools:visibility="visible" />
 
             <com.google.android.material.button.MaterialButton
+                android:id="@+id/buttonAppZurueck"
+                style="@style/Widget.Material3.Button.TextButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:visibility="gone"
+                tools:text="Zurück auf Version 2.0"
+                tools:visibility="visible" />
+
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/buttonNachUpdateSehen"
                 style="@style/Widget.Material3.Button.OutlinedButton"
                 android:layout_width="match_parent"

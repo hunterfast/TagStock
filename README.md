@@ -89,9 +89,13 @@ Schritt für Unraid: [`server/INSTALL-UNRAID.md`](server/INSTALL-UNRAID.md).
   bestehende Datenbank läuft weiter: fehlende Spalten ergänzt der Server beim
   Start selbst. Er merkt zudem, wenn es einen neueren Stand gibt, und sagt es in
   der App unter *Einstellungen → Version*.
-- **App:** Eine `tagstock.apk` in `/data/app` auf dem Server (dazu eine
-  `app.json` mit `versionCode`) genügt – die App bietet den Download dann selbst
-  an, ohne Umweg über GitHub.
+- **App:** Der Server hält die aktuelle **und** die vorherige Fassung bereit und
+  holt sich neue Veröffentlichungen selbst (mit einem Lesezugriff aufs Projekt).
+  Die App meldet sich unter *Einstellungen → Version*, zeigt den
+  Änderungshinweis, legt vor dem Installieren eine Sicherung an und kann im
+  Notfall zurück auf die vorherige Fassung.
+- **Was sich geändert hat** steht in [`changelog/`](changelog/) – je ein Ordner
+  für App und Server, darin ein Unterordner pro Jahr und eine Datei je Version.
 
 ## Bauen
 

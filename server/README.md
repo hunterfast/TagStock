@@ -62,7 +62,11 @@ curl http://<server-ip>:8080/api/v1/status
 | `TAGSTOCK_GTIN_FEHLSCHLAG_TAGE` | So lange gilt ein Fehlschlag, bevor erneut gefragt wird | `7` |
 | `TAGSTOCK_UPDATE_PRUEFEN` | Täglich nachsehen, ob es einen neueren Stand gibt | `true` |
 | `TAGSTOCK_UPDATE_QUELLE` | Womit verglichen wird; leer heißt: der Projektzweig auf GitHub | leer |
-| `TAGSTOCK_APP_ORDNER` | Hier darf eine `tagstock.apk` für die Geräte liegen | `/data/app` |
+| `TAGSTOCK_APP_ORDNER` | Hier liegen die App-Fassungen (`aktuell/`, `vorher/`) | `/data/app` |
+| `TAGSTOCK_APP_HOLEN` | Neueste App selbst herunterladen | `true` |
+| `TAGSTOCK_APP_QUELLE` | Woher; leer heißt: die Veröffentlichungen dieses Projekts | leer |
+| `TAGSTOCK_GITHUB_TOKEN` | Lesezugriff aufs Projekt – ohne ihn holt der Server nichts | leer |
+| `TAGSTOCK_SICHERUNGEN` | Sicherungen vor jedem Wechsel der App-Fassung | `/data/sicherungen` |
 
 Das **erste Konto** darf sich immer registrieren – danach greift der Code, falls
 gesetzt. Ohne Code kann jeder, der den Server erreicht, ein Konto anlegen; setze
@@ -86,10 +90,31 @@ Eine bestehende Datenbank läuft ohne Zutun weiter: neue Tabellen legt
 `schema.sql` an, **fehlende Spalten in bestehenden Tabellen ergänzt der Server
 beim Start** (siehe `Schemapflege`). Spalten werden dabei nur hinzugefügt.
 
-Die App lässt sich ebenfalls über den Server verteilen: eine `tagstock.apk` in
-`/data/app` legen, daneben freiwillig eine `app.json` mit `versionCode`,
-`versionName` und `hinweis`. Die App vergleicht die Nummer mit ihrer eigenen
-und bietet den Download an.
+### Die App verteilen
+
+Der Server hält die App für die Geräte bereit und **holt sie sich selbst**:
+
+```
+/data/app/aktuell/tagstock.apk + app.json     ← die neueste Fassung
+/data/app/vorher/tagstock.apk  + app.json     ← die davor, für den Rückweg
+```
+
+Alle sechs Stunden (und beim Start) sieht er bei den Veröffentlichungen des
+Projekts nach. Ist die dortige `versionCode` höher als die eigene, lädt er die
+Datei – sonst nicht. Vor jedem Wechsel legt er eine Sicherung der Datenbank an
+(`/data/sicherungen/vor-app-<version>-<zeit>.db`, die letzten zehn bleiben
+liegen), damit zu jeder Fassung auch passende Daten bereitstehen.
+
+Weil das Projekt nicht öffentlich ist, braucht er dafür einen **Lesezugriff**:
+ein fein abgestuftes Token mit der Berechtigung *Contents: Read-only* auf dieses
+Repository, eingetragen als `TAGSTOCK_GITHUB_TOKEN`. Ohne Token holt er nichts
+und sagt das in der Auskunft; die Dateien lassen sich dann von Hand ablegen.
+
+Die App fragt unter *Einstellungen → Version* nach, vergleicht die Nummer mit
+ihrer eigenen, zeigt den Änderungshinweis und installiert nach Zustimmung. Für
+den Rückweg lädt sie die vorherige Fassung in den Download-Ordner – Android
+lässt eine ältere Fassung nur nach dem Deinstallieren zu, deshalb liegt die
+Datei dort, wo sie das überlebt.
 
 ## Sicherung
 
@@ -131,8 +156,10 @@ Alle Antworten sind JSON, die Anmeldung läuft über
 | `GET` | `/api/v1/teams/{id}/bilder/{id}` | Artikelbild abholen |
 | `GET` | `/api/v1/gtin/{nummer}` | Produktdaten zu einer Handelsnummer |
 | `GET` | `/api/v1/aktualisierung` | Läuft hier der neueste Stand? |
-| `GET` | `/api/v1/app` | Welche App liegt für die Geräte bereit? |
-| `GET` | `/api/v1/app/tagstock.apk` | Die App herunterladen, ohne Anmeldung |
+| `GET` | `/api/v1/app` | Welche App liegt bereit – aktuell und vorher? |
+| `POST` | `/api/v1/app/pruefen` | Sofort bei der Quelle nachsehen |
+| `GET` | `/api/v1/app/aktuell/tagstock.apk` | Die App herunterladen, ohne Anmeldung |
+| `GET` | `/api/v1/app/vorher/tagstock.apk` | Die vorherige Fassung, für den Rückweg |
 | `GET/POST` | `/api/v1/teams/{id}/sync` | Abgleich mit der App |
 | `GET/POST` | `/api/v1/teams/{id}/anfragen/…` | Leih-Anfragen |
 

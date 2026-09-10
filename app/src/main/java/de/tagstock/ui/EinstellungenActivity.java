@@ -17,6 +17,8 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
 import org.json.JSONObject;
 
+import java.io.File;
+
 import de.tagstock.BuildConfig;
 import de.tagstock.R;
 import de.tagstock.data.Bestand;
@@ -24,6 +26,7 @@ import de.tagstock.data.Repository;
 import de.tagstock.databinding.ActivityEinstellungenBinding;
 import de.tagstock.util.Einstellungen;
 import de.tagstock.util.Hintergrund;
+import de.tagstock.util.Appfassungen;
 import de.tagstock.util.ServerClient;
 import de.tagstock.util.Sicherung;
 
@@ -123,7 +126,8 @@ public class EinstellungenActivity extends AppCompatActivity {
             return antworten;
         }, antworten -> {
             binding.buttonNachUpdateSehen.setEnabled(true);
-            appstandZeigen(antworten[0], new ServerClient(url, token).appAdresse(), melden);
+            String wurzel = url.endsWith("/") ? url.substring(0, url.length() - 1) : url;
+            appstandZeigen(antworten[0], wurzel, melden);
             serverstandZeigen(antworten[1]);
         }, fehler -> {
             binding.buttonNachUpdateSehen.setEnabled(true);
@@ -136,23 +140,120 @@ public class EinstellungenActivity extends AppCompatActivity {
         });
     }
 
-    private void appstandZeigen(JSONObject app, String adresse, boolean melden) {
-        boolean neuer = app != null && app.optBoolean("verfuegbar")
-                && app.optInt("versionCode") > BuildConfig.VERSION_CODE;
+    private void appstandZeigen(JSONObject app, String url, boolean melden) {
+        JSONObject aktuell = app == null ? null : app.optJSONObject("aktuell");
+        JSONObject vorher = app == null ? null : app.optJSONObject("vorher");
+
+        boolean neuer = aktuell != null
+                && aktuell.optInt("versionCode") > BuildConfig.VERSION_CODE;
         binding.buttonAppLaden.setVisibility(neuer ? View.VISIBLE : View.GONE);
         if (neuer) {
-            String name = app.optString("versionName", String.valueOf(app.optInt("versionCode")));
+            String name = aktuell.optString("versionName",
+                    String.valueOf(aktuell.optInt("versionCode")));
             binding.buttonAppLaden.setText(getString(R.string.einstellungen_app_neu, name));
-            binding.buttonAppLaden.setOnClickListener(v ->
-                    startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(adresse))));
+            binding.buttonAppLaden.setOnClickListener(v -> aktualisierenFragen(url, aktuell));
+        }
+
+        // Zurueck geht nur auf eine Fassung, die aelter ist als die laufende.
+        boolean rueckweg = vorher != null && vorher.optInt("versionCode") > 0
+                && vorher.optInt("versionCode") < BuildConfig.VERSION_CODE;
+        binding.buttonAppZurueck.setVisibility(rueckweg ? View.VISIBLE : View.GONE);
+        if (rueckweg) {
+            String name = vorher.optString("versionName",
+                    String.valueOf(vorher.optInt("versionCode")));
+            binding.buttonAppZurueck.setText(
+                    getString(R.string.einstellungen_app_zurueck, name));
+            binding.buttonAppZurueck.setOnClickListener(v -> zurueckFragen(url, vorher, name));
+        }
+
+        if (!melden || neuer) {
             return;
         }
-        if (!melden) {
-            return;
-        }
-        Toast.makeText(this, app != null && app.optBoolean("verfuegbar")
+        Toast.makeText(this, aktuell != null
                         ? R.string.einstellungen_app_aktuell : R.string.einstellungen_app_keine,
                 Toast.LENGTH_SHORT).show();
+    }
+
+    /** Nachfragen, sichern, laden - und dann dem System uebergeben. */
+    private void aktualisierenFragen(String url, JSONObject fassung) {
+        String name = fassung.optString("versionName",
+                String.valueOf(fassung.optInt("versionCode")));
+        String hinweis = fassung.optString("hinweis", "");
+        StringBuilder text = new StringBuilder(getString(R.string.update_text));
+        if (!hinweis.isEmpty()) {
+            text.append("\n\n").append(hinweis);
+        }
+        new MaterialAlertDialogBuilder(this)
+                .setTitle(getString(R.string.update_titel, name))
+                .setMessage(text.toString())
+                .setNegativeButton(R.string.action_cancel, null)
+                .setPositiveButton(R.string.update_installieren, (dialog, welcher) ->
+                        aktualisieren(url, fassung))
+                .show();
+    }
+
+    private void aktualisieren(String url, JSONObject fassung) {
+        int version = fassung.optInt("versionCode");
+        String adresse = url + fassung.optString("adresse", "/api/v1/app/aktuell/tagstock.apk");
+        Toast.makeText(this, R.string.update_laedt, Toast.LENGTH_SHORT).show();
+        binding.buttonAppLaden.setEnabled(false);
+
+        repository.ladeBestand(bestand -> Hintergrund.starte(() -> {
+            // Erst sichern, dann laden: wer zurueckmuss, hat die Daten von vorher.
+            File sicherung = sicherungSchreiben(bestand);
+            File apk = Appfassungen.herunterladen(this, adresse, version);
+            return new Object[]{sicherung, apk};
+        }, ergebnis -> {
+            binding.buttonAppLaden.setEnabled(true);
+            File sicherung = (File) ergebnis[0];
+            if (sicherung != null) {
+                Toast.makeText(this, getString(R.string.update_sicherung,
+                        sicherung.getAbsolutePath()), Toast.LENGTH_LONG).show();
+            }
+            Intent installieren = Appfassungen.installieren(this, (File) ergebnis[1]);
+            if (installieren == null) {
+                Toast.makeText(this, R.string.update_kein_installer, Toast.LENGTH_LONG).show();
+                return;
+            }
+            startActivity(installieren);
+        }, fehler -> {
+            binding.buttonAppLaden.setEnabled(true);
+            String meldung = fehler.getMessage();
+            Toast.makeText(this, meldung == null
+                    ? getString(R.string.server_nicht_erreichbar) : meldung,
+                    Toast.LENGTH_LONG).show();
+        }));
+    }
+
+    /**
+     * Der Weg zurueck geht nur ueber Deinstallieren - Android laesst eine
+     * aeltere Fassung nicht ueber eine neuere. Die Datei kommt deshalb in den
+     * Download-Ordner, wo sie das Deinstallieren ueberlebt.
+     */
+    private void zurueckFragen(String url, JSONObject fassung, String name) {
+        String adresse = url + fassung.optString("adresse", "/api/v1/app/vorher/tagstock.apk");
+        new MaterialAlertDialogBuilder(this)
+                .setTitle(getString(R.string.zurueck_titel, name))
+                .setMessage(R.string.zurueck_text)
+                .setNegativeButton(R.string.action_cancel, null)
+                .setPositiveButton(R.string.zurueck_laden, (dialog, welcher) ->
+                        startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(adresse))))
+                .show();
+    }
+
+    /** Bestand als JSON neben die App legen; der Pfad steht danach in der Meldung. */
+    private File sicherungSchreiben(Bestand bestand) throws Exception {
+        File ordner = getExternalFilesDir("sicherungen");
+        if (ordner == null) {
+            ordner = new File(getFilesDir(), "sicherungen");
+        }
+        //noinspection ResultOfMethodCallIgnored
+        ordner.mkdirs();
+        File ziel = new File(ordner, Sicherung.dateiname("json"));
+        try (java.io.OutputStream aus = new java.io.FileOutputStream(ziel)) {
+            aus.write(Sicherung.alsJson(bestand).getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        }
+        return ziel;
     }
 
     private void serverstandZeigen(@Nullable JSONObject stand) {

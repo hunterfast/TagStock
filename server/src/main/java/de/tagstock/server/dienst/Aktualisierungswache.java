@@ -37,10 +37,14 @@ public class Aktualisierungswache {
     private long zuletztGeprueft;
     private Map<String, Object> letzterStand;
 
+    private final String token;
+
     public Aktualisierungswache(BuildProperties bau,
                                 @Value("${tagstock.update-pruefen:true}") boolean pruefen,
-                                @Value("${tagstock.update-quelle:}") String quelle) {
+                                @Value("${tagstock.update-quelle:}") String quelle,
+                                @Value("${tagstock.github-token:}") String token) {
         this.pruefen = pruefen;
+        this.token = token == null ? "" : token.trim();
         this.quelle = quelle == null || quelle.isBlank()
                 ? "https://api.github.com/repos/hunterfast/TagStock/commits/"
                 + "claude/android-lager-app-barcode-nfc-qe3kev"
@@ -91,13 +95,16 @@ public class Aktualisierungswache {
             return stand;
         }
         try {
-            HttpRequest anfrage = HttpRequest.newBuilder(URI.create(quelle))
+            HttpRequest.Builder bau = HttpRequest.newBuilder(URI.create(quelle))
                     .timeout(Duration.ofSeconds(6))
                     .header("Accept", "application/vnd.github+json")
                     .header("User-Agent", "TagStock-Server")
-                    .GET()
-                    .build();
-            HttpResponse<String> antwort = client.send(anfrage,
+                    .GET();
+            if (!token.isEmpty()) {
+                // Ohne Schluessel antwortet ein nicht oeffentliches Projekt mit 404.
+                bau.header("Authorization", "Bearer " + token);
+            }
+            HttpResponse<String> antwort = client.send(bau.build(),
                     HttpResponse.BodyHandlers.ofString());
             if (antwort.statusCode() >= 400) {
                 stand.put("hinweis", "Quelle antwortet mit " + antwort.statusCode());

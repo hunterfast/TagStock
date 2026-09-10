@@ -7,6 +7,10 @@ on:
       - 'claude/**'
   workflow_dispatch:
 
+# Fuer die Veroeffentlichung der APK braucht der Lauf Schreibrecht am Inhalt.
+permissions:
+  contents: write
+
 jobs:
   app:
     name: "App: Tests und APK"
@@ -50,6 +54,38 @@ jobs:
           name: tagstock-debug-apk
           path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
+
+      # Die App verteilt sich ueber den Server; dafuer braucht es eine
+      # Veroeffentlichung mit fester Adresse. Der Debug-Build ist signiert und
+      # laesst sich installieren - das unsignierte Release-APK nicht.
+      - name: Veroeffentlichung mit APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION_NAME=$(grep -m1 'versionName' app/build.gradle | sed 's/.*"\(.*\)".*/\1/')
+          VERSION_CODE=$(grep -m1 'versionCode' app/build.gradle | sed 's/[^0-9]*//g')
+          MARKE="app-v${VERSION_NAME}+${VERSION_CODE}"
+          NOTIZ="changelog/app/$(date +%Y)/${VERSION_NAME}.md"
+          if [ ! -f "$NOTIZ" ]; then
+            NOTIZ=$(ls changelog/app/*/"${VERSION_NAME}".md 2>/dev/null | head -1)
+          fi
+          [ -n "$NOTIZ" ] && [ -f "$NOTIZ" ] || { echo "Kein Changelog fuer ${VERSION_NAME}"; exit 1; }
+
+          mkdir -p veroeffentlichung
+          cp app/build/outputs/apk/debug/*.apk veroeffentlichung/tagstock.apk
+          # jq baut das JSON, damit Anfuehrungszeichen und Umbrueche im
+          # Changelog nichts zerreissen.
+          jq -n --argjson code "$VERSION_CODE" --arg name "$VERSION_NAME" \
+            --rawfile hinweis "$NOTIZ" \
+            '{versionCode: $code, versionName: $name, hinweis: $hinweis}' \
+            > veroeffentlichung/app.json
+
+          if gh release view "$MARKE" >/dev/null 2>&1; then
+            gh release upload "$MARKE" veroeffentlichung/tagstock.apk veroeffentlichung/app.json --clobber
+          else
+            gh release create "$MARKE" veroeffentlichung/tagstock.apk veroeffentlichung/app.json \
+              --title "TagStock-App ${VERSION_NAME}" --notes-file "$NOTIZ" --target "${GITHUB_SHA}"
+          fi
 
       - name: Testberichte hochladen
         if: always()

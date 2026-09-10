@@ -4,6 +4,9 @@
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.NFC" />
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Die App holt ihre eigene Aktualisierung vom Server; installiert wird
+         sie erst, wenn jemand im Systemdialog zustimmt. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
     <!-- Kamera und NFC sind optional, damit die App auch auf Geraeten
          ohne NFC-Chip installiert werden kann. -->

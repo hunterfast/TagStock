@@ -32,6 +32,7 @@ import java.util.UUID;
         "spring.datasource.url=jdbc:sqlite:build/tmp/api-test.db",
         "tagstock.bilder-ordner=build/tmp/api-test-bilder",
         "tagstock.app-ordner=build/tmp/api-test-app",
+        "tagstock.app-holen=false",
         "tagstock.update-pruefen=false",
         "tagstock.registrierungs-code="})
 @AutoConfigureMockMvc
@@ -44,7 +45,7 @@ class ApiTest {
 
     @BeforeAll
     static void datenbankLeeren() {
-        bilderordnerLeeren(new File("build/tmp/api-test-bilder"));
+        ordnerLeeren(new File("build/tmp/api-test-bilder"));
         File datei = new File("build/tmp/api-test.db");
         if (datei.exists() && !datei.delete()) {
             throw new IllegalStateException("Testdatenbank nicht loeschbar");
@@ -53,11 +54,11 @@ class ApiTest {
         datei.getParentFile().mkdirs();
     }
 
-    private static void bilderordnerLeeren(File ordner) {
+    private static void ordnerLeeren(File ordner) {
         File[] inhalt = ordner.listFiles();
         if (inhalt != null) {
             for (File eintrag : inhalt) {
-                bilderordnerLeeren(eintrag);
+                ordnerLeeren(eintrag);
             }
         }
         //noinspection ResultOfMethodCallIgnored
@@ -507,30 +508,49 @@ class ApiTest {
 
     @Test
     void appWirdVomServerVerteiltSobaldSieDaLiegt() throws Exception {
-        File ordner = new File("build/tmp/api-test-app");
+        // Aus einem frueheren Lauf darf hier nichts liegen bleiben.
+        ordnerLeeren(new File("build/tmp/api-test-app"));
+        File fach = new File("build/tmp/api-test-app/aktuell");
         //noinspection ResultOfMethodCallIgnored
-        ordner.mkdirs();
-        File apk = new File(ordner, "tagstock.apk");
-        //noinspection ResultOfMethodCallIgnored
-        apk.delete();
+        fach.mkdirs();
+        File apk = new File(fach, "tagstock.apk");
 
         JsonNode ohne = senden(get("/api/v1/app"), 200);
-        assertEquals(false, ohne.get("verfuegbar").asBoolean());
+        assertTrue(ohne.get("aktuell").isNull());
         senden(get("/api/v1/app/tagstock.apk"), 404);
 
         java.nio.file.Files.write(apk.toPath(), new byte[]{1, 2, 3, 4});
-        java.nio.file.Files.write(new File(ordner, "app.json").toPath(),
+        java.nio.file.Files.write(new File(fach, "app.json").toPath(),
                 "{\"versionCode\": 7, \"versionName\": \"2.1\"}"
                         .getBytes(StandardCharsets.UTF_8));
 
         JsonNode mit = senden(get("/api/v1/app"), 200);
-        assertTrue(mit.get("verfuegbar").asBoolean());
-        assertEquals(7, mit.get("versionCode").asInt());
-        assertEquals("2.1", mit.get("versionName").asText());
+        assertEquals(7, mit.get("aktuell").get("versionCode").asInt());
+        assertEquals("2.1", mit.get("aktuell").get("versionName").asText());
+        assertTrue(mit.get("vorher").isNull());
 
-        MvcResult datei = mockMvc.perform(get("/api/v1/app/tagstock.apk")).andReturn();
+        MvcResult datei = mockMvc.perform(get("/api/v1/app/aktuell/tagstock.apk")).andReturn();
         assertEquals(200, datei.getResponse().getStatus());
         assertArrayEquals(new byte[]{1, 2, 3, 4},
                 datei.getResponse().getContentAsByteArray());
+
+        // Die vorherige Fassung ist die Rueckfallebene, wenn etwas schiefgeht.
+        File alt = new File("build/tmp/api-test-app/vorher");
+        //noinspection ResultOfMethodCallIgnored
+        alt.mkdirs();
+        java.nio.file.Files.write(new File(alt, "tagstock.apk").toPath(), new byte[]{9, 9});
+        java.nio.file.Files.write(new File(alt, "app.json").toPath(),
+                "{\"versionCode\": 6, \"versionName\": \"2.0\"}"
+                        .getBytes(StandardCharsets.UTF_8));
+        JsonNode beide = senden(get("/api/v1/app"), 200);
+        assertEquals(6, beide.get("vorher").get("versionCode").asInt());
+        assertEquals(200, mockMvc.perform(get("/api/v1/app/vorher/tagstock.apk"))
+                .andReturn().getResponse().getStatus());
+
+        // Nachsehen darf nur, wer angemeldet ist.
+        senden(post("/api/v1/app/pruefen"), 401);
+        String token = neuesKonto(email());
+        senden(mitToken(post("/api/v1/app/pruefen"), token), 200);
     }
+
 }
