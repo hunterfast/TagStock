@@ -13,6 +13,7 @@ App und neuer Server zusammen und umgekehrt.
 | eine App-Fassung rückgängig machen | [Zurück auf die vorherige Fassung](#zurück-auf-die-vorherige-fassung) |
 | Daten zurückholen | [Sicherungen](#sicherungen) |
 | selbst eine neue Version herausgeben | [Neue Version veröffentlichen](#neue-version-veröffentlichen) |
+| dem Server Zugang zum Projekt geben | [Zugangsschlüssel anlegen](#zugangsschlüssel-anlegen) |
 
 ---
 
@@ -183,14 +184,8 @@ etwas nicht, spiel die Sicherung ein (siehe [Sicherungen](#sicherungen)).
 ### Über den Server (der bequeme Weg)
 
 **Einmalig einrichten:** Der Server holt sich die App selbst, dafür braucht er
-Lesezugriff auf das Projekt.
-
-1. Auf GitHub: *Settings → Developer settings → Personal access tokens →
-   Fine-grained tokens → Generate new token*.
-2. *Repository access*: **Only select repositories → hunterfast/TagStock**.
-   Unter *Permissions → Repository permissions* nur **Contents: Read-only**.
-3. Token kopieren, am Container als Variable `TAGSTOCK_GITHUB_TOKEN` eintragen
-   (*Docker → tagstock-server → Edit → Add another Variable*), **Apply**.
+Lesezugriff auf das Projekt – siehe
+[Zugangsschlüssel anlegen](#zugangsschlüssel-anlegen).
 
 Prüfen, ob er etwas gefunden hat:
 
@@ -236,6 +231,137 @@ die Datei öffnest – also Browser oder Dateimanager, nicht für TagStock selbs
 
 Ist der Server schon eingerichtet, geht es am schnellsten so: im Browser des
 Handys `http://<server-ip>:8080/` öffnen und unten auf `tagstock.apk` tippen.
+
+---
+
+## Zugangsschlüssel anlegen
+
+Das Projekt ist **privat**. Ohne Zugangsschlüssel kommt der Server nicht an die
+Dateien – weder an die App noch an die Auskunft, ob es einen neueren Stand gibt.
+Beides bleibt dann einfach aus; alles andere funktioniert.
+
+Gebraucht wird ein **fein abgestuftes Token** (fine-grained), das genau eine
+Sache darf: dieses eine Projekt lesen. Kein Schreiben, keine anderen Projekte.
+
+### Schritt 1 – Token erzeugen
+
+1. Bei GitHub anmelden, oben rechts aufs Profilbild, **Settings**. Das sind die
+   Einstellungen des Kontos, nicht die des Projekts.
+2. Ganz unten links **Developer settings**.
+3. **Personal access tokens → Fine-grained tokens**, dann rechts oben
+   **Generate new token**.
+4. Ausfüllen:
+
+   | Feld | Wert |
+   |---|---|
+   | Token name | `TagStock-Server Unraid` |
+   | Expiration | z. B. **1 Jahr**. Danach hört das Holen auf, bis du ein neues einträgst – ein „No expiration" ist bequem, aber ein Schlüssel, der nie abläuft, bleibt auch nach einem Leck gültig. |
+   | Description | frei, etwa „liest die App-Veröffentlichungen" |
+   | Resource owner | dein Konto (`hunterfast`) |
+   | Repository access | **Only select repositories** → in der Auswahl **TagStock** anhaken |
+
+5. Weiter unten **Permissions → Repository permissions**. Die Liste ist lang;
+   du brauchst genau eine Zeile:
+
+   | Berechtigung | Wert |
+   |---|---|
+   | **Contents** | **Read-only** |
+
+   *Metadata: Read-only* setzt GitHub dabei von selbst – das muss so.
+   **Alles andere bleibt auf „No access".** Contents deckt sowohl den Quellcode
+   als auch die Veröffentlichungen samt der APK ab.
+
+6. Unten **Generate token**, im Nachfragefenster bestätigen.
+7. Der Schlüssel steht **genau einmal** da (`github_pat_…`). Jetzt kopieren –
+   danach zeigt GitHub ihn nie wieder. Verlierst du ihn, machst du einfach
+   einen neuen und wirfst den alten weg.
+
+### Schritt 2 – Am Server eintragen
+
+**Weg B (Unraid-Formular):**
+
+1. *Docker* → beim Container `tagstock-server` auf das Symbol → **Edit**.
+2. Unten **Add another Path, Port, Variable, Label or Device**.
+3. Ausfüllen und **Add**:
+
+   | Feld | Wert |
+   |---|---|
+   | Config Type | `Variable` |
+   | Name | `GitHub-Token` |
+   | Key | `TAGSTOCK_GITHUB_TOKEN` |
+   | Value | der kopierte Schlüssel `github_pat_…` |
+
+4. Unten **Apply**. Unraid legt den Container neu an und startet ihn.
+
+**Weg A (Compose):** Der Wert gehört nicht in die `docker-compose.yml`, sondern
+in eine `.env` daneben – die Vorlage liegt als `.env.beispiel` bereit:
+
+```bash
+cd /mnt/user/appdata/tagstock-quelle/server
+cp .env.beispiel .env
+nano .env            # TAGSTOCK_GITHUB_TOKEN=github_pat_... eintragen
+docker compose up -d
+```
+
+### Schritt 3 – Nachsehen, ob es wirkt
+
+```bash
+curl -s http://<server-ip>:8080/api/v1/app
+```
+
+- `"holtSelbst": true` – der Schlüssel ist angekommen.
+- `"holtSelbst": false` – die Variable fehlt oder ist leer.
+- `"hinweis": "Nicht erreichbar: Antwort 401 …"` – der Schlüssel stimmt nicht
+  (vertippt, abgelaufen oder für das falsche Projekt).
+- `"aktuell": { "versionCode": 2, … }` – die App liegt bereit. Bis dahin können
+  ein paar Sekunden vergehen; er holt sie beim Start.
+
+Direkt am Schlüssel prüfen geht auch:
+
+```bash
+curl -s -H "Authorization: Bearer github_pat_..." \
+     https://api.github.com/repos/hunterfast/TagStock | grep full_name
+```
+
+Kommt `"full_name": "hunterfast/TagStock"`, ist alles richtig. Kommt
+`"message": "Not Found"`, greift der Schlüssel nicht auf dieses Projekt.
+
+### Denselben Schlüssel für `git pull`
+
+Wenn der Quellordner ein Klon ist, braucht auch `git pull` den Zugang:
+
+```bash
+cd /mnt/user/appdata/tagstock-quelle
+git remote set-url origin https://<token>@github.com/hunterfast/TagStock.git
+```
+
+Damit steht der Schlüssel im Klartext in `.git/config` – auf einem Server im
+eigenen Netz ist das üblich, aber es sollte dir bewusst sein. Wieder entfernen:
+
+```bash
+git remote set-url origin https://github.com/hunterfast/TagStock.git
+```
+
+### Was du sonst wissen solltest
+
+- **Wo der Schlüssel landet:** in der Container-Konfiguration von Unraid
+  (`/boot/config/plugins/dockerMan/templates-user/`) beziehungsweise in der
+  `.env`. Beides steckt in Backups des Systems – behandle solche Sicherungen
+  entsprechend.
+- **Wenn er abläuft:** Der Server holt nichts mehr und schreibt einen Hinweis
+  in `/api/v1/app`. Neues Token erzeugen, den Wert austauschen, Container neu
+  starten. Sonst passiert nichts – Bestand, Konten und Bilder bleiben.
+- **Wenn er abhandenkommt:** *Settings → Developer settings → Fine-grained
+  tokens →* beim Eintrag **Revoke**. Er gilt sofort nicht mehr. Mit reinem
+  Lesezugriff auf ein Projekt ohne Betriebsdaten ist der Schaden überschaubar –
+  in der Datenbank des Servers steckt nichts davon.
+- **Ohne Schlüssel geht es auch:** Dann legst du die APK von Hand ab (siehe
+  unten) und aktualisierst den Server über das heruntergeladene Archiv. Nur
+  bequemer ist es mit.
+- **Die Alternative wäre, das Projekt öffentlich zu machen** – dann bräuchte es
+  gar keinen Schlüssel. Damit läge allerdings der gesamte Quellcode offen; die
+  Daten deines Lagers wären davon nicht betroffen, die liegen ausschließlich auf
+  deinem Server.
 
 ---
 

@@ -16,3 +16,6 @@ keystore.properties
 *.keystore
 /server/build
 /server/.gradle
+
+# Zugangsschluessel des Servers - gehoert nicht ins Repository
+server/.env

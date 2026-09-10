@@ -340,17 +340,15 @@ wenn mit der neuen etwas nicht stimmt.
 ### Selbst holen lassen (empfohlen)
 
 Weil das Projekt nicht öffentlich ist, braucht der Server einen Lesezugriff:
+ein fein abgestuftes Token, nur für dieses Projekt, nur **Contents: Read-only**.
+Jeden Klick dazu – erzeugen, eintragen, prüfen, austauschen – beschreibt
+[../UPDATE.md → Zugangsschlüssel anlegen](../UPDATE.md#zugangsschlüssel-anlegen).
 
-1. Auf GitHub: *Settings → Developer settings → Personal access tokens →
-   Fine-grained tokens → Generate new token*.
-2. *Repository access* auf **Only select repositories → hunterfast/TagStock**,
-   unter *Permissions → Repository permissions* die Berechtigung
-   **Contents: Read-only** setzen. Mehr braucht er nicht.
-3. Token kopieren und am Container als Variable eintragen:
+Kurz: Token erzeugen, am Container als Variable eintragen:
 
-   | Key | Value |
-   |---|---|
-   | `TAGSTOCK_GITHUB_TOKEN` | `github_pat_…` |
+| Key | Value |
+|---|---|
+| `TAGSTOCK_GITHUB_TOKEN` | `github_pat_…` |
 
 Danach sieht der Server beim Start und alle sechs Stunden nach. Ist dort eine
 höhere `versionCode` als die, die er hat, lädt er die Datei – sonst rührt er

@@ -21,4 +21,9 @@ services:
       # Gesetzt: jede Registrierung nach der ersten braucht diesen Code.
       TAGSTOCK_REGISTRIERUNGSCODE: ""
       TAGSTOCK_TOKEN_TAGE: "180"
+      # Lesezugriff aufs Projekt: damit holt sich der Server die App und
+      # erkennt, ob es einen neueren Stand gibt. Der Wert gehoert nicht in
+      # diese Datei, sondern in eine .env daneben:
+      #   TAGSTOCK_GITHUB_TOKEN=github_pat_...
+      TAGSTOCK_GITHUB_TOKEN: "${TAGSTOCK_GITHUB_TOKEN:-}"
       TZ: "Europe/Berlin"
