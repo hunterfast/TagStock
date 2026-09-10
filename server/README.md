@@ -74,6 +74,9 @@ ihn also, sobald der Server aus dem Heimnetz heraus erreichbar ist.
 
 ## Aktualisieren
 
+Ausführlich – mit Rückweg, Sicherungen und dem Weg für die App – steht das in
+[../UPDATE.md](../UPDATE.md). Der kurze Weg:
+
 ```bash
 sh /mnt/user/appdata/tagstock-quelle/server/update.sh
 ```

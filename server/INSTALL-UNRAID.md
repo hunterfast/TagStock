@@ -285,6 +285,9 @@ Wer das Plugin **„Appdata Backup"** nutzt, hat den Ordner ohnehin dabei.
 
 ## 9. Auf eine neue Version aktualisieren
 
+> Der vollständige Ablauf – auch für die App und den Weg zurück – steht in
+> [../UPDATE.md](../UPDATE.md).
+
 Ein Befehl macht alles: neuen Stand holen, Daten sichern, Abbild bauen,
 Container neu starten und prüfen, ob er wieder antwortet.
 

@@ -40,6 +40,9 @@ sh changelog/neu.sh server 2.1.0
 Das Skript legt Jahresordner und Datei an, falls sie fehlen, und trägt die
 Kopfzeile ein.
 
+Wie eine neue Version herausgegeben wird – Nummer hochzählen, Changelog
+schreiben, veröffentlichen –, steht in [../UPDATE.md](../UPDATE.md).
+
 ## Aufbau einer Datei
 
 ```markdown
