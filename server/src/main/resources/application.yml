@@ -30,6 +30,13 @@ tagstock:
   gtin-schluessel: ${TAGSTOCK_GTIN_SCHLUESSEL:}
   # So lange gilt ein Fehlschlag, bevor dieselbe Nummer erneut erfragt wird.
   gtin-fehlschlag-tage: ${TAGSTOCK_GTIN_FEHLSCHLAG_TAGE:7}
+  # Taeglich nachsehen, ob es einen neueren Stand gibt. Aktualisiert wird nie
+  # von selbst - der Server sagt nur Bescheid.
+  update-pruefen: ${TAGSTOCK_UPDATE_PRUEFEN:true}
+  # Woher der Vergleich kommt; leer heisst: der Zweig auf GitHub.
+  update-quelle: ${TAGSTOCK_UPDATE_QUELLE:}
+  # Hier darf eine tagstock.apk liegen, die die App an die Geraete verteilt.
+  app-ordner: ${TAGSTOCK_APP_ORDNER:/data/app}
   # Token laufen nach dieser Zeit ab (Tage).
   token-gueltigkeit-tage: ${TAGSTOCK_TOKEN_TAGE:180}
   # Wenn gesetzt, koennen sich nur Personen mit diesem Code registrieren.

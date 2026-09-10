@@ -82,6 +82,17 @@ legst ein Team an oder trittst per Einladungscode einem bei.
 Einrichtung des Servers: [`server/README.md`](server/README.md), Schritt für
 Schritt für Unraid: [`server/INSTALL-UNRAID.md`](server/INSTALL-UNRAID.md).
 
+## Aktualisieren
+
+- **Server:** `sh server/update.sh` auf dem Host – holt den neuen Stand, sichert
+  Datenbank und Bilder, baut das Abbild und startet den Container neu. Eine
+  bestehende Datenbank läuft weiter: fehlende Spalten ergänzt der Server beim
+  Start selbst. Er merkt zudem, wenn es einen neueren Stand gibt, und sagt es in
+  der App unter *Einstellungen → Version*.
+- **App:** Eine `tagstock.apk` in `/data/app` auf dem Server (dazu eine
+  `app.json` mit `versionCode`) genügt – die App bietet den Download dann selbst
+  an, ohne Umweg über GitHub.
+
 ## Bauen
 
 Der Build läuft bei jedem Push auf GitHub Actions

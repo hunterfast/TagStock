@@ -60,10 +60,36 @@ curl http://<server-ip>:8080/api/v1/status
 | `TAGSTOCK_GTIN_DIENST` | Nachschlagedienst für Produktdaten: `aus`, `opengtindb` oder `eansearch` | `aus` |
 | `TAGSTOCK_GTIN_SCHLUESSEL` | Zugangsschlüssel des Dienstes, falls nötig | leer |
 | `TAGSTOCK_GTIN_FEHLSCHLAG_TAGE` | So lange gilt ein Fehlschlag, bevor erneut gefragt wird | `7` |
+| `TAGSTOCK_UPDATE_PRUEFEN` | Täglich nachsehen, ob es einen neueren Stand gibt | `true` |
+| `TAGSTOCK_UPDATE_QUELLE` | Womit verglichen wird; leer heißt: der Projektzweig auf GitHub | leer |
+| `TAGSTOCK_APP_ORDNER` | Hier darf eine `tagstock.apk` für die Geräte liegen | `/data/app` |
 
 Das **erste Konto** darf sich immer registrieren – danach greift der Code, falls
 gesetzt. Ohne Code kann jeder, der den Server erreicht, ein Konto anlegen; setze
 ihn also, sobald der Server aus dem Heimnetz heraus erreichbar ist.
+
+## Aktualisieren
+
+```bash
+sh /mnt/user/appdata/tagstock-quelle/server/update.sh
+```
+
+Das Skript holt den neuen Stand, sichert Datenbank und Bilder, baut das Abbild
+und startet den Container neu; erst wenn der Bau durchläuft, wird gewechselt.
+
+Der Server **erkennt selbst, wenn es etwas Neues gibt**: Einmal am Tag
+vergleicht er seinen Bauzeitpunkt mit der letzten Änderung im Projektzweig und
+meldet das über `/api/v1/aktualisierung`; in der App steht es unter
+*Einstellungen → Version*. Aktualisiert wird nie von allein.
+
+Eine bestehende Datenbank läuft ohne Zutun weiter: neue Tabellen legt
+`schema.sql` an, **fehlende Spalten in bestehenden Tabellen ergänzt der Server
+beim Start** (siehe `Schemapflege`). Spalten werden dabei nur hinzugefügt.
+
+Die App lässt sich ebenfalls über den Server verteilen: eine `tagstock.apk` in
+`/data/app` legen, daneben freiwillig eine `app.json` mit `versionCode`,
+`versionName` und `hinweis`. Die App vergleicht die Nummer mit ihrer eigenen
+und bietet den Download an.
 
 ## Sicherung
 
@@ -104,6 +130,9 @@ Alle Antworten sind JSON, die Anmeldung läuft über
 | `POST/DELETE` | `/api/v1/teams/{id}/artikel/{id}/bild` | Artikelbild ablegen oder entfernen |
 | `GET` | `/api/v1/teams/{id}/bilder/{id}` | Artikelbild abholen |
 | `GET` | `/api/v1/gtin/{nummer}` | Produktdaten zu einer Handelsnummer |
+| `GET` | `/api/v1/aktualisierung` | Läuft hier der neueste Stand? |
+| `GET` | `/api/v1/app` | Welche App liegt für die Geräte bereit? |
+| `GET` | `/api/v1/app/tagstock.apk` | Die App herunterladen, ohne Anmeldung |
 | `GET/POST` | `/api/v1/teams/{id}/sync` | Abgleich mit der App |
 | `GET/POST` | `/api/v1/teams/{id}/anfragen/…` | Leih-Anfragen |
 

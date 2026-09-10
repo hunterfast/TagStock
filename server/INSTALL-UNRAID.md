@@ -150,6 +150,12 @@ Danach viermal **„Add another Path, Port, Variable, Label or Device"**:
 | Key | `TAGSTOCK_REGISTRIERUNGSCODE` |
 | Value | vorerst leer lassen (siehe Schritt 7) |
 
+**Icon (damit die Kachel dein Logo zeigt)**
+
+Im Feld *Icon URL* einfach `http://<server-ip>:8080/icon.png` eintragen – das
+Logo liefert der Server selbst aus. Alternativ die Datei `server/icon.png` aus
+dem Quellordner verwenden.
+
 **Variable (Zeitzone)**
 | Feld | Wert |
 |---|---|
@@ -279,6 +285,19 @@ Wer das Plugin **„Appdata Backup"** nutzt, hat den Ordner ohnehin dabei.
 
 ## 9. Auf eine neue Version aktualisieren
 
+Ein Befehl macht alles: neuen Stand holen, Daten sichern, Abbild bauen,
+Container neu starten und prüfen, ob er wieder antwortet.
+
+```bash
+sh /mnt/user/appdata/tagstock-quelle/server/update.sh
+```
+
+Bricht der Bau ab, bleibt der laufende Container unangetastet – gewechselt wird
+erst, wenn das neue Abbild fertig ist. Die Sicherung landet unter
+`/mnt/user/appdata/tagstock/sicherungen/`.
+
+Von Hand geht es genauso:
+
 ```bash
 cd /mnt/user/appdata/tagstock-quelle
 git pull
@@ -287,8 +306,43 @@ docker restart tagstock-server        # Weg B
 # oder: cd server && docker compose up -d --build   (Weg A)
 ```
 
-Die Daten liegen im Volume und überstehen das. Fehlende Tabellen legt der Server
-beim Start selbst an.
+Die Daten liegen im Volume und überstehen das. Neue Tabellen legt der Server
+beim Start an, **neue Spalten in bestehenden Tabellen ergänzt er ebenfalls
+selbst** – eine Datenbank aus einer älteren Fassung läuft also einfach weiter.
+
+**Woher weißt du, dass es etwas Neues gibt?** Der Server sieht einmal am Tag
+nach und vergleicht seinen Bauzeitpunkt mit der letzten Änderung im
+Projektzweig. In der App steht das unter *Einstellungen → Version*; direkt
+abfragen kannst du es so:
+
+```bash
+curl http://<server-ip>:8080/api/v1/status        # Version und Bauzeitpunkt
+```
+
+Soll der Server gar nicht nach draußen schauen, setze
+`TAGSTOCK_UPDATE_PRUEFEN` auf `false`.
+
+---
+
+## 9b. Die App über den Server verteilen
+
+Damit die Handys nicht einzeln bei GitHub laden müssen, kann der Server die APK
+selbst ausliefern:
+
+1. APK aus dem Build holen und ablegen als
+   `/mnt/user/appdata/tagstock/app/tagstock.apk`.
+2. Daneben freiwillig eine `app.json` mit der Version:
+
+   ```json
+   {"versionCode": 2, "versionName": "2.0", "hinweis": "Bilder auf dem Server"}
+   ```
+
+3. Rechte setzen: `chown -R 99:100 /mnt/user/appdata/tagstock/app`
+
+Die App prüft unter *Einstellungen → Version*, ob dort eine höhere
+`versionCode` liegt, und bietet dann den Download an. Ohne `app.json` liefert
+der Server die Datei trotzdem aus – nur ohne Versionsvergleich. Direkt im
+Browser: `http://<server-ip>:8080/api/v1/app/tagstock.apk`
 
 ---
 

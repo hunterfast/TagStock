@@ -18,8 +18,10 @@ android {
         applicationId "de.tagstock"
         minSdk 24
         targetSdk 35
-        versionCode 1
-        versionName "1.0"
+        // Beim Ausliefern hochzaehlen: die App vergleicht diese Nummer mit der
+        // Fassung, die auf dem Server liegt.
+        versionCode 2
+        versionName "2.0"
         vectorDrawables.useSupportLibrary = true
 
         javaCompileOptions {
@@ -68,6 +70,7 @@ android {
 
     buildFeatures {
         viewBinding true
+        buildConfig true
     }
 }
 

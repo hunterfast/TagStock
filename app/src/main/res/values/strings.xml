@@ -282,6 +282,14 @@
     <string name="kennung_pruefziffer_falsch">%1$s · Prüfziffer stimmt nicht</string>
     <string name="vorschlag_text">Vorschlag: %1$s</string>
     <string name="vorschlag_uebernehmen">Übernehmen</string>
+    <string name="einstellungen_version">Version</string>
+    <string name="einstellungen_app_version">App %1$s (%2$d)</string>
+    <string name="einstellungen_server_version">Server %1$s, gebaut am %2$s</string>
+    <string name="einstellungen_server_neuer">Für den Server gibt es einen neueren Stand. Auf dem Server: git pull, Abbild neu bauen, Container neu starten.</string>
+    <string name="einstellungen_app_neu">Version %1$s herunterladen</string>
+    <string name="einstellungen_app_aktuell">Die App ist auf dem neuesten Stand.</string>
+    <string name="einstellungen_app_keine">Auf dem Server liegt keine App zum Verteilen.</string>
+    <string name="einstellungen_nach_update_sehen">Nach Aktualisierungen sehen</string>
     <string name="einstellungen_nachschlagen">Produktdaten nachschlagen</string>
     <string name="einstellungen_nachschlagen_hinweis">Bei einer Handelsnummer (EAN) fragt der Server einen Nachschlagedienst nach dem Produktnamen. Die Nummer verlässt dabei dein Netz.</string>
     <string name="nfc_tag_belegt">Dieser Tag gehört schon zu „%1$s“ – er wurde nicht beschrieben.</string>

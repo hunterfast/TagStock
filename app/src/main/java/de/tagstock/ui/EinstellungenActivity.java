@@ -4,6 +4,7 @@ import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
 import android.view.MenuItem;
+import android.view.View;
 import android.widget.Toast;
 
 import androidx.activity.result.ActivityResultLauncher;
@@ -14,12 +15,16 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
+import org.json.JSONObject;
+
+import de.tagstock.BuildConfig;
 import de.tagstock.R;
 import de.tagstock.data.Bestand;
 import de.tagstock.data.Repository;
 import de.tagstock.databinding.ActivityEinstellungenBinding;
 import de.tagstock.util.Einstellungen;
 import de.tagstock.util.Hintergrund;
+import de.tagstock.util.ServerClient;
 import de.tagstock.util.Sicherung;
 
 /** Design, Name fuer das Protokoll, Kategorien und Sicherung. */
@@ -81,6 +86,95 @@ public class EinstellungenActivity extends AppCompatActivity {
                 csvExport.launch(Sicherung.dateiname("csv")));
         binding.buttonImport.setOnClickListener(v ->
                 importAuswahl.launch(new String[]{"application/json", "text/plain", "*/*"}));
+
+        binding.textVersion.setText(getString(R.string.einstellungen_app_version,
+                BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE));
+        binding.buttonNachUpdateSehen.setOnClickListener(v -> nachUpdateSehen(true));
+        nachUpdateSehen(false);
+    }
+
+    // ------------------------------------------------------------ Aktualisierung
+
+    /**
+     * Fragt den Server, ob dort eine neuere App liegt und ob er selbst noch
+     * aktuell ist. Ohne Server bleibt der Abschnitt still.
+     */
+    private void nachUpdateSehen(boolean melden) {
+        String url = Einstellungen.serverUrl(this);
+        String token = Einstellungen.token(this);
+        if (url == null || token == null) {
+            if (melden) {
+                Toast.makeText(this, R.string.server_nicht_eingerichtet,
+                        Toast.LENGTH_SHORT).show();
+            }
+            return;
+        }
+        binding.buttonNachUpdateSehen.setEnabled(false);
+        Hintergrund.starte(() -> {
+            ServerClient client = new ServerClient(url, token);
+            JSONObject[] antworten = new JSONObject[2];
+            antworten[0] = client.appAuskunft();
+            try {
+                antworten[1] = client.aktualisierung();
+            } catch (Exception ohneAntwort) {
+                // Aeltere Server kennen die Auskunft noch nicht - kein Grund zur Sorge.
+                antworten[1] = null;
+            }
+            return antworten;
+        }, antworten -> {
+            binding.buttonNachUpdateSehen.setEnabled(true);
+            appstandZeigen(antworten[0], new ServerClient(url, token).appAdresse(), melden);
+            serverstandZeigen(antworten[1]);
+        }, fehler -> {
+            binding.buttonNachUpdateSehen.setEnabled(true);
+            if (melden) {
+                String meldung = fehler.getMessage();
+                Toast.makeText(this, meldung == null
+                                ? getString(R.string.server_nicht_erreichbar) : meldung,
+                        Toast.LENGTH_LONG).show();
+            }
+        });
+    }
+
+    private void appstandZeigen(JSONObject app, String adresse, boolean melden) {
+        boolean neuer = app != null && app.optBoolean("verfuegbar")
+                && app.optInt("versionCode") > BuildConfig.VERSION_CODE;
+        binding.buttonAppLaden.setVisibility(neuer ? View.VISIBLE : View.GONE);
+        if (neuer) {
+            String name = app.optString("versionName", String.valueOf(app.optInt("versionCode")));
+            binding.buttonAppLaden.setText(getString(R.string.einstellungen_app_neu, name));
+            binding.buttonAppLaden.setOnClickListener(v ->
+                    startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(adresse))));
+            return;
+        }
+        if (!melden) {
+            return;
+        }
+        Toast.makeText(this, app != null && app.optBoolean("verfuegbar")
+                        ? R.string.einstellungen_app_aktuell : R.string.einstellungen_app_keine,
+                Toast.LENGTH_SHORT).show();
+    }
+
+    private void serverstandZeigen(@Nullable JSONObject stand) {
+        if (stand == null) {
+            binding.textVersionServer.setVisibility(View.GONE);
+            return;
+        }
+        String version = stand.optString("version", "");
+        String gebaut = stand.optString("gebautAm", "");
+        StringBuilder text = new StringBuilder();
+        if (!version.isEmpty()) {
+            text.append(getString(R.string.einstellungen_server_version, version,
+                    gebaut.length() >= 10 ? gebaut.substring(0, 10) : gebaut));
+        }
+        if (stand.optBoolean("aktualisierungVerfuegbar")) {
+            if (text.length() > 0) {
+                text.append('\n');
+            }
+            text.append(getString(R.string.einstellungen_server_neuer));
+        }
+        binding.textVersionServer.setVisibility(text.length() == 0 ? View.GONE : View.VISIBLE);
+        binding.textVersionServer.setText(text.toString());
     }
 
     private void designWaehlen(String design) {

@@ -31,6 +31,8 @@ import java.util.UUID;
 @SpringBootTest(properties = {
         "spring.datasource.url=jdbc:sqlite:build/tmp/api-test.db",
         "tagstock.bilder-ordner=build/tmp/api-test-bilder",
+        "tagstock.app-ordner=build/tmp/api-test-app",
+        "tagstock.update-pruefen=false",
         "tagstock.registrierungs-code="})
 @AutoConfigureMockMvc
 class ApiTest {
@@ -487,5 +489,48 @@ class ApiTest {
 
         JsonNode status = senden(get("/api/v1/status"), 200);
         assertEquals(false, status.get("gtinDienst").asBoolean());
+    }
+
+    @Test
+    void serverNenntSeinenStandUndKenntKeineNeuereFassung() throws Exception {
+        JsonNode status = senden(get("/api/v1/status"), 200);
+        assertTrue(status.get("version").asText().length() > 0);
+        assertNotNull(status.get("gebautAm"));
+
+        String token = neuesKonto(email());
+        senden(get("/api/v1/aktualisierung"), 401);
+        JsonNode stand = senden(mitToken(get("/api/v1/aktualisierung"), token), 200);
+        // In den Tests ist die Pruefung aus - dann wird auch nichts gemeldet.
+        assertEquals(false, stand.get("geprueft").asBoolean());
+        assertEquals(false, stand.get("aktualisierungVerfuegbar").asBoolean());
+    }
+
+    @Test
+    void appWirdVomServerVerteiltSobaldSieDaLiegt() throws Exception {
+        File ordner = new File("build/tmp/api-test-app");
+        //noinspection ResultOfMethodCallIgnored
+        ordner.mkdirs();
+        File apk = new File(ordner, "tagstock.apk");
+        //noinspection ResultOfMethodCallIgnored
+        apk.delete();
+
+        JsonNode ohne = senden(get("/api/v1/app"), 200);
+        assertEquals(false, ohne.get("verfuegbar").asBoolean());
+        senden(get("/api/v1/app/tagstock.apk"), 404);
+
+        java.nio.file.Files.write(apk.toPath(), new byte[]{1, 2, 3, 4});
+        java.nio.file.Files.write(new File(ordner, "app.json").toPath(),
+                "{\"versionCode\": 7, \"versionName\": \"2.1\"}"
+                        .getBytes(StandardCharsets.UTF_8));
+
+        JsonNode mit = senden(get("/api/v1/app"), 200);
+        assertTrue(mit.get("verfuegbar").asBoolean());
+        assertEquals(7, mit.get("versionCode").asInt());
+        assertEquals("2.1", mit.get("versionName").asText());
+
+        MvcResult datei = mockMvc.perform(get("/api/v1/app/tagstock.apk")).andReturn();
+        assertEquals(200, datei.getResponse().getStatus());
+        assertArrayEquals(new byte[]{1, 2, 3, 4},
+                datei.getResponse().getContentAsByteArray());
     }
 }

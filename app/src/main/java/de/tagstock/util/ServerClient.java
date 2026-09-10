@@ -169,6 +169,21 @@ public class ServerClient {
         hole("DELETE", "/teams/" + teamId + "/kategorien/" + kategorieId, null);
     }
 
+    /** Welche App liegt auf dem Server bereit? */
+    public JSONObject appAuskunft() throws IOException, JSONException {
+        return objekt(hole("GET", "/app", null));
+    }
+
+    /** Laeuft auf dem Server der neueste Stand? */
+    public JSONObject aktualisierung() throws IOException, JSONException {
+        return objekt(hole("POST", "/aktualisierung/pruefen", new JSONObject()));
+    }
+
+    /** Adresse, unter der die App-Datei liegt - zum Oeffnen im Browser. */
+    public String appAdresse() {
+        return wurzel + "/api/v1/app/tagstock.apk";
+    }
+
     /** Produktdaten zu einer Handelsnummer; der Server haelt einen Zwischenspeicher. */
     public JSONObject gtin(String nummer) throws IOException, JSONException {
         return objekt(hole("GET", "/gtin/" + nummer, null));

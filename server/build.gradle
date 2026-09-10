@@ -5,7 +5,7 @@ plugins {
 }
 
 group = 'de.tagstock'
-version = '1.0.0'
+version = '2.0.0'
 
 java {
     // Bytecode fuer Java 17; gebaut wird mit dem vorhandenen JDK (17 oder neuer).
@@ -15,6 +15,12 @@ java {
 
 repositories {
     mavenCentral()
+}
+
+// Version und Bauzeitpunkt landen im Jar; der Server sagt damit, welcher Stand
+// laeuft, und erkennt, ob es inzwischen einen neueren gibt.
+springBoot {
+    buildInfo()
 }
 
 // Quelltext und Ausgabe sind UTF-8; sonst verrutschen Umlaute je nach System.

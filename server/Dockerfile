@@ -10,7 +10,10 @@ RUN ./gradlew --no-daemon bootJar
 FROM eclipse-temurin:21-jre
 LABEL org.opencontainers.image.title="TagStock-Server" \
       org.opencontainers.image.description="Bestand, Teams und Leih-Anfragen fuer die TagStock-App" \
-      org.opencontainers.image.source="https://github.com/hunterfast/TagStock"
+      org.opencontainers.image.source="https://github.com/hunterfast/TagStock" \
+      org.opencontainers.image.url="https://github.com/hunterfast/TagStock" \
+      net.unraid.docker.icon="https://raw.githubusercontent.com/hunterfast/TagStock/claude/android-lager-app-barcode-nfc-qe3kev/server/icon.png" \
+      net.unraid.docker.webui="http://[IP]:[PORT:8080]/"
 
 # Nicht als root laufen lassen. 99:100 ist auf Unraid "nobody:users", damit der
 # Server in /mnt/user/appdata schreiben darf. Ist die Kennung im Basis-Abbild

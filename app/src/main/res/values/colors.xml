@@ -4,6 +4,10 @@
     <color name="brand_primary">#1A6EE6</color>
     <color name="brand_hell">#478BEB</color>
 
+    <!-- Der Launcher schneidet das Symbol je nach Geraet rund oder eckig zu;
+         darunter liegt diese Flaeche. Weiss wie im Logo. -->
+    <color name="ic_launcher_hintergrund">#FFFFFF</color>
+
     <!-- Status -->
     <color name="status_vorhanden">#059669</color>
     <color name="status_fehlt">#EF4444</color>
