@@ -299,6 +299,10 @@ Bricht der Bau ab, bleibt der laufende Container unangetastet – gewechselt wir
 erst, wenn das neue Abbild fertig ist. Die Sicherung landet unter
 `/mnt/user/appdata/tagstock/sicherungen/`.
 
+Hast du die erste Fassung ohne `git clone` installiert (Archiv im Browser
+geladen und entpackt), findet das Skript keinen Git-Ordner. Der Weg zurück auf
+die Schiene steht in [../UPDATE.md](../UPDATE.md#wenn-du-die-erste-fassung-von-hand-installiert-hast).
+
 Von Hand geht es genauso:
 
 ```bash

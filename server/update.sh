@@ -12,10 +12,42 @@ DATEN=${TAGSTOCK_DATEN:-/mnt/user/appdata/tagstock}
 NAME=${TAGSTOCK_CONTAINER:-tagstock-server}
 ABBILD=${TAGSTOCK_ABBILD:-tagstock-server}
 PORT=${TAGSTOCK_PORT:-8080}
+ZWEIG=${TAGSTOCK_ZWEIG:-claude/android-lager-app-barcode-nfc-qe3kev}
+PROJEKT=${TAGSTOCK_PROJEKT:-hunterfast/TagStock}
 
 echo "== Neuen Stand holen"
 cd "$QUELLE"
-git pull --ff-only
+
+if [ -d .git ]; then
+    git pull --ff-only
+elif [ -n "$TAGSTOCK_GITHUB_TOKEN" ]; then
+    # Von Hand ausgepackt statt geklont: dann holen wir den Stand als Archiv.
+    # Das Projekt ist nicht oeffentlich, deshalb mit Zugangsschluessel.
+    echo "   Kein Git-Ordner - Archiv wird geladen"
+    ARCHIV=$(mktemp -d)
+    wget -q --header="Authorization: Bearer $TAGSTOCK_GITHUB_TOKEN" \
+        -O "$ARCHIV/quelle.tar.gz" \
+        "https://api.github.com/repos/$PROJEKT/tarball/$ZWEIG"
+    tar xzf "$ARCHIV/quelle.tar.gz" -C "$ARCHIV"
+    NEU=$(find "$ARCHIV" -maxdepth 1 -type d -name '*-*' | head -1)
+    [ -d "$NEU/server" ] || { echo "   Archiv sieht nicht wie das Projekt aus" >&2; exit 1; }
+    # Nur den Inhalt ersetzen; der Ordner selbst bleibt, damit Pfade stimmen.
+    rm -rf "$QUELLE"/* 
+    cp -a "$NEU"/. "$QUELLE"/
+    rm -rf "$ARCHIV"
+else
+    cat >&2 <<'HINWEIS'
+   Hier liegt kein Git-Ordner, und TAGSTOCK_GITHUB_TOKEN ist nicht gesetzt.
+   Zwei Wege:
+     a) Einmalig einen Klon anlegen (danach laeuft update.sh von allein):
+          cd /mnt/user/appdata
+          mv tagstock-quelle tagstock-quelle-alt
+          git clone -b <zweig> https://<token>@github.com/hunterfast/TagStock.git tagstock-quelle
+     b) Oder das Token setzen und dieses Skript erneut starten:
+          TAGSTOCK_GITHUB_TOKEN=github_pat_... sh .../server/update.sh
+HINWEIS
+    exit 1
+fi
 
 echo "== Daten sichern"
 mkdir -p "$DATEN/sicherungen"

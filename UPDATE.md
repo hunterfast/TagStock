@@ -58,6 +58,74 @@ docker build -t tagstock-server server
 docker restart tagstock-server
 ```
 
+### Wenn du die erste Fassung von Hand installiert hast
+
+Also ohne `git clone` – etwa weil du das Archiv im Browser geladen und
+entpackt hast. Dann findet `update.sh` keinen Git-Ordner. Erst nachsehen, was
+vorliegt:
+
+```bash
+ls -d /mnt/user/appdata/tagstock-quelle/.git 2>/dev/null && echo "Klon" || echo "nur Dateien"
+```
+
+**Fall „Klon":** Nichts weiter zu tun, `sh .../server/update.sh` läuft.
+
+**Fall „nur Dateien"** – zwei Wege, beide brauchen einen Zugangsschlüssel, weil
+das Projekt nicht öffentlich ist (dasselbe Token wie für die App-Verteilung,
+siehe [App aktualisieren](#app-aktualisieren)):
+
+*a) Einmal einen Klon anlegen – danach läuft alles wie beschrieben:*
+
+```bash
+cd /mnt/user/appdata
+mv tagstock-quelle tagstock-quelle-alt
+git clone -b claude/android-lager-app-barcode-nfc-qe3kev \
+    https://<token>@github.com/hunterfast/TagStock.git tagstock-quelle
+sh tagstock-quelle/server/update.sh
+```
+
+Läuft das durch, kann `tagstock-quelle-alt` weg. **Deine Daten sind davon nicht
+betroffen** – die liegen in `/mnt/user/appdata/tagstock`, nicht im Quellordner.
+
+*b) Ohne Klon bleiben:* Das Skript holt den Stand dann als Archiv, wenn du ihm
+das Token mitgibst:
+
+```bash
+TAGSTOCK_GITHUB_TOKEN=github_pat_... sh /mnt/user/appdata/tagstock-quelle/server/update.sh
+```
+
+Es ersetzt den Inhalt des Quellordners durch den frischen Stand und macht
+danach normal weiter. Eigene Änderungen im Quellordner gehen dabei verloren –
+im Datenordner passiert nichts.
+
+*c) Ganz ohne Token:* Archiv im Browser laden
+(`github.com/hunterfast/TagStock` → Zweig wählen → *Code → Download ZIP*), auf
+den Server kopieren, den alten Quellordner ersetzen und dann:
+
+```bash
+docker build -t tagstock-server /mnt/user/appdata/tagstock-quelle/server
+docker restart tagstock-server
+```
+
+### Heißt dein Container anders?
+
+Das Skript nimmt die Namen aus der Anleitung an. Weichen sie ab, gib sie mit:
+
+```bash
+TAGSTOCK_CONTAINER=mein-tagstock \
+TAGSTOCK_ABBILD=mein-abbild \
+TAGSTOCK_QUELLE=/mnt/user/appdata/quelle \
+TAGSTOCK_DATEN=/mnt/user/appdata/daten \
+TAGSTOCK_PORT=8081 \
+sh /mnt/user/appdata/quelle/server/update.sh
+```
+
+Nachsehen, wie sie tatsächlich heißen:
+
+```bash
+docker ps --format '{{.Names}}\t{{.Image}}\t{{.Ports}}' | grep -i tagstock
+```
+
 Mit dem Compose-Plugin stattdessen:
 
 ```bash
