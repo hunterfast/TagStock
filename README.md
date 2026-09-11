@@ -114,7 +114,10 @@ Schritt für Unraid: [`server/INSTALL-UNRAID.md`](server/INSTALL-UNRAID.md).
 
 Ausführlich in [UPDATE.md](UPDATE.md). Kurz:
 
-- **Server:** `sh server/update.sh` auf dem Host – holt den neuen Stand, sichert
+- **Server:** Am einfachsten in der Oberfläche unter *System* – ein Knopf
+  sichert die Datenbank, lädt die neue Fassung und startet neu; startet sie
+  nicht, nimmt der Server wieder die vorherige. Sonst `sh server/update.sh`
+  auf dem Host – holt den neuen Stand, sichert
   Datenbank und Bilder, baut das Abbild und startet den Container neu; erst wenn
   der Bau durchläuft, wird gewechselt. Eine bestehende Datenbank läuft weiter,
   fehlende Spalten ergänzt der Server beim Start selbst.

@@ -43,6 +43,15 @@ tagstock:
   app-quelle: ${TAGSTOCK_APP_QUELLE:}
   # Lesezugriff auf das Projekt. Ohne ihn holt der Server nichts von selbst.
   github-token: ${TAGSTOCK_GITHUB_TOKEN:}
+  # Hier legt der Server seine eigene Fassung ab, wenn er sich aktualisiert.
+  # Beim Start wird sie der aus dem Abbild vorgezogen (siehe start.sh).
+  server-ordner: ${TAGSTOCK_SERVER_ORDNER:/data/server}
+  # Darf sich der Server selbst aktualisieren? Er tut es nie ungefragt - das
+  # hier erlaubt nur den Knopf in der Oberflaeche.
+  selbst-aktualisieren: ${TAGSTOCK_SELBST_AKTUALISIEREN:true}
+  # Woher die Serverfassungen kommen; leer heisst: die Veroeffentlichungen
+  # dieses Projekts auf GitHub.
+  server-quelle: ${TAGSTOCK_SERVER_QUELLE:}
   # Sicherungen der Datenbank vor jedem Wechsel der App-Fassung.
   sicherungen-ordner: ${TAGSTOCK_SICHERUNGEN:/data/sicherungen}
   # Token laufen nach dieser Zeit ab (Tage).

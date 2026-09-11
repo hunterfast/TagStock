@@ -22,20 +22,25 @@ RUN useradd --system --uid 99 --gid 100 --create-home tagstock \
     || useradd --system --create-home tagstock
 WORKDIR /app
 COPY --from=bau /bau/build/libs/tagstock-server.jar app.jar
+# Der Start entscheidet, welche Fassung laeuft: die aus dem Abbild oder eine
+# neuere, die der Server sich selbst ins Volume gelegt hat.
+COPY start.sh /app/start.sh
 
 # Die Datenbank liegt im Volume, damit sie Updates ueberlebt.
 ENV TAGSTOCK_DB=/data/tagstock.db \
     TAGSTOCK_PORT=8080 \
+    TAGSTOCK_SERVER_ORDNER=/data/server \
     JAVA_OPTS=-Xmx256m
 VOLUME ["/data"]
 EXPOSE 8080
 
 # Gruppe ueber id, weil der Benutzer je nach Basis-Abbild in "users" landet
 # oder eine eigene Gruppe bekommt.
-RUN mkdir -p /data && chown -R "tagstock:$(id -gn tagstock)" /data /app
+RUN mkdir -p /data/server && chmod +x /app/start.sh \
+    && chown -R "tagstock:$(id -gn tagstock)" /data /app
 USER tagstock
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
     CMD wget -q -O- "http://127.0.0.1:${TAGSTOCK_PORT}/api/v1/status" || exit 1
 
-ENTRYPOINT ["sh", "-c", "exec java $JAVA_OPTS -jar /app/app.jar"]
+ENTRYPOINT ["/app/start.sh"]

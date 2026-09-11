@@ -19,7 +19,36 @@ App und neuer Server zusammen und umgekehrt.
 
 ## Server aktualisieren
 
-### Der kurze Weg
+### Der bequeme Weg: der Server macht es selbst
+
+Ab Fassung 2.1.0 braucht es dafür weder Terminal noch Neubau:
+
+1. `http://<server-ip>:8080/` öffnen, anmelden, Reiter **System**.
+2. **Nach neuer Fassung sehen**.
+3. Liegt etwas vor, erscheint **Auf … aktualisieren und neu starten**.
+
+Was dann passiert: Der Server sichert die Datenbank, lädt die neue Fassung ins
+Volume, beendet sich – Docker startet den Container neu, und der nimmt die neue
+Fassung. Nach ein paar Sekunden meldet sich die Oberfläche mit der neuen
+Versionsnummer zurück. Die Fassung davor bleibt liegen; ein zweiter Knopf geht
+zurück.
+
+Zwei Voraussetzungen:
+
+- Der Container steht auf **unless-stopped** (so legt die Anleitung ihn an).
+  Steht er auf „no", bleibt er nach dem Beenden aus und muss von Hand gestartet
+  werden.
+- Ein [Zugangsschlüssel](#zugangsschlüssel-anlegen) ist hinterlegt – ohne ihn
+  kommt der Server nicht an die Veröffentlichungen.
+
+Startet eine nachgeladene Fassung dreimal hintereinander nicht, legt der Start
+sie beiseite und nimmt wieder die aus dem Abbild. Kaputtmachen lässt sich der
+Server damit also nicht.
+
+**Beim ersten Mal ist der Weg unten nötig**, denn eine Fassung ohne diese
+Fähigkeit kann sie nicht benutzen. Danach reicht der Knopf.
+
+### Der Weg über den Host
 
 Im Unraid-Terminal (Weboberfläche, `>_`-Symbol oben rechts) oder per SSH:
 
@@ -495,6 +524,7 @@ Liste in `Schemapflege`; sonst fehlt sie allen, die schon eine Datenbank haben.
 |---|---|
 | Handy zeigt kein Update, obwohl es eins gibt | Hat der Server es schon? `curl http://<server-ip>:8080/api/v1/app`. Steht dort `holtSelbst: false`, fehlt `TAGSTOCK_GITHUB_TOKEN`. Wurde die `versionCode` überhaupt hochgezählt? |
 | „App nicht installiert" beim Installieren | Die Nummer ist gleich oder kleiner als die installierte, oder die Datei stammt aus einer anderen Signatur (Debug ≠ Release). Für den Rückweg: erst deinstallieren. |
+| Der Container ist nach „Aktualisieren und neu starten" weg | Seine Neustart-Regel steht auf „no". Einmal von Hand starten (`docker start tagstock-server`), dann im Unraid-Formular auf *Unless Stopped* stellen. |
 | Nach dem Update läuft weiter die alte Version | Der Container wurde nur neu gestartet statt neu angelegt. Auf Unraid: Docker-Reiter → Container anklicken → *Edit* → unten **Apply**. Oder `sh server/update.sh` erneut laufen lassen, das erledigt es jetzt selbst. |
 | Nach dem Serverupdate meldet die App „Server nicht erreichbar" | `docker logs tagstock-server --tail 80`. Meist Rechte am Volume: `chown -R 99:100 /mnt/user/appdata/tagstock` |
 | `update.sh` bricht bei `git pull` ab | Auf dem Host wurde etwas verändert. `git status` zeigt was; `git checkout -- <datei>` verwirft es. |

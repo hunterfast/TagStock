@@ -669,17 +669,76 @@
     // --------------------------------------------------------------- System
 
     function systemLaden() {
-        fetch('/api/v1/status').then(function (antwort) {
-            return antwort.json();
-        }).then(function (status) {
-            $('serverAngaben').innerHTML =
-                zeile('Version', status.version || '–')
-                + zeile('Gebaut am', status.gebautAm
-                    ? new Date(status.gebautAm).toLocaleString('de-DE') : '–')
-                + zeile('Schnittstelle', 'v' + status.apiVersion)
-                + zeile('Nachschlagen', status.gtinDienst ? 'eingeschaltet' : 'aus');
-        });
+        serverLaden(false);
         appLaden();
+    }
+
+    /** Stand des Servers; mit nachsehen=true fragt er bei der Quelle nach. */
+    function serverLaden(nachsehen) {
+        var aufruf = nachsehen
+            ? api('/aktualisierung/pruefen', {method: 'POST'})
+            : api('/aktualisierung');
+        aufruf.then(function (stand) {
+            $('serverAngaben').innerHTML =
+                zeile('Version', text(stand.version || '–'))
+                + zeile('Gebaut am', stand.gebautAm
+                    ? new Date(stand.gebautAm).toLocaleString('de-DE') : '–')
+                + zeile('Laeuft aus', stand.ausVolume
+                    ? 'nachgeladener Fassung' : 'dem Abbild')
+                + (stand.neuesteVersion
+                    ? zeile('Verfügbar', text(stand.neuesteVersion)) : '');
+
+            var neuer = stand.neuerVorhanden === true;
+            $('knopfServerEinspielen').hidden = !neuer || !stand.selbstMoeglich;
+            if (neuer) {
+                $('knopfServerEinspielen').textContent =
+                    'Auf ' + stand.neuesteVersion + ' aktualisieren und neu starten';
+            }
+            $('knopfServerZurueck').hidden = !stand.rueckwegMoeglich;
+            $('serverHinweis').textContent = stand.hinweis || (nachsehen && !neuer
+                ? 'Der Server ist auf dem neuesten Stand.' : '');
+        }).catch(function (fehler) {
+            $('serverHinweis').textContent = fehler.message;
+        });
+    }
+
+    /** Nach dem Neustart warten, bis der Server wieder antwortet. */
+    function aufNeustartWarten(versuche) {
+        if (versuche > 45) {
+            $('serverHinweis').textContent =
+                'Der Server meldet sich nicht zurück – bitte den Container ansehen.';
+            return;
+        }
+        setTimeout(function () {
+            fetch('/api/v1/status').then(function (antwort) {
+                return antwort.ok ? antwort.json() : Promise.reject(new Error('noch nicht'));
+            }).then(function (status) {
+                $('serverHinweis').textContent = 'Wieder da – Version ' + status.version;
+                serverLaden(false);
+            }).catch(function () {
+                aufNeustartWarten(versuche + 1);
+            });
+        }, 2000);
+    }
+
+    function serverWechseln(pfad, frage) {
+        if (!confirm(frage)) {
+            return;
+        }
+        $('knopfServerEinspielen').disabled = true;
+        $('knopfServerZurueck').disabled = true;
+        $('serverHinweis').textContent = 'Wird geholt …';
+        api(pfad, {method: 'POST'}).then(function (antwort) {
+            $('serverHinweis').textContent = antwort.hinweis || 'Neustart läuft …';
+            if (antwort.gewechselt) {
+                aufNeustartWarten(0);
+            }
+        }).catch(function (fehler) {
+            $('serverHinweis').textContent = fehler.message;
+        }).finally(function () {
+            $('knopfServerEinspielen').disabled = false;
+            $('knopfServerZurueck').disabled = false;
+        });
     }
 
     function appLaden() {
@@ -805,6 +864,22 @@
             });
         };
         $('knopfEinladung').onclick = einladung;
+        $('knopfServerPruefen').onclick = function () {
+            $('serverHinweis').textContent = 'Wird nachgesehen …';
+            serverLaden(true);
+        };
+        $('knopfServerEinspielen').onclick = function () {
+            serverWechseln('/aktualisierung/einspielen',
+                'Neue Serverfassung holen und neu starten?\n\n'
+                + 'Vorher wird die Datenbank gesichert. Der Server ist ein paar '
+                + 'Sekunden nicht erreichbar.\n\n'
+                + 'Wichtig: Der Container muss auf „unless-stopped" stehen, sonst '
+                + 'bleibt er nach dem Beenden aus.');
+        };
+        $('knopfServerZurueck').onclick = function () {
+            serverWechseln('/aktualisierung/zurueck',
+                'Zurück auf die vorherige Serverfassung? Der Server startet dafür neu.');
+        };
         $('knopfAppPruefen').onclick = function () {
             $('knopfAppPruefen').disabled = true;
             api('/app/pruefen', {method: 'POST'}).then(function () {

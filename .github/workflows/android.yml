@@ -148,3 +148,32 @@ jobs:
           name: tagstock-server-jar
           path: server/build/libs/tagstock-server.jar
           if-no-files-found: error
+
+      # Aus dieser Veroeffentlichung holt sich der Server seine eigene naechste
+      # Fassung - er legt das Jar ins Volume und startet neu, ohne dass jemand
+      # auf den Host muss.
+      - name: Veroeffentlichung mit Server-Jar
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION=$(grep -m1 "^version" server/build.gradle | sed "s/[^']*'\([^']*\)'.*/\1/")
+          MARKE="server-v${VERSION}"
+          NOTIZ="changelog/server/$(date +%Y)/${VERSION}.md"
+          if [ ! -f "$NOTIZ" ]; then
+            NOTIZ=$(ls changelog/server/*/"${VERSION}".md 2>/dev/null | head -1)
+          fi
+          [ -n "$NOTIZ" ] && [ -f "$NOTIZ" ] || { echo "Kein Changelog fuer Server ${VERSION}"; exit 1; }
+
+          mkdir -p veroeffentlichung
+          cp server/build/libs/tagstock-server.jar veroeffentlichung/
+          jq -n --arg version "$VERSION" --rawfile hinweis "$NOTIZ" \
+            '{version: $version, hinweis: $hinweis}' > veroeffentlichung/server.json
+
+          if gh release view "$MARKE" >/dev/null 2>&1; then
+            gh release upload "$MARKE" veroeffentlichung/tagstock-server.jar \
+              veroeffentlichung/server.json --clobber
+          else
+            gh release create "$MARKE" veroeffentlichung/tagstock-server.jar \
+              veroeffentlichung/server.json \
+              --title "TagStock-Server ${VERSION}" --notes-file "$NOTIZ" --target "${GITHUB_SHA}"
+          fi

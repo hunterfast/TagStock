@@ -89,7 +89,10 @@ mit TLS oder ein VPN.
 | `TAGSTOCK_APP_HOLEN` | Neueste App selbst herunterladen | `true` |
 | `TAGSTOCK_APP_QUELLE` | Woher; leer heißt: die Veröffentlichungen dieses Projekts | leer |
 | `TAGSTOCK_GITHUB_TOKEN` | Lesezugriff aufs Projekt – ohne ihn holt der Server nichts | leer |
-| `TAGSTOCK_SICHERUNGEN` | Sicherungen vor jedem Wechsel der App-Fassung | `/data/sicherungen` |
+| `TAGSTOCK_SICHERUNGEN` | Sicherungen vor jedem Wechsel der Fassung | `/data/sicherungen` |
+| `TAGSTOCK_SERVER_ORDNER` | Hier liegt eine selbst nachgeladene Serverfassung | `/data/server` |
+| `TAGSTOCK_SELBST_AKTUALISIEREN` | Darf der Server sich selbst aktualisieren? | `true` |
+| `TAGSTOCK_SERVER_QUELLE` | Woher die Serverfassungen kommen; leer heißt: dieses Projekt | leer |
 
 Das **erste Konto** darf sich immer registrieren – danach greift der Code, falls
 gesetzt. Ohne Code kann jeder, der den Server erreicht, ein Konto anlegen; setze
@@ -97,8 +100,14 @@ ihn also, sobald der Server aus dem Heimnetz heraus erreichbar ist.
 
 ## Aktualisieren
 
+**Am einfachsten in der Oberfläche:** *System → Nach neuer Fassung sehen →
+Aktualisieren und neu starten*. Der Server sichert die Datenbank, lädt die neue
+Fassung ins Volume und startet neu; der Start nimmt eine nachgeladene Fassung
+der aus dem Abbild vor. Startet sie dreimal nicht, wird sie beiseitegelegt.
+Voraussetzung: Neustart-Regel `unless-stopped` und ein Zugangsschlüssel.
+
 Ausführlich – mit Rückweg, Sicherungen und dem Weg für die App – steht das in
-[../UPDATE.md](../UPDATE.md). Der kurze Weg:
+[../UPDATE.md](../UPDATE.md). Der Weg über den Host:
 
 ```bash
 sh /mnt/user/appdata/tagstock-quelle/server/update.sh
@@ -185,6 +194,8 @@ Alle Antworten sind JSON, die Anmeldung läuft über
 | `GET` | `/api/v1/aktualisierung` | Läuft hier der neueste Stand? |
 | `GET` | `/api/v1/app` | Welche App liegt bereit – aktuell und vorher? |
 | `POST` | `/api/v1/app/pruefen` | Sofort bei der Quelle nachsehen |
+| `POST` | `/api/v1/aktualisierung/einspielen` | Neue Serverfassung holen und neu starten |
+| `POST` | `/api/v1/aktualisierung/zurueck` | Zurück auf die vorherige Serverfassung |
 | `GET` | `/api/v1/app/aktuell/tagstock.apk` | Die App herunterladen, ohne Anmeldung |
 | `GET` | `/api/v1/app/vorher/tagstock.apk` | Die vorherige Fassung, für den Rückweg |
 | `GET/POST` | `/api/v1/teams/{id}/sync` | Abgleich mit der App |
