@@ -6,6 +6,8 @@ public class Benutzer {
     public String id;
     public String email;
     public String name;
+    /** Betreut den ganzen Server: sieht jedes Team und darf dort alles. */
+    public boolean verwalter;
     public long erstelltAm;
 
     /** BCrypt-Hash; wird von der API ausgeblendet. */

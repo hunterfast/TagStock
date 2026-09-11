@@ -27,6 +27,7 @@ import de.tagstock.databinding.ItemKategorieBinding;
 import de.tagstock.util.Dialogs;
 import de.tagstock.util.Einstellungen;
 import de.tagstock.util.Hintergrund;
+import de.tagstock.util.Randabstand;
 import de.tagstock.util.ServerClient;
 
 /**
@@ -49,6 +50,7 @@ public class KategorienActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         binding = ActivityKategorienBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
+        Randabstand.anwenden(binding.getRoot());
         repository = Repository.getInstance(this);
         darfBearbeiten = Einstellungen.darfBearbeiten(this);
         amServer = Einstellungen.serverAktiv(this);

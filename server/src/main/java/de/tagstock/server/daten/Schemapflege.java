@@ -33,6 +33,7 @@ public class Schemapflege implements ApplicationRunner {
     static {
         // Beispiel fuer kuenftige Erweiterungen - hier kommt jede neue Spalte hin:
         // spalten("artikel").put("gewicht", "REAL");
+        spalten("benutzer").put("verwalter", "INTEGER NOT NULL DEFAULT 0");
         spalten("artikel").put("bild_url", "TEXT");
         spalten("kategorien").put("geloescht", "INTEGER NOT NULL DEFAULT 0");
         spalten("anfragen").put("antwort", "TEXT");

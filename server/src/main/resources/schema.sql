@@ -5,6 +5,9 @@ CREATE TABLE IF NOT EXISTS benutzer (
     email       TEXT NOT NULL UNIQUE,
     name        TEXT NOT NULL,
     passwort    TEXT NOT NULL,
+    -- Der Verwalter betreut den ganzen Server: er sieht jedes Lager und darf
+    -- dort alles. Das erste angelegte Konto bekommt dieses Merkmal.
+    verwalter   INTEGER NOT NULL DEFAULT 0,
     erstellt_am INTEGER NOT NULL
 );
 

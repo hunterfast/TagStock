@@ -17,8 +17,8 @@ import java.util.Set;
 import de.tagstock.R;
 import de.tagstock.data.Artikel;
 import de.tagstock.databinding.ItemArtikelBinding;
-import de.tagstock.util.FotoLader;
 import de.tagstock.util.Formatter;
+import de.tagstock.util.FotoLader;
 
 /** Artikelkarte mit Foto, Status, Zusatzzeile und Auswahlmodus. */
 public class ArtikelAdapter extends ListAdapter<Artikel, ArtikelAdapter.ArtikelHolder> {

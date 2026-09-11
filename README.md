@@ -9,8 +9,9 @@ NFC-Erfassung. Kein WebView, keine Webanwendung – reines Android-SDK mit Views
 Room und CameraX.
 
 Dazu gehört ein **optionaler Server** (`server/`) für mehrere Geräte: gemeinsamer
-Bestand, Teams mit Rollen, Leih-Anfragen und die Artikelbilder. Ohne ihn läuft
-die App vollständig allein auf dem Gerät.
+Bestand, Teams mit Rollen, Leih-Anfragen und die Artikelbilder – mit eigener
+**Oberfläche im Browser**, um den Bestand auch ohne Handy zu pflegen. Ohne
+Server läuft die App vollständig allein auf dem Gerät.
 
 | Ich will … | Hier entlang |
 |---|---|
@@ -97,6 +98,14 @@ legst ein Team an oder trittst per Einladungscode einem bei.
   Zusage setzt den Artikel auf verliehen.
 - **Mitglieder**: Admins sehen alle Konten des Teams, ändern Rollen und
   entfernen Konten. Wer selbst gehen will, verlässt das Team an derselben Stelle.
+
+### Oberfläche im Browser
+
+`http://<server-ip>:8080/` zeigt dieselben Daten wie die App: Bestand mit Suche
+und Filtern, Artikel anlegen und bearbeiten, Bilder, Kategorien, Mitglieder,
+Anfragen und der Bereich *System* mit Version und bereitliegenden App-Fassungen.
+Gescannt wird weiterhin mit der App – Kennungen lassen sich im Browser von Hand
+eintragen. Das **erste angelegte Konto betreut den Server** und sieht alle Lager.
 
 Einrichtung des Servers: [`server/README.md`](server/README.md), Schritt für
 Schritt für Unraid: [`server/INSTALL-UNRAID.md`](server/INSTALL-UNRAID.md).

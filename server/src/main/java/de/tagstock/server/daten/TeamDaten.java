@@ -66,6 +66,24 @@ public class TeamDaten {
                 }, benutzerId);
     }
 
+    /**
+     * Alle Teams des Servers - fuer die Betreuung, die jedes Lager sieht.
+     * Dazu jeweils, wie viele Artikel und Mitglieder dranhaengen.
+     */
+    public List<Team> alle() {
+        return jdbc.query("SELECT t.*,"
+                        + " (SELECT COUNT(*) FROM artikel a"
+                        + "   WHERE a.team_id = t.id AND a.geloescht = 0) AS artikel,"
+                        + " (SELECT COUNT(*) FROM mitglieder m WHERE m.team_id = t.id) AS leute"
+                        + " FROM teams t ORDER BY t.name COLLATE NOCASE",
+                (zeile, nummer) -> {
+                    Team team = TEAM_MAPPER.mapRow(zeile, nummer);
+                    team.anzahlArtikel = zeile.getInt("artikel");
+                    team.anzahlMitglieder = zeile.getInt("leute");
+                    return team;
+                });
+    }
+
     public void umbenennen(String teamId, String name, String beschreibung) {
         jdbc.update("UPDATE teams SET name = ?, beschreibung = ? WHERE id = ?",
                 name, beschreibung, teamId);

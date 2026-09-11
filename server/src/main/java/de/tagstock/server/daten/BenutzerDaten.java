@@ -25,17 +25,20 @@ public class BenutzerDaten {
         benutzer.email = zeile.getString("email");
         benutzer.name = zeile.getString("name");
         benutzer.passwort = zeile.getString("passwort");
+        benutzer.verwalter = zeile.getInt("verwalter") == 1;
         benutzer.erstelltAm = zeile.getLong("erstellt_am");
         return benutzer;
     };
 
-    public Benutzer anlegen(String email, String name, String passwortHash) {
+    public Benutzer anlegen(String email, String name, String passwortHash, boolean verwalter) {
         Benutzer benutzer = new Benutzer(UUID.randomUUID().toString(), email, name,
                 System.currentTimeMillis());
         benutzer.passwort = passwortHash;
-        jdbc.update("INSERT INTO benutzer (id, email, name, passwort, erstellt_am)"
-                        + " VALUES (?, ?, ?, ?, ?)",
-                benutzer.id, benutzer.email, benutzer.name, passwortHash, benutzer.erstelltAm);
+        benutzer.verwalter = verwalter;
+        jdbc.update("INSERT INTO benutzer (id, email, name, passwort, verwalter, erstellt_am)"
+                        + " VALUES (?, ?, ?, ?, ?, ?)",
+                benutzer.id, benutzer.email, benutzer.name, passwortHash,
+                verwalter ? 1 : 0, benutzer.erstelltAm);
         return benutzer;
     }
 

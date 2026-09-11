@@ -20,6 +20,7 @@ import de.tagstock.data.Repository;
 import de.tagstock.databinding.ActivityMainBinding;
 import de.tagstock.util.Einstellungen;
 import de.tagstock.util.NfcHelper;
+import de.tagstock.util.Randabstand;
 import de.tagstock.util.ScanResult;
 
 /**
@@ -49,6 +50,7 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         binding = ActivityMainBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
+        Randabstand.anwenden(binding.getRoot());
         repository = Repository.getInstance(this);
 
         setSupportActionBar(binding.toolbar);

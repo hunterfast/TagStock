@@ -3,73 +3,172 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>TagStock-Server</title>
+    <title>TagStock</title>
     <link rel="icon" href="/icon.png">
-    <style>
-        :root { color-scheme: light dark; }
-        body {
-            margin: 0; padding: 32px 16px;
-            font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-            background: #f7f8fa; color: #1f2430;
-            display: flex; flex-direction: column; align-items: center;
-        }
-        img { width: min(320px, 80vw); height: auto; }
-        .karte {
-            background: #fff; border: 1px solid #dde1e8; border-radius: 12px;
-            padding: 20px 24px; margin-top: 24px; width: min(520px, 100%);
-            box-sizing: border-box;
-        }
-        h1 { font-size: 1.1rem; margin: 0 0 12px; }
-        dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; margin: 0; }
-        dt { color: #5a6273; }
-        dd { margin: 0; font-variant-numeric: tabular-nums; }
-        .gut { color: #059669; font-weight: 600; }
-        .schlecht { color: #ef4444; font-weight: 600; }
-        p.hinweis { color: #5a6273; font-size: .9rem; }
-        a { color: #1a6ee6; }
-        @media (prefers-color-scheme: dark) {
-            body { background: #14161a; color: #e7e9ee; }
-            .karte { background: #1c1f26; border-color: #2c313b; }
-            dt, p.hinweis { color: #a2a9b8; }
-        }
-    </style>
+    <link rel="stylesheet" href="/stil.css">
 </head>
 <body>
-<img src="/logo.png" alt="TagStock">
 
-<div class="karte">
-    <h1>Server</h1>
-    <dl>
-        <dt>Zustand</dt><dd id="zustand">wird geprüft …</dd>
-        <dt>Version</dt><dd id="version">–</dd>
-        <dt>Gebaut am</dt><dd id="gebaut">–</dd>
-        <dt>Eingerichtet</dt><dd id="eingerichtet">–</dd>
-    </dl>
-    <p class="hinweis">
-        Diese Adresse trägst du in der App unter <em>Einstellungen → Server</em> ein.
-        Liegt eine App auf dem Server, findest du sie unter
-        <a href="/api/v1/app/tagstock.apk">tagstock.apk</a>.
-    </p>
+<!-- Anmeldung ------------------------------------------------------------- -->
+<section id="anmeldung" hidden>
+    <div class="karte anmeldung">
+        <p style="text-align:center"><img src="/logo.png" alt="TagStock" style="max-width:240px"></p>
+        <div class="felder">
+            <label>E-Mail<input id="anmeldeEmail" type="email" autocomplete="username"></label>
+            <label>Passwort<input id="anmeldePasswort" type="password" autocomplete="current-password"></label>
+        </div>
+        <p><button id="knopfAnmelden" style="width:100%">Anmelden</button></p>
+        <p id="anmeldeFehler" class="leer" hidden></p>
+        <p class="leer" style="padding:0">Dieselben Zugangsdaten wie in der App.</p>
+    </div>
+</section>
+
+<!-- Oberflaeche ----------------------------------------------------------- -->
+<div id="oberflaeche" hidden>
+    <header>
+        <img src="/icon.png" alt="">
+        <strong>TagStock</strong>
+        <select id="teamWahl" title="Lager"></select>
+        <span class="platzhalter"></span>
+        <span id="werBinIch" class="protokoll"></span>
+        <button class="leise" id="knopfAbmelden">Abmelden</button>
+    </header>
+
+    <nav>
+        <button data-bereich="bestand" class="aktiv">Bestand</button>
+        <button data-bereich="kategorien">Kategorien</button>
+        <button data-bereich="mitglieder">Mitglieder</button>
+        <button data-bereich="anfragen">Anfragen</button>
+        <button data-bereich="system">System</button>
+    </nav>
+
+    <main>
+        <!-- Bestand -->
+        <section id="bereichBestand">
+            <div class="werkzeuge">
+                <input id="suche" type="search" placeholder="Suchen – Name, Kennung, Ort, Beschreibung">
+                <select id="filterKategorie"><option value="">Alle Kategorien</option></select>
+                <select id="filterStandort"><option value="">Alle Standorte</option></select>
+                <button id="knopfNeu">Neuer Artikel</button>
+            </div>
+            <div class="zahlen" id="zahlen"></div>
+            <table>
+                <thead>
+                <tr>
+                    <th></th>
+                    <th>Bezeichnung</th>
+                    <th class="optional">Kategorie</th>
+                    <th class="optional">Ort</th>
+                    <th class="optional">Kennung</th>
+                    <th>Status</th>
+                </tr>
+                </thead>
+                <tbody id="bestandsliste"></tbody>
+            </table>
+            <p class="leer" id="bestandLeer" hidden>Keine Artikel gefunden.</p>
+        </section>
+
+        <!-- Kategorien -->
+        <section id="bereichKategorien" hidden>
+            <div class="werkzeuge">
+                <input id="neueKategorie" placeholder="Neue Kategorie">
+                <button id="knopfKategorieAnlegen">Anlegen</button>
+            </div>
+            <ul class="liste" id="kategorienliste"></ul>
+        </section>
+
+        <!-- Mitglieder -->
+        <section id="bereichMitglieder" hidden>
+            <div class="werkzeuge">
+                <select id="einladungRolle">
+                    <option value="mitglied">Mitglied</option>
+                    <option value="lagerist">Lagerist</option>
+                    <option value="admin">Admin</option>
+                </select>
+                <button id="knopfEinladung">Einladungscode erzeugen</button>
+                <span id="einladungCode" class="protokoll"></span>
+            </div>
+            <ul class="liste" id="mitgliederliste"></ul>
+        </section>
+
+        <!-- Anfragen -->
+        <section id="bereichAnfragen" hidden>
+            <ul class="liste" id="anfragenliste"></ul>
+            <p class="leer" id="anfragenLeer" hidden>Keine offenen Anfragen.</p>
+        </section>
+
+        <!-- System -->
+        <section id="bereichSystem" hidden>
+            <div class="karte">
+                <h3>Server</h3>
+                <dl id="serverAngaben"></dl>
+            </div>
+            <div class="karte">
+                <h3>App für die Geräte</h3>
+                <dl id="appAngaben"></dl>
+                <p><button class="leise" id="knopfAppPruefen">Nach neuer App sehen</button></p>
+            </div>
+            <div class="karte" id="karteLager" hidden>
+                <h3>Alle Lager auf diesem Server</h3>
+                <ul class="liste" id="lagerliste"></ul>
+            </div>
+        </section>
+    </main>
 </div>
 
-<script>
-    fetch('/api/v1/status').then(function (antwort) {
-        return antwort.json();
-    }).then(function (status) {
-        var zustand = document.getElementById('zustand');
-        zustand.textContent = status.bereit ? 'läuft' : 'gestört';
-        zustand.className = status.bereit ? 'gut' : 'schlecht';
-        document.getElementById('version').textContent = status.version || '–';
-        document.getElementById('gebaut').textContent = status.gebautAm
-            ? new Date(status.gebautAm).toLocaleString('de-DE') : '–';
-        document.getElementById('eingerichtet').textContent = status.eingerichtet
-            ? 'ja, es gibt mindestens ein Konto'
-            : 'noch kein Konto – das erste darf sich immer anlegen';
-    }).catch(function () {
-        var zustand = document.getElementById('zustand');
-        zustand.textContent = 'nicht erreichbar';
-        zustand.className = 'schlecht';
-    });
-</script>
+<!-- Artikelfenster -------------------------------------------------------- -->
+<dialog id="artikelFenster">
+    <form method="dialog">
+        <div class="kopf"><span id="artikelTitel">Artikel</span></div>
+        <div class="inhalt">
+            <div class="felder">
+                <label class="breit">Bezeichnung<input id="feldName" required></label>
+                <label class="breit">Beschreibung<textarea id="feldBeschreibung" rows="2"></textarea></label>
+                <label>Kategorie<input id="feldKategorie" list="kategorienVorschlag"></label>
+                <label>Kennung (NFC, Barcode)<input id="feldKennung"></label>
+                <label>Standort<input id="feldStandort" list="standorteVorschlag"></label>
+                <label>Lagerort<input id="feldLagerort"></label>
+                <label>Status
+                    <select id="feldStatus">
+                        <option value="vorhanden">Vorhanden</option>
+                        <option value="nicht vorhanden">Nicht vorhanden</option>
+                        <option value="verliehen">Verliehen</option>
+                        <option value="verbraucht">Verbraucht</option>
+                        <option value="ausgelagert">Ausgelagert</option>
+                    </select>
+                </label>
+                <label>Scan-Warnung
+                    <select id="feldWarnung">
+                        <option value="6m">Halbjährlich</option>
+                        <option value="1j">Jährlich</option>
+                        <option value="2j">Alle zwei Jahre</option>
+                        <option value="nie">Nie</option>
+                    </select>
+                </label>
+                <label id="feldVerliehenAnHuelle">Verliehen an<input id="feldVerliehenAn"></label>
+                <label id="feldRueckgabeHuelle">Zurück bis<input id="feldRueckgabe" type="date"></label>
+                <label class="breit">Bild
+                    <span>
+                        <img id="artikelBild" alt="" style="max-width:160px;border-radius:8px;display:none">
+                        <input id="feldBild" type="file" accept="image/jpeg,image/png,image/webp">
+                        <button type="button" class="leise" id="knopfBildWeg" hidden>Bild entfernen</button>
+                    </span>
+                </label>
+            </div>
+            <div id="artikelProtokoll"></div>
+        </div>
+        <div class="fuss">
+            <button type="button" class="gefahr" id="knopfLoeschen">Löschen</button>
+            <span class="platzhalter" style="flex:1"></span>
+            <button type="button" class="leise" id="knopfAbbrechen">Abbrechen</button>
+            <button type="button" id="knopfSpeichern">Speichern</button>
+        </div>
+    </form>
+</dialog>
+
+<datalist id="kategorienVorschlag"></datalist>
+<datalist id="standorteVorschlag"></datalist>
+
+<script src="/oberflaeche.js"></script>
 </body>
 </html>

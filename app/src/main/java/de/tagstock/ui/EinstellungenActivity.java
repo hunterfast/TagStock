@@ -24,9 +24,10 @@ import de.tagstock.R;
 import de.tagstock.data.Bestand;
 import de.tagstock.data.Repository;
 import de.tagstock.databinding.ActivityEinstellungenBinding;
+import de.tagstock.util.Appfassungen;
 import de.tagstock.util.Einstellungen;
 import de.tagstock.util.Hintergrund;
-import de.tagstock.util.Appfassungen;
+import de.tagstock.util.Randabstand;
 import de.tagstock.util.ServerClient;
 import de.tagstock.util.Sicherung;
 
@@ -53,6 +54,7 @@ public class EinstellungenActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         binding = ActivityEinstellungenBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
+        Randabstand.anwenden(binding.getRoot());
         repository = Repository.getInstance(this);
 
         setSupportActionBar(binding.toolbar);

@@ -32,9 +32,23 @@ public class Zugriff {
         Benutzer benutzer = benutzer(anfrage);
         String rolle = teamDaten.rolle(teamId, benutzer.id);
         if (rolle == null) {
+            // Wer den Server betreut, kommt ueberall hinein - sonst koennte er
+            // die Oberflaeche nicht fuer alle Lager anbieten.
+            if (benutzer.verwalter) {
+                return Rollen.ADMIN;
+            }
             throw ApiFehler.verboten("Kein Zugriff auf dieses Team");
         }
         return rolle;
+    }
+
+    /** Wirft, wenn das Konto den Server nicht betreut. */
+    public Benutzer verwalter(HttpServletRequest anfrage) {
+        Benutzer benutzer = benutzer(anfrage);
+        if (!benutzer.verwalter) {
+            throw ApiFehler.verboten("Das darf nur die Betreuung des Servers");
+        }
+        return benutzer;
     }
 
     public String rolleZumBearbeiten(HttpServletRequest anfrage, String teamId) {

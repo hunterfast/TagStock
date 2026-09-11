@@ -37,9 +37,10 @@ import de.tagstock.util.FotoLader;
 import de.tagstock.util.Fotos;
 import de.tagstock.util.Hintergrund;
 import de.tagstock.util.NfcHelper;
-import de.tagstock.util.Serverbilder;
 import de.tagstock.util.PdfErzeuger;
 import de.tagstock.util.QrErzeuger;
+import de.tagstock.util.Randabstand;
+import de.tagstock.util.Serverbilder;
 import de.tagstock.util.Sicherung;
 
 /** Einzelansicht eines Artikels mit Protokoll, Historie und QR-Code. */
@@ -80,6 +81,7 @@ public class ArtikelDetailActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         binding = ActivityArtikelDetailBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
+        Randabstand.anwenden(binding.getRoot());
         repository = Repository.getInstance(this);
 
         artikelId = getIntent().getLongExtra(EXTRA_ID, 0L);

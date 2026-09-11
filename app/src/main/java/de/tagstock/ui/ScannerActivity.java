@@ -22,6 +22,7 @@ import de.tagstock.databinding.ActivityScannerBinding;
 import de.tagstock.util.CodeArt;
 import de.tagstock.util.Dialogs;
 import de.tagstock.util.NfcHelper;
+import de.tagstock.util.Randabstand;
 import de.tagstock.util.ScanResult;
 import de.tagstock.util.ScannerSteuerung;
 
@@ -50,6 +51,8 @@ public class ScannerActivity extends AppCompatActivity implements ScannerSteueru
         super.onCreate(savedInstanceState);
         binding = ActivityScannerBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
+        // Kamerabild randlos, nur die Bedienung haelt Abstand.
+        Randabstand.obenUnten(binding.toolbar, binding.steuerleiste);
 
         scanner = new ScannerSteuerung(this, this, binding.previewView, this);
 

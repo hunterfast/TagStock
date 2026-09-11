@@ -71,7 +71,9 @@ public class AuthController {
         }
         String name = daten.name == null || daten.name.trim().isEmpty()
                 ? email : daten.name.trim();
-        Benutzer benutzer = benutzerDaten.anlegen(email, name, passwoerter.hashen(passwort));
+        // Das erste Konto betreut den Server und sieht damit jedes Lager.
+        Benutzer benutzer = benutzerDaten.anlegen(email, name, passwoerter.hashen(passwort),
+                ersterZugang);
         return antwort(benutzer);
     }
 

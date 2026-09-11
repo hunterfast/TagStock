@@ -10,4 +10,7 @@ public class Team {
     public long erstelltAm;
     /** Rolle des anfragenden Kontos - nur in Antworten gefuellt. */
     public String rolle;
+    /** Nur in der Uebersicht der Betreuung gefuellt. */
+    public Integer anzahlArtikel;
+    public Integer anzahlMitglieder;
 }

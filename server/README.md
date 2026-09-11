@@ -5,7 +5,9 @@ für mehrere Geräte, verwaltet Teams mit Rollen und nimmt Leih-Anfragen entgege
 Läuft als einzelner Docker-Container – gedacht für einen Unraid-Server, geht aber
 auf jedem Docker-Host.
 
-Ein Container, eine SQLite-Datei, keine zusätzliche Datenbank.
+Ein Container, eine SQLite-Datei, keine zusätzliche Datenbank. Dazu eine
+**Oberfläche im Browser** unter `http://<server-ip>:8080/`, mit der sich der
+Bestand auch ohne Handy pflegen lässt.
 
 > **Schritt für Schritt:** Eine ausführliche Anleitung mit allen Klicks, Feldern
 > und Prüfungen steht in [INSTALL-UNRAID.md](INSTALL-UNRAID.md).
@@ -46,6 +48,27 @@ Prüfen, ob er läuft:
 curl http://<server-ip>:8080/api/v1/status
 # {"anwendung":"TagStock-Server","apiVersion":1,"bereit":true,"eingerichtet":false}
 ```
+
+## Oberfläche im Browser
+
+`http://<server-ip>:8080/` – Anmeldung mit denselben Zugangsdaten wie in der
+App, danach bleibt der Browser angemeldet.
+
+- **Bestand:** suchen, nach Status, Kategorie und Standort filtern, Artikel
+  anlegen, bearbeiten, löschen, Bilder ansehen und hochladen, Verlauf lesen.
+- **Kategorien, Mitglieder, Anfragen:** dasselbe wie in der App, nach Rolle.
+- **System:** Serverversion und Bauzeitpunkt, die bereitliegenden App-Fassungen
+  mit Downloadlink und ein Knopf, sofort nach einer neueren zu sehen.
+
+Gescannt wird nur mit der App – NFC und Kamera hat der Browser nicht. Kennungen
+lassen sich in der Oberfläche aber von Hand eintragen.
+
+**Das erste angelegte Konto betreut den Server:** Es sieht jedes Lager, auch
+die, in denen es kein Mitglied ist, und darf dort arbeiten. Alle anderen sehen
+weiterhin nur ihre eigenen.
+
+Die Oberfläche gehört nicht ins offene Internet; davor gehört ein Reverse Proxy
+mit TLS oder ein VPN.
 
 ## Einstellungen
 
@@ -158,6 +181,7 @@ Alle Antworten sind JSON, die Anmeldung läuft über
 | `POST/DELETE` | `/api/v1/teams/{id}/artikel/{id}/bild` | Artikelbild ablegen oder entfernen |
 | `GET` | `/api/v1/teams/{id}/bilder/{id}` | Artikelbild abholen |
 | `GET` | `/api/v1/gtin/{nummer}` | Produktdaten zu einer Handelsnummer |
+| `GET` | `/api/v1/verwaltung/teams` | Alle Lager des Servers – nur für die Betreuung |
 | `GET` | `/api/v1/aktualisierung` | Läuft hier der neueste Stand? |
 | `GET` | `/api/v1/app` | Welche App liegt bereit – aktuell und vorher? |
 | `POST` | `/api/v1/app/pruefen` | Sofort bei der Quelle nachsehen |

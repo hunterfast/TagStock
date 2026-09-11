@@ -28,6 +28,7 @@ import de.tagstock.util.Dialogs;
 import de.tagstock.util.Einstellungen;
 import de.tagstock.util.Formatter;
 import de.tagstock.util.Hintergrund;
+import de.tagstock.util.Randabstand;
 import de.tagstock.util.ServerClient;
 
 /**
@@ -66,6 +67,7 @@ public class MitgliederActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         binding = ActivityMitgliederBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
+        Randabstand.anwenden(binding.getRoot());
 
         setSupportActionBar(binding.toolbar);
         if (getSupportActionBar() != null) {

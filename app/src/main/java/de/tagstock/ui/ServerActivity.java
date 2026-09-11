@@ -18,10 +18,11 @@ import de.tagstock.R;
 import de.tagstock.data.Abgleich;
 import de.tagstock.data.Repository;
 import de.tagstock.databinding.ActivityServerBinding;
-import de.tagstock.util.Dialogs;
 import de.tagstock.util.Abgleichplaner;
+import de.tagstock.util.Dialogs;
 import de.tagstock.util.Einstellungen;
 import de.tagstock.util.Hintergrund;
+import de.tagstock.util.Randabstand;
 import de.tagstock.util.ServerClient;
 
 /** Serveradresse, Anmeldung, Team-Auswahl und Abgleich. */
@@ -35,6 +36,7 @@ public class ServerActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         binding = ActivityServerBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
+        Randabstand.anwenden(binding.getRoot());
 
         setSupportActionBar(binding.toolbar);
         if (getSupportActionBar() != null) {
