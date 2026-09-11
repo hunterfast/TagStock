@@ -32,8 +32,33 @@ jobs:
       - name: Gradle-Wrapper ausfuehrbar machen
         run: chmod +x ./gradlew
 
+      # Robolectric laedt seine Android-Abbilder beim ersten Lauf aus Maven
+      # nach. Der Zwischenspeicher spart das meist ein; wenn er leer ist, kann
+      # der Download am Netz scheitern - darum bis zu drei Anlaeufe.
+      - name: Robolectric-Abbilder aus dem Zwischenspeicher
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository/org/robolectric
+          key: robolectric-${{ runner.os }}-${{ hashFiles('app/build.gradle') }}
+          restore-keys: |
+            robolectric-${{ runner.os }}-
+
       - name: Unit-Tests
-        run: ./gradlew --no-daemon --stacktrace testDebugUnitTest
+        run: |
+          for versuch in 1 2 3; do
+            if ./gradlew --no-daemon --stacktrace testDebugUnitTest; then
+              exit 0
+            fi
+            # Nur Netzfehler beim Nachladen sind einen zweiten Anlauf wert.
+            if ! grep -rqE 'MavenArtifactFetcher|SocketException|UnknownHostException' \
+                 app/build/reports/tests/testDebugUnitTest 2>/dev/null; then
+              echo "Echter Testfehler - kein weiterer Anlauf."
+              exit 1
+            fi
+            echo "Netzfehler beim Nachladen der Testbibliothek (Anlauf ${versuch}/3)."
+            sleep $((versuch * 10))
+          done
+          exit 1
 
       - name: Lint
         run: |
