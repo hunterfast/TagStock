@@ -11,6 +11,12 @@ on:
 permissions:
   contents: write
 
+# Zwei Laeufe desselben Zweigs wuerden dieselbe Veroeffentlichung ueberschreiben.
+# Darum weicht der aeltere dem neueren.
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   app:
     name: "App: Tests und APK"
@@ -51,7 +57,8 @@ jobs:
             fi
             # Nur Netzfehler beim Nachladen sind einen zweiten Anlauf wert.
             if ! grep -rqE 'MavenArtifactFetcher|SocketException|UnknownHostException' \
-                 app/build/reports/tests/testDebugUnitTest 2>/dev/null; then
+                 app/build/reports/tests/testDebugUnitTest \
+                 app/build/test-results/testDebugUnitTest 2>/dev/null; then
               echo "Echter Testfehler - kein weiterer Anlauf."
               exit 1
             fi
