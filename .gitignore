@@ -14,6 +14,9 @@ local.properties
 keystore.properties
 *.jks
 *.keystore
+# Ausnahme: der Verteilschluessel gehoert dazu. Ohne ihn wuerde jeder
+# Bau anders signiert, und kein Geraet koennte das Update annehmen.
+!app/verteilung.jks
 /server/build
 /server/.gradle
 

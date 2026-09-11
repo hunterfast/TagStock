@@ -218,7 +218,8 @@ public class EinstellungenActivity extends AppCompatActivity {
             // Erst sichern, dann laden: wer zurueckmuss, hat die Daten von vorher.
             File sicherung = sicherungSchreiben(bestand);
             File apk = Appfassungen.herunterladen(this, adresse, version);
-            return new Object[]{sicherung, apk};
+            // Die Datei durchsehen, solange wir noch im Hintergrund sind.
+            return new Object[]{sicherung, apk, Appfassungen.pruefen(this, apk)};
         }, ergebnis -> {
             binding.buttonAppLaden.setEnabled(true);
             File sicherung = (File) ergebnis[0];
@@ -226,7 +227,19 @@ public class EinstellungenActivity extends AppCompatActivity {
                 Toast.makeText(this, getString(R.string.update_sicherung,
                         sicherung.getAbsolutePath()), Toast.LENGTH_LONG).show();
             }
-            Intent installieren = Appfassungen.installieren(this, (File) ergebnis[1]);
+            File apk = (File) ergebnis[1];
+            Appfassungen.Befund befund = (Appfassungen.Befund) ergebnis[2];
+            if (befund == Appfassungen.Befund.UNLESBAR) {
+                // Sonst laege die kaputte Datei da und wuerde wiederverwendet.
+                Appfassungen.wegwerfen(apk);
+                Toast.makeText(this, R.string.update_beschaedigt, Toast.LENGTH_LONG).show();
+                return;
+            }
+            if (befund == Appfassungen.Befund.ANDERE_SIGNATUR) {
+                signaturErklaeren(adresse);
+                return;
+            }
+            Intent installieren = Appfassungen.installieren(this, apk);
             if (installieren == null) {
                 Toast.makeText(this, R.string.update_kein_installer, Toast.LENGTH_LONG).show();
                 return;
@@ -239,6 +252,26 @@ public class EinstellungenActivity extends AppCompatActivity {
                     ? getString(R.string.server_nicht_erreichbar) : meldung,
                     Toast.LENGTH_LONG).show();
         }));
+    }
+
+    /**
+     * Zwei Bauten mit verschiedenen Schluesseln lassen sich nicht
+     * uebereinander installieren. Android sagt dazu nur "App nicht
+     * installiert"; hier steht, was wirklich zu tun ist. Die Datei kommt
+     * ueber den Browser in den Download-Ordner, weil alles im App-Ordner
+     * beim Deinstallieren mit verschwindet.
+     */
+    private void signaturErklaeren(String adresse) {
+        new MaterialAlertDialogBuilder(this)
+                .setTitle(R.string.signatur_titel)
+                .setMessage(R.string.signatur_text)
+                .setNegativeButton(R.string.action_cancel, null)
+                .setNeutralButton(R.string.signatur_deinstallieren, (dialog, welcher) ->
+                        startActivity(new Intent(Intent.ACTION_DELETE,
+                                Uri.parse("package:" + getPackageName()))))
+                .setPositiveButton(R.string.signatur_laden, (dialog, welcher) ->
+                        startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(adresse))))
+                .show();
     }
 
     /**

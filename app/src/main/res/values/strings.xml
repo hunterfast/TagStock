@@ -295,6 +295,11 @@
     <string name="update_sicherung">Sicherung: %1$s</string>
     <string name="update_sicherung_fehler">Die Sicherung ist nicht gelungen – die Aktualisierung wurde abgebrochen.</string>
     <string name="update_kein_installer">Auf diesem Gerät lässt sich die Datei nicht öffnen.</string>
+    <string name="update_beschaedigt">Die geladene Datei ist unvollständig oder beschädigt. Bitte noch einmal versuchen.</string>
+    <string name="signatur_titel">Andere Signatur – Update nicht möglich</string>
+    <string name="signatur_text">Die installierte App und die neue Fassung stammen aus verschiedenen Bauten und tragen deshalb verschiedene Signaturen. Android lehnt das mit „App nicht installiert“ ab und nennt keinen Grund.\n\nEinmalig hilft nur der Weg über eine Neuinstallation:\n\n1. Oben „Abgleichen“ drücken, damit alles auf dem Server liegt.\n2. „Datei in den Download-Ordner legen“ – dort überlebt sie das Deinstallieren.\n3. TagStock deinstallieren.\n4. Die Datei im Dateimanager öffnen und installieren.\n5. Wieder am Server anmelden – der Bestand kommt zurück.\n\nAb dieser Fassung tragen alle Auslieferungen denselben Schlüssel; künftige Updates laufen dann ohne Deinstallieren durch.</string>
+    <string name="signatur_laden">Datei in den Download-Ordner legen</string>
+    <string name="signatur_deinstallieren">TagStock deinstallieren</string>
     <string name="zurueck_titel">Zurück auf Version %1$s</string>
     <string name="zurueck_text">Android installiert keine ältere Fassung über eine neuere. Der Weg zurück geht so:\n\n1. Sicherung des Bestands anlegen (Export unter „Daten“) – der Bestand liegt auch auf dem Server.\n2. Die alte Datei laden; sie landet im Download-Ordner und bleibt dort liegen.\n3. TagStock deinstallieren.\n4. Die geladene Datei im Dateimanager öffnen und installieren.\n5. Wieder am Server anmelden – der Bestand kommt zurück.</string>
     <string name="zurueck_laden">Alte Fassung laden</string>

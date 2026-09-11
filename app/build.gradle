@@ -2,12 +2,48 @@ plugins {
     id 'com.android.application'
 }
 
-// Signierschluessel nur verwenden, wenn er hinterlegt ist. Die Datei
-// keystore.properties gehoert nicht ins Repository (siehe .gitignore).
+// Jede Auslieferung muss denselben Signierschluessel tragen. Android erlaubt
+// ein Update nur, wenn die Signatur zur installierten App passt; sonst bricht
+// es wortlos mit "App nicht installiert" ab. Frueher wurde die veroeffentlichte
+// APK mit dem Debug-Schluessel signiert - und den erzeugt Gradle auf einem
+// frischen CI-Laeufer jedes Mal neu. Darum hier eine feste Reihenfolge:
+//
+//   1. keystore.properties im Projekt - ortsgebunden, nicht im Repository
+//   2. TAGSTOCK_KEYSTORE aus der Umgebung - so reicht die CI ein Secret durch
+//   3. app/verteilung.jks - der mitgelieferte Schluessel fuers private Repo
+//
+// Der dritte Weg genuegt fuer die eigene Verteilung. Wer ihn ersetzen will,
+// legt einen eigenen Schluessel an und hinterlegt ihn ueber Weg 1 oder 2 -
+// das erzwingt aber einmalig ein Deinstallieren auf allen Geraeten.
 def keystoreDatei = rootProject.file('keystore.properties')
 def keystore = new Properties()
 if (keystoreDatei.exists()) {
     keystore.load(new FileInputStream(keystoreDatei))
+}
+
+def signierung = null
+if (keystoreDatei.exists()) {
+    // Ein relativer Pfad zaehlt ab dem Projektordner, ein absoluter wie er ist.
+    def eigene = new File(keystore['storeFile'] as String)
+    signierung = [datei    : eigene.isAbsolute() ? eigene
+                          : rootProject.file(keystore['storeFile']),
+                  speicher : keystore['storePassword'],
+                  alias    : keystore['keyAlias'],
+                  schluessel: keystore['keyPassword']]
+} else if (System.getenv('TAGSTOCK_KEYSTORE')) {
+    signierung = [datei    : file(System.getenv('TAGSTOCK_KEYSTORE')),
+                  speicher : System.getenv('TAGSTOCK_KEYSTORE_PASSWORT'),
+                  alias    : System.getenv('TAGSTOCK_KEY_ALIAS') ?: 'tagstock',
+                  schluessel: System.getenv('TAGSTOCK_KEY_PASSWORT')
+                          ?: System.getenv('TAGSTOCK_KEYSTORE_PASSWORT')]
+} else {
+    def verteilung = file('verteilung.jks')
+    if (!verteilung.exists()) {
+        throw new GradleException('Kein Signierschluessel: app/verteilung.jks fehlt. '
+                + 'Ohne festen Schluessel liesse sich die App spaeter nicht aktualisieren.')
+    }
+    signierung = [datei: verteilung, speicher: 'tagstock',
+                  alias: 'tagstock', schluessel: 'tagstock']
 }
 
 android {
@@ -20,8 +56,8 @@ android {
         targetSdk 35
         // Beim Ausliefern hochzaehlen: die App vergleicht diese Nummer mit der
         // Fassung, die auf dem Server liegt.
-        versionCode 4
-        versionName "2.0.6"
+        versionCode 5
+        versionName "2.0.7"
         vectorDrawables.useSupportLibrary = true
 
         javaCompileOptions {
@@ -32,24 +68,25 @@ android {
     }
 
     signingConfigs {
-        release {
-            if (keystoreDatei.exists()) {
-                storeFile file(keystore['storeFile'])
-                storePassword keystore['storePassword']
-                keyAlias keystore['keyAlias']
-                keyPassword keystore['keyPassword']
-            }
+        verteilung {
+            storeFile signierung.datei
+            storePassword signierung.speicher
+            keyAlias signierung.alias
+            keyPassword signierung.schluessel
         }
     }
 
     buildTypes {
+        // Auch der Debug-Bau bekommt den festen Schluessel: veroeffentlicht
+        // wird die Debug-APK, weil sie signiert und damit installierbar ist.
+        debug {
+            signingConfig signingConfigs.verteilung
+        }
         release {
             minifyEnabled true
             shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-            if (keystoreDatei.exists()) {
-                signingConfig signingConfigs.release
-            }
+            signingConfig signingConfigs.verteilung
         }
     }
 

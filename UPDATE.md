@@ -225,6 +225,29 @@ etwas nicht, spiel die Sicherung ein (siehe [Sicherungen](#sicherungen)).
 
 ## App aktualisieren
 
+### Einmalig: die Neuinstallation auf 2.0.7
+
+Bis Fassung 2.0.6 wurde die veröffentlichte APK mit dem **Debug-Schlüssel**
+signiert – und den erzeugt Gradle auf einem frischen CI-Läufer bei jedem Lauf
+neu. Jede Auslieferung trug damit eine andere Signatur. Android erlaubt ein
+Update aber nur, wenn die Signatur zur installierten App passt, und lehnt es
+sonst mit einem knappen **„App nicht installiert"** ab, ohne den Grund zu
+nennen.
+
+Ab 2.0.7 signiert die CI mit einem festen Schlüssel (`app/verteilung.jks`).
+Dieses eine Mal geht es trotzdem nicht ohne Neuinstallation, weil die laufende
+App noch eine der alten Zufallssignaturen trägt:
+
+1. In der App **abgleichen**, damit alles auf dem Server liegt.
+2. *Einstellungen → Version → Update* antippen. Die App erkennt die fremde
+   Signatur, erklärt sie und bietet **„Datei in den Download-Ordner legen"** an
+   – dort überlebt sie das Deinstallieren.
+3. **TagStock deinstallieren** (der Dialog hat dafür einen Knopf).
+4. Die geladene Datei im Dateimanager öffnen und installieren.
+5. Wieder am Server anmelden – der Bestand kommt zurück.
+
+Ab da laufen Updates wieder direkt über den Knopf, ohne Deinstallieren.
+
 ### Über den Server (der bequeme Weg)
 
 **Einmalig einrichten:** Der Server holt sich die App selbst, dafür braucht er
@@ -507,6 +530,19 @@ Für den Fall, dass du selbst etwas änderst oder ändern lässt.
    Stunden, schiebt die bisherige nach `vorher` und legt vorher eine Sicherung
    an. Ungeduldig? *Einstellungen → Nach Aktualisierungen sehen*.
 
+**Den Signierschlüssel nicht austauschen.** Jede APK wird mit
+`app/verteilung.jks` signiert; nur deshalb nimmt Android sie als Update an. Ein
+anderer Schlüssel zwingt jedes Gerät einmalig zum Deinstallieren. Soll er
+trotzdem ersetzt werden – etwa weil das Repository öffentlich wird –, gibt es
+zwei Wege, die Vorrang vor der Datei haben:
+
+- `keystore.properties` im Projektordner (`storeFile`, `storePassword`,
+  `keyAlias`, `keyPassword`) – für den eigenen Rechner, liegt nicht im
+  Repository.
+- die Umgebungsvariablen `TAGSTOCK_KEYSTORE` (Pfad),
+  `TAGSTOCK_KEYSTORE_PASSWORT`, `TAGSTOCK_KEY_ALIAS`, `TAGSTOCK_KEY_PASSWORT` –
+  so reicht die CI ein hinterlegtes Secret durch.
+
 ### Server
 
 1. Version in `server/build.gradle` anheben (`version = '2.1.0'`).
@@ -523,7 +559,7 @@ Liste in `Schemapflege`; sonst fehlt sie allen, die schon eine Datenbank haben.
 | Symptom | Ursache und Lösung |
 |---|---|
 | Handy zeigt kein Update, obwohl es eins gibt | Hat der Server es schon? `curl http://<server-ip>:8080/api/v1/app`. Steht dort `holtSelbst: false`, fehlt `TAGSTOCK_GITHUB_TOKEN`. Wurde die `versionCode` überhaupt hochgezählt? |
-| „App nicht installiert" beim Installieren | Die Nummer ist gleich oder kleiner als die installierte, oder die Datei stammt aus einer anderen Signatur (Debug ≠ Release). Für den Rückweg: erst deinstallieren. |
+| „App nicht installiert" beim Installieren | Meist eine andere Signatur als die installierte App – bis 2.0.6 bekam jeder CI-Lauf einen eigenen Zufallsschlüssel. Einmalig deinstallieren, siehe [Einmalig: die Neuinstallation auf 2.0.7](#einmalig-die-neuinstallation-auf-207). Ab 2.0.7 sagt die App selbst, woran es liegt. Sonst: Die `versionCode` ist gleich oder kleiner als die installierte, oder der Download brach ab. |
 | Der Container ist nach „Aktualisieren und neu starten" weg | Seine Neustart-Regel steht auf „no". Einmal von Hand starten (`docker start tagstock-server`), dann im Unraid-Formular auf *Unless Stopped* stellen. |
 | Nach dem Update läuft weiter die alte Version | Der Container wurde nur neu gestartet statt neu angelegt. Auf Unraid: Docker-Reiter → Container anklicken → *Edit* → unten **Apply**. Oder `sh server/update.sh` erneut laufen lassen, das erledigt es jetzt selbst. |
 | Nach dem Serverupdate meldet die App „Server nicht erreichbar" | `docker logs tagstock-server --tail 80`. Meist Rechte am Volume: `chown -R 99:100 /mnt/user/appdata/tagstock` |
