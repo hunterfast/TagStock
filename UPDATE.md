@@ -44,6 +44,16 @@ Am Ende steht die Antwort des Servers auf dem Schirm:
  "version":"2.0.0","gebautAm":"2026-09-10T16:35:12Z"}
 ```
 
+Meldet `tar` „options were used after non-option arguments", stammt das Skript
+noch von vor dem 11. September 2026: Damals stand `--exclude` an der falschen
+Stelle und das Skript hörte vor dem Bauen auf. Einmal den neuen Stand von Hand
+holen, danach läuft es wieder von allein:
+
+```bash
+cd /mnt/user/appdata/tagstock-quelle && git pull
+sh server/update.sh
+```
+
 Kommt stattdessen „Der Server antwortet nicht", hilft:
 
 ```bash

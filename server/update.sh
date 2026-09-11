@@ -52,8 +52,14 @@ fi
 echo "== Daten sichern"
 mkdir -p "$DATEN/sicherungen"
 SICHERUNG="$DATEN/sicherungen/tagstock-$(date +%Y-%m-%d-%H%M).tar.gz"
-tar czf "$SICHERUNG" -C "$(dirname "$DATEN")" "$(basename "$DATEN")" \
-    --exclude="$(basename "$DATEN")/sicherungen"
+# --exclude gehoert vor die Pfade; dahinter wirkt es nicht, und GNU tar bricht
+# dann mit Fehlerstatus ab. Die Sicherungen selbst kommen nicht mit hinein.
+if ! tar czf "$SICHERUNG" --exclude="$(basename "$DATEN")/sicherungen" \
+        -C "$(dirname "$DATEN")" "$(basename "$DATEN")"; then
+    echo "   Sicherung fehlgeschlagen - es wurde nichts veraendert." >&2
+    rm -f "$SICHERUNG"
+    exit 1
+fi
 echo "   $SICHERUNG"
 
 echo "== Abbild bauen"
