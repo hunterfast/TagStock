@@ -21,6 +21,13 @@ import java.util.Map;
  * <p>So ueberlebt eine bestehende Datenbank jede Aktualisierung, ohne dass
  * jemand von Hand eingreifen muss. Spalten werden nur hinzugefuegt, nie
  * entfernt oder umgebaut.</p>
+ *
+ * <p><b>Ein Index auf einer neuen Spalte gehoert ebenfalls hierher</b> und
+ * nicht nach schema.sql. Die laeuft beim Aufbau der Datenquelle, also bevor
+ * diese Klasse ueberhaupt drankommt: Auf einer bestehenden Datenbank gibt es
+ * die Spalte dann noch nicht, das CREATE INDEX scheitert, und der Server
+ * startet gar nicht erst. Auf einer frischen faellt das nicht auf, weil
+ * CREATE TABLE die Spalte gleich mitbringt.</p>
  */
 @Component
 public class Schemapflege implements ApplicationRunner {
@@ -41,6 +48,11 @@ public class Schemapflege implements ApplicationRunner {
         spalten("artikel").put("behaelter_art", "TEXT");
         spalten("artikel").put("behaelter_kennung", "TEXT");
     }
+
+    /** Indizes, die eine hier ergaenzte Spalte brauchen. */
+    private static final List<String> INDIZES = List.of(
+            "CREATE INDEX IF NOT EXISTS idx_artikel_behaelter"
+                    + " ON artikel (team_id, behaelter_kennung)");
 
     private static Map<String, String> spalten(String tabelle) {
         return ERWARTET.computeIfAbsent(tabelle, name -> new LinkedHashMap<>());
@@ -67,6 +79,10 @@ public class Schemapflege implements ApplicationRunner {
                         + spalte.getKey() + " " + spalte.getValue());
                 LOG.info("Spalte {}.{} ergaenzt", tabelle.getKey(), spalte.getKey());
             }
+        }
+        // Erst jetzt, wo alle Spalten stehen.
+        for (String index : INDIZES) {
+            jdbc.execute(index);
         }
     }
 

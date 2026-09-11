@@ -80,7 +80,6 @@ CREATE TABLE IF NOT EXISTS artikel (
 );
 CREATE INDEX IF NOT EXISTS idx_artikel_team ON artikel (team_id);
 CREATE INDEX IF NOT EXISTS idx_artikel_geaendert ON artikel (team_id, geaendert_am);
-CREATE INDEX IF NOT EXISTS idx_artikel_behaelter ON artikel (team_id, behaelter_kennung);
 -- Eine Kennung gehoert je Team zu genau einem Artikel.
 CREATE UNIQUE INDEX IF NOT EXISTS idx_artikel_kennung ON artikel (team_id, rfid_uid)
     WHERE rfid_uid IS NOT NULL AND geloescht = 0;
