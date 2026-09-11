@@ -78,7 +78,7 @@ public class Appwache implements ApplicationRunner {
         this.sicherungen = Paths.get(sicherungen).toAbsolutePath().normalize();
         this.holen = holen;
         this.quelle = quelle == null || quelle.isBlank()
-                ? "https://api.github.com/repos/hunterfast/TagStock/releases?per_page=10"
+                ? "https://api.github.com/repos/hunterfast/TagStock/releases?per_page=30"
                 : quelle.trim();
         this.token = token == null ? "" : token.trim();
         this.client = HttpClient.newBuilder()
@@ -188,6 +188,10 @@ public class Appwache implements ApplicationRunner {
         // Die Liste kommt neueste zuerst; die erste mit beiden Dateien zaehlt.
         for (JsonNode veroeffentlichung : liste) {
             if (veroeffentlichung.path("draft").asBoolean()) {
+                continue;
+            }
+            // Neben den App-Fassungen stehen dort auch die des Servers.
+            if (!veroeffentlichung.path("tag_name").asText("").startsWith("app-v")) {
                 continue;
             }
             String einAngaben = null;

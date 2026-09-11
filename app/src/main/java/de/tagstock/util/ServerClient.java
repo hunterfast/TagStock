@@ -174,6 +174,14 @@ public class ServerClient {
         return objekt(hole("GET", "/app", null));
     }
 
+    /**
+     * Laesst den Server sofort bei der Quelle nachsehen, statt die Antwort aus
+     * seinem Takt zu nehmen - fuer den Knopf, den jemand bewusst drueckt.
+     */
+    public JSONObject appNachsehen() throws IOException, JSONException {
+        return objekt(hole("POST", "/app/pruefen", new JSONObject()));
+    }
+
     /** Laeuft auf dem Server der neueste Stand? */
     public JSONObject aktualisierung() throws IOException, JSONException {
         return objekt(hole("POST", "/aktualisierung/pruefen", new JSONObject()));

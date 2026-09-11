@@ -118,7 +118,9 @@ public class EinstellungenActivity extends AppCompatActivity {
         Hintergrund.starte(() -> {
             ServerClient client = new ServerClient(url, token);
             JSONObject[] antworten = new JSONObject[2];
-            antworten[0] = client.appAuskunft();
+            // Auf Knopfdruck soll der Server wirklich nachsehen, nicht nur
+            // seinen letzten Stand melden.
+            antworten[0] = melden ? client.appNachsehen() : client.appAuskunft();
             try {
                 antworten[1] = client.aktualisierung();
             } catch (Exception ohneAntwort) {
@@ -171,9 +173,21 @@ public class EinstellungenActivity extends AppCompatActivity {
         if (!melden || neuer) {
             return;
         }
-        Toast.makeText(this, aktuell != null
-                        ? R.string.einstellungen_app_aktuell : R.string.einstellungen_app_keine,
-                Toast.LENGTH_SHORT).show();
+        if (aktuell != null) {
+            Toast.makeText(this, R.string.einstellungen_app_aktuell,
+                    Toast.LENGTH_SHORT).show();
+            return;
+        }
+        // Warum nichts bereitliegt, weiss der Server - das gehoert hierher,
+        // sonst sucht man den Fehler an der falschen Stelle.
+        String hinweis = app == null ? "" : app.optString("hinweis", "");
+        if (hinweis.isEmpty() && app != null && !app.optBoolean("holtSelbst")) {
+            hinweis = getString(R.string.einstellungen_app_ohne_schluessel);
+        }
+        Toast.makeText(this, hinweis.isEmpty()
+                        ? getString(R.string.einstellungen_app_keine)
+                        : getString(R.string.einstellungen_app_keine_grund, hinweis),
+                Toast.LENGTH_LONG).show();
     }
 
     /** Nachfragen, sichern, laden - und dann dem System uebergeben. */

@@ -17,6 +17,14 @@ spring:
     init:
       mode: always
       platform: sqlite
+  web:
+    resources:
+      cache:
+        cachecontrol:
+          # Der Browser darf die Oberflaeche behalten, muss aber jedes Mal
+          # nachfragen, ob sie noch stimmt. Sonst zeigt er nach einem Update
+          # weiter die alte Seite - und niemand kommt darauf, woran es liegt.
+          no-cache: true
 
 tagstock:
   # Artikelbilder liegen als Dateien hier; im Docker-Abbild im Volume /data.

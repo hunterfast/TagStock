@@ -300,6 +300,8 @@
     <string name="zurueck_laden">Alte Fassung laden</string>
     <string name="einstellungen_app_aktuell">Die App ist auf dem neuesten Stand.</string>
     <string name="einstellungen_app_keine">Auf dem Server liegt keine App zum Verteilen.</string>
+    <string name="einstellungen_app_keine_grund">Auf dem Server liegt keine App zum Verteilen.\n%1$s</string>
+    <string name="einstellungen_app_ohne_schluessel">Dem Server fehlt der Zugangsschlüssel (TAGSTOCK_GITHUB_TOKEN), er kann sie nicht holen.</string>
     <string name="einstellungen_nach_update_sehen">Nach Aktualisierungen sehen</string>
     <string name="einstellungen_nachschlagen">Produktdaten nachschlagen</string>
     <string name="einstellungen_nachschlagen_hinweis">Bei einer Handelsnummer (EAN) fragt der Server einen Nachschlagedienst nach dem Produktnamen. Die Nummer verlässt dabei dein Netz.</string>
