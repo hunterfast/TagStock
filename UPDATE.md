@@ -275,8 +275,12 @@ Ein Tipp darauf zeigt, was sich geändert hat. Nach dem Bestätigen
 3. und übergibt sie dem System – **installiert wird erst nach dem
    Systemdialog**, den Android selbst zeigt.
 
-Der Server sieht alle sechs Stunden nach neuen Fassungen. Sofort nachsehen
-lassen: derselbe Bildschirm, Knopf *Nach Aktualisierungen sehen*.
+Der Server fragt jede Minute nach, ob am Projekt etwas veröffentlicht wurde,
+und holt eine neue Fassung dann sofort. Das kostet nichts: Ist alles beim Alten,
+antwortet GitHub mit „unverändert" und ohne Inhalt. Als Rückfallebene sieht er
+zusätzlich alle sechs Stunden gründlich nach. Von Hand anstoßen geht weiterhin:
+derselbe Bildschirm, Knopf *Nach Aktualisierungen sehen* – oder in der
+Weboberfläche unter *System*, wo auch steht, ob er von selbst nachsieht.
 
 ### Ohne Server
 
@@ -297,7 +301,9 @@ installieren („Unbekannte Quellen"). Die Freigabe gilt für die App, aus der d
 die Datei öffnest – also Browser oder Dateimanager, nicht für TagStock selbst.
 
 Ist der Server schon eingerichtet, geht es am schnellsten so: im Browser des
-Handys `http://<server-ip>:8080/` öffnen und unten auf `tagstock.apk` tippen.
+Handys `http://<server-ip>:8080/` öffnen und unter der Anmeldemaske auf
+**„App für Android laden"** tippen. Dafür braucht es kein Konto – ein frisches
+Gerät soll ja gerade erst eins bekommen.
 
 ---
 

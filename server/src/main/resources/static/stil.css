@@ -44,7 +44,7 @@ button, select, input, textarea {
     padding: 7px 10px;
 }
 
-button {
+button, a.knopf {
     cursor: pointer;
     border-color: transparent;
     background: var(--marke);
@@ -52,7 +52,17 @@ button {
     font-weight: 600;
 }
 
-button.leise {
+/* Ein Link, der wie ein Knopf aussieht - fuer Downloads, die der Browser
+   selbst uebernimmt und die deshalb kein <button> sein koennen. */
+a.knopf {
+    display: inline-block;
+    border-radius: 8px;
+    border: 1px solid transparent;
+    padding: 7px 12px;
+    text-decoration: none;
+}
+
+button.leise, a.knopf.leise {
     background: var(--flaeche);
     color: var(--schrift);
     border-color: var(--rand);
@@ -61,6 +71,14 @@ button.leise {
 
 button.gefahr { background: var(--fehlt); }
 button:disabled { opacity: .5; cursor: default; }
+
+.apkangebot {
+    margin: 14px auto 0;
+    max-width: 360px;
+    text-align: center;
+}
+
+.apkangebot .leer { display: block; padding: 6px 0 0; }
 
 header {
     display: flex;

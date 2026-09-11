@@ -351,7 +351,8 @@ Kurz: Token erzeugen, am Container als Variable eintragen:
 |---|---|
 | `TAGSTOCK_GITHUB_TOKEN` | `github_pat_…` |
 
-Danach sieht der Server beim Start und alle sechs Stunden nach. Ist dort eine
+Danach fragt der Server jede Minute nach, ob etwas Neues veröffentlicht wurde,
+und sieht beim Start sowie alle sechs Stunden gründlich nach. Ist dort eine
 höhere `versionCode` als die, die er hat, lädt er die Datei – sonst rührt er
 sich nicht. Vor jedem Wechsel legt er eine Sicherung der Datenbank unter
 `/mnt/user/appdata/tagstock/sicherungen/` an; die letzten zehn bleiben liegen.

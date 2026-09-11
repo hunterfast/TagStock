@@ -109,6 +109,33 @@
         localStorage.removeItem('tagstock-token');
         $('oberflaeche').hidden = true;
         $('anmeldung').hidden = false;
+        apkAnbieten();
+    }
+
+    /**
+     * Die App zum Laden anbieten, ohne dass jemand angemeldet ist. Vor der
+     * Oberflaeche stand dieser Link auf der Startseite; mit der Anmeldemaske
+     * war er weg, und damit auch der Weg, ein neues Geraet zu bestuecken.
+     */
+    function apkAnbieten() {
+        var feld = $('apkAngebot');
+        fetch('/api/v1/app').then(function (antwort) {
+            return antwort.ok ? antwort.json() : null;
+        }).then(function (app) {
+            var fassung = app && app.aktuell;
+            if (!fassung) {
+                feld.hidden = true;
+                return;
+            }
+            var name = fassung.versionName || fassung.versionCode || '';
+            var mb = Math.round((fassung.groesse || 0) / 1048576);
+            feld.innerHTML = '<a class="knopf" href="' + text(fassung.adresse) + '">'
+                + 'App für Android laden' + (name ? ' · ' + text(name) : '')
+                + '</a>' + (mb ? '<span class="leer"> ' + mb + ' MB</span>' : '');
+            feld.hidden = false;
+        }).catch(function () {
+            feld.hidden = true;
+        });
     }
 
     /** Nach der Anmeldung: wer bin ich, welche Lager gibt es? */
@@ -116,6 +143,7 @@
         if (!stand.token) {
             $('anmeldung').hidden = false;
             $('oberflaeche').hidden = true;
+            apkAnbieten();
             return;
         }
         api('/ich').then(function (antwort) {
@@ -686,7 +714,10 @@
                 + zeile('Laeuft aus', stand.ausVolume
                     ? 'nachgeladener Fassung' : 'dem Abbild')
                 + (stand.neuesteVersion
-                    ? zeile('Verfügbar', text(stand.neuesteVersion)) : '');
+                    ? zeile('Verfügbar', text(stand.neuesteVersion)) : '')
+                + zeile('Sieht selbst nach', stand.beobachtet
+                    ? 'ja, im Minutentakt'
+                    : 'nein – kein Zugangsschlüssel oder ausgeschaltet');
 
             var neuer = stand.neuerVorhanden === true;
             $('knopfServerEinspielen').hidden = !neuer || !stand.selbstMoeglich;
@@ -753,8 +784,9 @@
                 }
                 var name = fassung.versionName || fassung.versionCode || '?';
                 zeilen += zeile(fach === 'aktuell' ? 'Aktuell' : 'Vorherige',
-                    '<a href="' + fassung.adresse + '">' + text(name) + '</a> · '
-                    + Math.round((fassung.groesse || 0) / 1048576) + ' MB');
+                    text(name) + ' · ' + Math.round((fassung.groesse || 0) / 1048576)
+                    + ' MB · <a class="knopf leise" href="' + text(fassung.adresse)
+                    + '">Laden</a>');
             });
             zeilen += zeile('Holt sich selbst', app.holtSelbst ? 'ja'
                 : 'nein – ohne Zugangsschlüssel');

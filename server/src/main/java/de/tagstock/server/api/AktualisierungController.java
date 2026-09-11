@@ -1,6 +1,7 @@
 package de.tagstock.server.api;
 
 import de.tagstock.server.dienst.Aktualisierungswache;
+import de.tagstock.server.dienst.Quellwache;
 import de.tagstock.server.dienst.Selbstpflege;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -19,12 +20,14 @@ public class AktualisierungController {
 
     private final Aktualisierungswache wache;
     private final Selbstpflege pflege;
+    private final Quellwache quellwache;
     private final Zugriff zugriff;
 
     public AktualisierungController(Aktualisierungswache wache, Selbstpflege pflege,
-                                    Zugriff zugriff) {
+                                    Quellwache quellwache, Zugriff zugriff) {
         this.wache = wache;
         this.pflege = pflege;
+        this.quellwache = quellwache;
         this.zugriff = zugriff;
     }
 
@@ -33,6 +36,7 @@ public class AktualisierungController {
         zugriff.benutzer(anfrage);
         Map<String, Object> ergebnis = new java.util.LinkedHashMap<>(wache.stand());
         ergebnis.putAll(pflege.stand(false));
+        beobachtung(ergebnis);
         return ergebnis;
     }
 
@@ -43,7 +47,17 @@ public class AktualisierungController {
         wache.vergessen();
         Map<String, Object> ergebnis = new java.util.LinkedHashMap<>(wache.stand());
         ergebnis.putAll(pflege.stand(true));
+        beobachtung(ergebnis);
         return ergebnis;
+    }
+
+    /** Sieht der Server von selbst nach, und wann zuletzt mit Erfolg? */
+    private void beobachtung(Map<String, Object> ergebnis) {
+        ergebnis.put("beobachtet", quellwache.laeuft());
+        if (quellwache.zuletztGesehen() > 0) {
+            ergebnis.put("zuletztGefunden",
+                    java.time.Instant.ofEpochMilli(quellwache.zuletztGesehen()).toString());
+        }
     }
 
     /**

@@ -5,7 +5,7 @@ plugins {
 }
 
 group = 'de.tagstock'
-version = '2.1.2'
+version = '2.1.3'
 
 java {
     // Bytecode fuer Java 17; gebaut wird mit dem vorhandenen JDK (17 oder neuer).

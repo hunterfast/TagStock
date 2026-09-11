@@ -23,6 +23,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
@@ -58,6 +59,13 @@ public class Selbstpflege implements ApplicationListener<ApplicationReadyEvent> 
     private final boolean erlaubt;
     private final ObjectMapper json = new ObjectMapper();
     private final HttpClient client;
+
+    // Was zuletzt bei der Quelle zu finden war. Steht auch dann in der
+    // Auskunft, wenn gerade niemand nachsehen laesst.
+    private volatile String gemerkteVersion;
+    private volatile String gemerkterHinweis;
+    private volatile boolean gemerktNeuer;
+    private volatile long gemerktAm;
 
     public Selbstpflege(BuildProperties bau, JdbcTemplate jdbc,
                         @Value("${tagstock.server-ordner:/data/server}") String ordner,
@@ -115,23 +123,19 @@ public class Selbstpflege implements ApplicationListener<ApplicationReadyEvent> 
                     + " kann der Server nichts holen");
             return ergebnis;
         }
-        if (!nachsehen) {
-            return ergebnis;
-        }
-        try {
-            Veroeffentlichung neueste = neuesteSuchen();
-            if (neueste == null) {
-                ergebnis.put("hinweis", "Keine Serverfassung veroeffentlicht");
-                return ergebnis;
+        if (nachsehen) {
+            try {
+                String hinweis = neuestesMerken();
+                if (hinweis != null) {
+                    ergebnis.put("hinweis", hinweis);
+                }
+            } catch (Exception fehler) {
+                ergebnis.put("hinweis", "Nicht erreichbar: " + fehler.getMessage());
             }
-            ergebnis.put("neuesteVersion", neueste.version);
-            ergebnis.put("neuerVorhanden", istNeuer(neueste.version, bau.getVersion()));
-            if (neueste.hinweis != null && !neueste.hinweis.isEmpty()) {
-                ergebnis.put("neuesteHinweis", neueste.hinweis);
-            }
-        } catch (Exception fehler) {
-            ergebnis.put("hinweis", "Nicht erreichbar: " + fehler.getMessage());
         }
+        // Auch ohne Knopfdruck zeigen, was zuletzt gefunden wurde - die
+        // Quellwache sieht von sich aus nach, sobald sich etwas getan hat.
+        zwischenstand(ergebnis);
         return ergebnis;
     }
 
@@ -221,6 +225,39 @@ public class Selbstpflege implements ApplicationListener<ApplicationReadyEvent> 
         }, "neustart");
         nachlauf.setDaemon(false);
         nachlauf.start();
+    }
+
+    /**
+     * Sieht bei der Quelle nach und merkt sich, was es gibt - damit die
+     * Oberflaeche es auch ohne Knopfdruck zeigen kann. Gibt einen Hinweis
+     * zurueck, wenn nichts zu finden war, sonst null.
+     */
+    public String neuestesMerken() throws IOException, InterruptedException {
+        if (!erlaubt || token.isEmpty()) {
+            return null;
+        }
+        Veroeffentlichung neueste = neuesteSuchen();
+        gemerktAm = System.currentTimeMillis();
+        if (neueste == null) {
+            gemerkteVersion = null;
+            return "Keine Serverfassung veroeffentlicht";
+        }
+        gemerkteVersion = neueste.version;
+        gemerkterHinweis = neueste.hinweis;
+        gemerktNeuer = istNeuer(neueste.version, bau.getVersion());
+        return null;
+    }
+
+    private void zwischenstand(Map<String, Object> ergebnis) {
+        if (gemerktAm == 0 || gemerkteVersion == null) {
+            return;
+        }
+        ergebnis.put("neuesteVersion", gemerkteVersion);
+        ergebnis.put("neuerVorhanden", gemerktNeuer);
+        if (gemerkterHinweis != null && !gemerkterHinweis.isEmpty()) {
+            ergebnis.put("neuesteHinweis", gemerkterHinweis);
+        }
+        ergebnis.put("nachgesehenAm", Instant.ofEpochMilli(gemerktAm).toString());
     }
 
     // ------------------------------------------------------------- Suchen

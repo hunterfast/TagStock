@@ -134,7 +134,14 @@ Der Server hält die App für die Geräte bereit und **holt sie sich selbst**:
 /data/app/vorher/tagstock.apk  + app.json     ← die davor, für den Rückweg
 ```
 
-Alle sechs Stunden (und beim Start) sieht er bei den Veröffentlichungen des
+Jede Minute fragt er nach, ob sich an den Veröffentlichungen etwas getan hat –
+mit der Kennung der letzten Antwort, sodass ein unveränderter Stand nichts
+kostet und nicht gegen das Anfragekonto zählt. Sobald sich etwas geändert hat,
+sieht er sofort richtig nach; abschalten lässt sich das mit
+`TAGSTOCK_QUELLE_BEOBACHTEN=false`, den Abstand regelt
+`TAGSTOCK_QUELLE_TAKT_SEKUNDEN`.
+
+Zusätzlich alle sechs Stunden (und beim Start) sieht er bei den Veröffentlichungen des
 Projekts nach. Ist die dortige `versionCode` höher als die eigene, lädt er die
 Datei – sonst nicht. Vor jedem Wechsel legt er eine Sicherung der Datenbank an
 (`/data/sicherungen/vor-app-<version>-<zeit>.db`, die letzten zehn bleiben
