@@ -267,13 +267,28 @@ public class MigrationTest {
             db.execSQL("CREATE INDEX IF NOT EXISTS `index_artikel_serverId`"
                     + " ON `artikel` (`serverId`)");
             db.execSQL("CREATE TABLE IF NOT EXISTS `kategorien` ("
-                    + "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `serverId` TEXT, "
-                    + "`name` TEXT NOT NULL, `reihenfolge` INTEGER NOT NULL)");
+                    + "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, "
+                    + "`serverId` TEXT, "
+                    + "`teamId` TEXT, "
+                    + "`name` TEXT NOT NULL, "
+                    + "`reihenfolge` INTEGER NOT NULL)");
+            db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_kategorien_name`"
+                    + " ON `kategorien` (`name`)");
             db.execSQL("CREATE TABLE IF NOT EXISTS `protokoll` ("
                     + "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, "
-                    + "`artikelId` INTEGER NOT NULL, `artikelName` TEXT NOT NULL, "
-                    + "`aktion` TEXT NOT NULL, `alterWert` TEXT, `neuerWert` TEXT, "
-                    + "`nutzer` TEXT, `zeitpunkt` INTEGER NOT NULL, `offen` INTEGER NOT NULL)");
+                    + "`serverId` TEXT, "
+                    + "`artikelId` INTEGER NOT NULL, "
+                    + "`artikelName` TEXT NOT NULL, "
+                    + "`aktion` TEXT NOT NULL, "
+                    + "`alterWert` TEXT, "
+                    + "`neuerWert` TEXT, "
+                    + "`nutzer` TEXT, "
+                    + "`zeitpunkt` INTEGER NOT NULL, "
+                    + "`offen` INTEGER NOT NULL, "
+                    + "FOREIGN KEY(`artikelId`) REFERENCES `artikel`(`id`)"
+                    + " ON UPDATE NO ACTION ON DELETE CASCADE )");
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_protokoll_artikelId`"
+                    + " ON `protokoll` (`artikelId`)");
             db.execSQL("INSERT INTO artikel (id, rfidUid, name, standort, status, scanWarnung,"
                     + " erstelltAm, geaendertAm, offen)"
                     + " VALUES (3, 'BOX-1', 'Ikea-Box blau', 'Werkstatt', 'vorhanden', '1j',"
