@@ -303,14 +303,15 @@ Hast du die erste Fassung ohne `git clone` installiert (Archiv im Browser
 geladen und entpackt), findet das Skript keinen Git-Ordner. Der Weg zurück auf
 die Schiene steht in [../UPDATE.md](../UPDATE.md#wenn-du-die-erste-fassung-von-hand-installiert-hast).
 
-Von Hand geht es genauso:
+Von Hand geht es genauso – nur muss der Container **neu angelegt** werden, ein
+`docker restart` behält das alte Abbild:
 
 ```bash
 cd /mnt/user/appdata/tagstock-quelle
 git pull
 docker build -t tagstock-server server
-docker restart tagstock-server        # Weg B
-# oder: cd server && docker compose up -d --build   (Weg A)
+# Weg B: im Docker-Reiter den Container anklicken, Edit, unten Apply
+# Weg A: cd server && docker compose up -d --build
 ```
 
 Die Daten liegen im Volume und überstehen das. Neue Tabellen legt der Server

@@ -65,17 +65,68 @@ echo "   $SICHERUNG"
 echo "== Abbild bauen"
 docker build -t "$ABBILD" "$QUELLE/server"
 
-echo "== Container neu starten"
-docker restart "$NAME" >/dev/null
+echo "== Container erneuern"
+# Wichtig: docker restart startet nur den vorhandenen Container - und der haengt
+# weiter am alten Abbild. Nach einem Neubau muss der Container neu erzeugt
+# werden, sonst laeuft die alte Fassung einfach weiter. Die Daten liegen im
+# Volume und bleiben davon unberuehrt.
+
+if ! docker inspect "$NAME" >/dev/null 2>&1; then
+    echo "   Container $NAME gibt es nicht - bitte einmal anlegen," >&2
+    echo "   siehe server/INSTALL-UNRAID.md Punkt 4." >&2
+    exit 1
+fi
+
+COMPOSE_ORDNER=$(docker inspect "$NAME" \
+    --format '{{index .Config.Labels "com.docker.compose.project.working_dir"}}')
+
+if [ -n "$COMPOSE_ORDNER" ] && [ "$COMPOSE_ORDNER" != "<no value>" ] \
+        && [ -d "$COMPOSE_ORDNER" ]; then
+    echo "   ueber docker compose"
+    (cd "$COMPOSE_ORDNER" && docker compose up -d)
+else
+    # Von Hand angelegt: Einstellungen des laufenden Containers uebernehmen.
+    UMGEBUNG=$(mktemp)
+    docker inspect "$NAME" --format '{{range .Config.Env}}{{println .}}{{end}}' \
+        | grep -vE '^(PATH|HOME|HOSTNAME|LANG|LC_ALL|JAVA_HOME|JAVA_VERSION)=' \
+        | grep -v '^$' > "$UMGEBUNG"
+    HAEFEN=$(docker inspect "$NAME" --format \
+        '{{range $port, $bind := .HostConfig.PortBindings}}{{range $bind}}-p {{if .HostIp}}{{.HostIp}}:{{end}}{{.HostPort}}:{{$port}} {{end}}{{end}}')
+    ORDNER=$(docker inspect "$NAME" --format '{{range .HostConfig.Binds}}-v {{.}} {{end}}')
+    NETZ=$(docker inspect "$NAME" --format '{{.HostConfig.NetworkMode}}')
+    NEUSTART=$(docker inspect "$NAME" --format '{{.HostConfig.RestartPolicy.Name}}')
+    [ -n "$NEUSTART" ] && [ "$NEUSTART" != "no" ] || NEUSTART=unless-stopped
+
+    echo "   alten Container entfernen (die Daten liegen im Volume)"
+    docker rm -f "$NAME" >/dev/null
+
+    echo "   neu anlegen aus dem frischen Abbild"
+    # shellcheck disable=SC2086
+    docker run -d --name "$NAME" --restart "$NEUSTART" --network "$NETZ" \
+        --env-file "$UMGEBUNG" $HAEFEN $ORDNER "$ABBILD" >/dev/null
+    rm -f "$UMGEBUNG"
+fi
 
 echo "== Warten, bis der Server antwortet"
+ERWARTET=$(grep -m1 "^version" "$QUELLE/server/build.gradle" \
+    | sed "s/[^']*'\([^']*\)'.*/\1/")
 i=0
 while [ $i -lt 30 ]; do
-    if wget -q -O- "http://127.0.0.1:$PORT/api/v1/status" >/dev/null 2>&1; then
-        echo "   läuft"
-        wget -q -O- "http://127.0.0.1:$PORT/api/v1/status"
-        echo
-        exit 0
+    ANTWORT=$(wget -q -O- "http://127.0.0.1:$PORT/api/v1/status" 2>/dev/null || true)
+    if [ -n "$ANTWORT" ]; then
+        echo "   $ANTWORT"
+        case "$ANTWORT" in
+            *"\"version\":\"$ERWARTET\""*)
+                echo "   laeuft: $ERWARTET"
+                exit 0
+                ;;
+            *)
+                echo "   Achtung: es antwortet nicht die erwartete Fassung $ERWARTET." >&2
+                echo "   Auf Unraid hilft: Docker-Reiter, Container anklicken," >&2
+                echo "   Edit, unten Apply - das legt ihn aus dem neuen Abbild an." >&2
+                exit 1
+                ;;
+        esac
     fi
     i=$((i + 1))
     sleep 2

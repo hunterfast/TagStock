@@ -33,9 +33,14 @@ Das Skript macht der Reihe nach:
 2. **Daten sichern** – Datenbank und Bilder landen als
    `tagstock-<datum>.tar.gz` unter `/mnt/user/appdata/tagstock/sicherungen/`.
 3. **Abbild bauen** – dauert je nach Anbindung ein bis fünf Minuten.
-4. **Container neu starten** – erst jetzt; bricht der Bau vorher ab, läuft der
-   alte Stand unberührt weiter.
-5. **Nachsehen, ob er antwortet** – und die Statusmeldung ausgeben.
+4. **Container erneuern** – erst jetzt; bricht der Bau vorher ab, läuft der
+   alte Stand unberührt weiter. Wichtig: Ein bloßes `docker restart` genügt
+   **nicht**, denn der vorhandene Container hängt weiter am alten Abbild. Das
+   Skript legt ihn deshalb neu an und übernimmt dabei Ports, Ordner,
+   Variablen und Neustartverhalten des bisherigen. Die Daten liegen im Volume
+   und bleiben unberührt.
+5. **Nachsehen, ob er antwortet** – und prüfen, ob wirklich die erwartete
+   Version läuft. Passt sie nicht, sagt das Skript es deutlich.
 
 Am Ende steht die Antwort des Servers auf dem Schirm:
 
@@ -490,6 +495,7 @@ Liste in `Schemapflege`; sonst fehlt sie allen, die schon eine Datenbank haben.
 |---|---|
 | Handy zeigt kein Update, obwohl es eins gibt | Hat der Server es schon? `curl http://<server-ip>:8080/api/v1/app`. Steht dort `holtSelbst: false`, fehlt `TAGSTOCK_GITHUB_TOKEN`. Wurde die `versionCode` überhaupt hochgezählt? |
 | „App nicht installiert" beim Installieren | Die Nummer ist gleich oder kleiner als die installierte, oder die Datei stammt aus einer anderen Signatur (Debug ≠ Release). Für den Rückweg: erst deinstallieren. |
+| Nach dem Update läuft weiter die alte Version | Der Container wurde nur neu gestartet statt neu angelegt. Auf Unraid: Docker-Reiter → Container anklicken → *Edit* → unten **Apply**. Oder `sh server/update.sh` erneut laufen lassen, das erledigt es jetzt selbst. |
 | Nach dem Serverupdate meldet die App „Server nicht erreichbar" | `docker logs tagstock-server --tail 80`. Meist Rechte am Volume: `chown -R 99:100 /mnt/user/appdata/tagstock` |
 | `update.sh` bricht bei `git pull` ab | Auf dem Host wurde etwas verändert. `git status` zeigt was; `git checkout -- <datei>` verwirft es. |
 | Der Bau bricht mit Netzwerkfehler ab | Nochmal starten; der alte Container läuft derweil weiter. |
