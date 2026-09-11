@@ -35,6 +35,9 @@ public class ArtikelDaten {
         artikel.rueckgabeDatum = (Long) zeile.getObject("rueckgabe_datum");
         artikel.zuletztGescannt = (Long) zeile.getObject("zuletzt_gescannt");
         artikel.scanWarnung = zeile.getString("scan_warnung");
+        artikel.istBehaelter = zeile.getInt("ist_behaelter") == 1;
+        artikel.behaelterArt = zeile.getString("behaelter_art");
+        artikel.behaelterKennung = zeile.getString("behaelter_kennung");
         artikel.erstelltAm = zeile.getLong("erstellt_am");
         artikel.geaendertAm = zeile.getLong("geaendert_am");
         artikel.geloescht = zeile.getInt("geloescht") == 1;
@@ -75,12 +78,14 @@ public class ArtikelDaten {
         artikel.geaendertAm = jetzt;
         jdbc.update("INSERT INTO artikel (id, team_id, rfid_uid, name, beschreibung, kategorie,"
                         + " standort, lagerort, bild_url, status, verliehen_an, rueckgabe_datum,"
-                        + " zuletzt_gescannt, scan_warnung, erstellt_am, geaendert_am, geloescht)"
-                        + " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,0)",
+                        + " zuletzt_gescannt, scan_warnung, ist_behaelter, behaelter_art,"
+                        + " behaelter_kennung, erstellt_am, geaendert_am, geloescht)"
+                        + " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,0)",
                 artikel.id, artikel.teamId, leer(artikel.rfidUid), artikel.name,
                 artikel.beschreibung, artikel.kategorie, artikel.standort, artikel.lagerort,
                 artikel.bildUrl, artikel.status, artikel.verliehenAn, artikel.rueckgabeDatum,
-                artikel.zuletztGescannt, artikel.scanWarnung, artikel.erstelltAm,
+                artikel.zuletztGescannt, artikel.scanWarnung, artikel.istBehaelter ? 1 : 0,
+                leer(artikel.behaelterArt), leer(artikel.behaelterKennung), artikel.erstelltAm,
                 artikel.geaendertAm);
         return artikel;
     }
@@ -90,12 +95,14 @@ public class ArtikelDaten {
         jdbc.update("UPDATE artikel SET rfid_uid = ?, name = ?, beschreibung = ?, kategorie = ?,"
                         + " standort = ?, lagerort = ?, bild_url = ?, status = ?, verliehen_an = ?,"
                         + " rueckgabe_datum = ?, zuletzt_gescannt = ?, scan_warnung = ?,"
+                        + " ist_behaelter = ?, behaelter_art = ?, behaelter_kennung = ?,"
                         + " geaendert_am = ?, geloescht = ?"
                         + " WHERE team_id = ? AND id = ?",
                 leer(artikel.rfidUid), artikel.name, artikel.beschreibung, artikel.kategorie,
                 artikel.standort, artikel.lagerort, artikel.bildUrl, artikel.status,
                 artikel.verliehenAn, artikel.rueckgabeDatum, artikel.zuletztGescannt,
-                artikel.scanWarnung, artikel.geaendertAm, artikel.geloescht ? 1 : 0,
+                artikel.scanWarnung, artikel.istBehaelter ? 1 : 0, leer(artikel.behaelterArt),
+                leer(artikel.behaelterKennung), artikel.geaendertAm, artikel.geloescht ? 1 : 0,
                 artikel.teamId, artikel.id);
         return artikel;
     }
@@ -104,6 +111,20 @@ public class ArtikelDaten {
     public void loeschen(String teamId, String id) {
         jdbc.update("UPDATE artikel SET geloescht = 1, rfid_uid = NULL, geaendert_am = ?"
                 + " WHERE team_id = ? AND id = ?", System.currentTimeMillis(), teamId, id);
+    }
+
+    /**
+     * Der Inhalt liegt woanders - oder nirgends mehr. Wird gebraucht, wenn ein
+     * Behaelter eine neue Kennung bekommt (dann zieht der Inhalt mit) oder
+     * wenn er verschwindet (dann wird der Inhalt frei).
+     */
+    public int inhaltUmhaengen(String teamId, String alteKennung, String neueKennung) {
+        if (alteKennung == null || alteKennung.isEmpty()) {
+            return 0;
+        }
+        return jdbc.update("UPDATE artikel SET behaelter_kennung = ?, geaendert_am = ?"
+                        + " WHERE team_id = ? AND behaelter_kennung = ?",
+                leer(neueKennung), System.currentTimeMillis(), teamId, alteKennung);
     }
 
     public int anzahl(String teamId) {

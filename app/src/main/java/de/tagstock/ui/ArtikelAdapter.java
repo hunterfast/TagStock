@@ -6,12 +6,16 @@ import android.view.View;
 import android.view.ViewGroup;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.DiffUtil;
 import androidx.recyclerview.widget.ListAdapter;
 import androidx.recyclerview.widget.RecyclerView;
 
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import de.tagstock.R;
@@ -33,9 +37,33 @@ public class ArtikelAdapter extends ListAdapter<Artikel, ArtikelAdapter.ArtikelH
     private final Set<Long> ausgewaehlt = new HashSet<>();
     private boolean auswahlModus;
 
+    /**
+     * Kennung -> Name des Behaelters. In der Zeile soll "in Ikea-Box blau"
+     * stehen und nicht die nackte Kennung; der Behaelter selbst kann dabei
+     * durchaus weggefiltert sein.
+     */
+    private Map<String, String> behaelterNamen = new HashMap<>();
+
     public ArtikelAdapter(Listener listener) {
         super(DIFF);
         this.listener = listener;
+    }
+
+    /** Namen der Behaelter nachreichen - kommt aus der ungefilterten Liste. */
+    public void behaelterKennen(@Nullable List<Artikel> alle) {
+        Map<String, String> namen = new HashMap<>();
+        if (alle != null) {
+            for (Artikel artikel : alle) {
+                if (artikel.istBehaelter && artikel.rfidUid != null
+                        && !artikel.rfidUid.isEmpty()) {
+                    namen.put(artikel.rfidUid, artikel.name);
+                }
+            }
+        }
+        if (!namen.equals(behaelterNamen)) {
+            behaelterNamen = namen;
+            notifyDataSetChanged();
+        }
     }
 
     private static final DiffUtil.ItemCallback<Artikel> DIFF = new DiffUtil.ItemCallback<Artikel>() {
@@ -88,7 +116,7 @@ public class ArtikelAdapter extends ListAdapter<Artikel, ArtikelAdapter.ArtikelH
     @Override
     public void onBindViewHolder(@NonNull ArtikelHolder holder, int position) {
         holder.bind(getItem(position), listener, auswahlModus,
-                ausgewaehlt.contains(getItem(position).id));
+                ausgewaehlt.contains(getItem(position).id), behaelterNamen);
     }
 
     static class ArtikelHolder extends RecyclerView.ViewHolder {
@@ -100,14 +128,20 @@ public class ArtikelAdapter extends ListAdapter<Artikel, ArtikelAdapter.ArtikelH
             this.binding = binding;
         }
 
-        void bind(Artikel artikel, Listener listener, boolean auswahlModus, boolean ausgewaehlt) {
+        void bind(Artikel artikel, Listener listener, boolean auswahlModus, boolean ausgewaehlt,
+                  Map<String, String> behaelterNamen) {
             Context context = binding.getRoot().getContext();
-            binding.textName.setText(artikel.name);
+            // Behaelter sind auf einen Blick zu erkennen - sie sind ja keine
+            // Gegenstaende, sondern Orte.
+            binding.textName.setText(artikel.istBehaelter
+                    ? context.getString(R.string.behaelter_zeichen, artikel.name) : artikel.name);
 
             FotoLader.laden(binding.imageFoto, artikel.fotoPfad, artikel.bildUrl, R.drawable.ic_artikel);
             Formatter.statusPlakette(binding.textStatus, artikel.status);
 
-            String zeile = Formatter.zeile(context, artikel);
+            String zeile = Formatter.zeile(context, artikel,
+                    artikel.behaelterKennung == null ? null
+                            : behaelterNamen.get(artikel.behaelterKennung));
             binding.textZeile.setVisibility(zeile.isEmpty() ? View.GONE : View.VISIBLE);
             binding.textZeile.setText(zeile);
 

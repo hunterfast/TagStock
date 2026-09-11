@@ -183,6 +183,9 @@ public final class Abgleich {
         o.put("zuletztGescannt", artikel.zuletztGescannt == null
                 ? JSONObject.NULL : artikel.zuletztGescannt);
         o.put("scanWarnung", artikel.scanWarnung.schluessel);
+        o.put("istBehaelter", artikel.istBehaelter);
+        o.put("behaelterArt", artikel.behaelterArt);
+        o.put("behaelterKennung", artikel.behaelterKennung);
         o.put("erstelltAm", artikel.erstelltAm);
         o.put("geaendertAm", artikel.geaendertAm);
         return o;
@@ -342,6 +345,9 @@ public final class Abgleich {
             ziel.rueckgabeDatum = o.isNull("rueckgabeDatum") ? null : o.optLong("rueckgabeDatum");
             ziel.zuletztGescannt = o.isNull("zuletztGescannt") ? null : o.optLong("zuletztGescannt");
             ziel.scanWarnung = ScanWarnung.vonSchluessel(o.optString("scanWarnung"));
+            ziel.istBehaelter = o.optBoolean("istBehaelter");
+            ziel.behaelterArt = leer(o.optString("behaelterArt", null));
+            ziel.behaelterKennung = leer(o.optString("behaelterKennung", null));
             ziel.erstelltAm = o.optLong("erstelltAm", System.currentTimeMillis());
             ziel.geaendertAm = o.optLong("geaendertAm", ziel.erstelltAm);
             ziel.offen = false;

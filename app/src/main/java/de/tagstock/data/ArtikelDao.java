@@ -48,6 +48,15 @@ public interface ArtikelDao {
             + " ORDER BY kategorie COLLATE NOCASE ASC")
     LiveData<List<String>> beobachteKategorien();
 
+    /** Was liegt in diesem Behaelter? */
+    @Query("SELECT * FROM artikel WHERE behaelterKennung = :kennung ORDER BY name COLLATE NOCASE")
+    List<Artikel> inhaltVon(String kennung);
+
+    /** Alle Behaelter - fuer die Auswahl "liegt in". */
+    @Query("SELECT * FROM artikel WHERE istBehaelter = 1 AND rfidUid IS NOT NULL"
+            + " AND rfidUid != '' ORDER BY name COLLATE NOCASE")
+    List<Artikel> behaelter();
+
     @Query("SELECT * FROM artikel WHERE offen = 1")
     List<Artikel> offene();
 

@@ -130,6 +130,10 @@ public class BestandFragment extends Fragment implements ArtikelAdapter.Listener
 
         binding.swipeRefresh.setOnRefreshListener(this::abgleichen);
 
+        // Die Behaelternamen kommen aus der ungefilterten Liste: Wer in einer
+        // Box liegt, soll deren Namen sehen, auch wenn die Box weggefiltert ist.
+        viewModel.getAlle().observe(getViewLifecycleOwner(), adapter::behaelterKennen);
+
         viewModel.getGefiltert().observe(getViewLifecycleOwner(), artikel -> {
             adapter.submitList(artikel);
             boolean leer = artikel == null || artikel.isEmpty();

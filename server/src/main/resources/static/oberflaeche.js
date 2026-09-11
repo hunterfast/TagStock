@@ -244,6 +244,17 @@
             if (standort && artikel.standort !== standort) {
                 return false;
             }
+            var behaelter = $('filterBehaelter').value;
+            if (behaelter === '#behaelter' && !artikel.istBehaelter) {
+                return false;
+            }
+            if (behaelter === '#frei' && artikel.behaelterKennung) {
+                return false;
+            }
+            if (behaelter && behaelter.charAt(0) !== '#'
+                    && artikel.behaelterKennung !== behaelter) {
+                return false;
+            }
             return passt(artikel, suche);
         });
     }
@@ -299,10 +310,87 @@
                 vorschlag.appendChild(eintrag);
             });
         });
+
+        // Jeder Behälter wird zum Filter: "zeig mir, was in dieser Box liegt".
+        var behaelterWahl = $('filterBehaelter');
+        var gemerkt = behaelterWahl.value;
+        behaelterWahl.innerHTML = '<option value="">Überall</option>'
+            + '<option value="#behaelter">Nur Behälter</option>'
+            + '<option value="#frei">Nicht eingeräumt</option>';
+        moeglicheBehaelter(null).forEach(function (behaelter) {
+            var eintrag = document.createElement('option');
+            eintrag.value = behaelter.rfidUid;
+            eintrag.textContent = 'In: ' + behaelter.name;
+            behaelterWahl.appendChild(eintrag);
+        });
+        behaelterWahl.value = gemerkt;
+        if (behaelterWahl.value !== gemerkt) {
+            // Der Behälter ist verschwunden - dann wieder alles zeigen.
+            behaelterWahl.value = '';
+        }
     }
 
     function ort(artikel) {
-        return [artikel.standort, artikel.lagerort].filter(Boolean).join(' · ');
+        var teile = [artikel.standort, artikel.lagerort].filter(Boolean);
+        var behaelter = nachKennung(artikel.behaelterKennung);
+        if (behaelter) {
+            teile.push('in ' + behaelter.name);
+        } else if (artikel.behaelterKennung) {
+            teile.push('in ' + artikel.behaelterKennung);
+        }
+        return teile.join(' · ');
+    }
+
+    /** Der Artikel mit dieser Kennung - so finden sich Behälter wieder. */
+    function nachKennung(kennung) {
+        if (!kennung) {
+            return null;
+        }
+        for (var i = 0; i < stand.artikel.length; i++) {
+            if (stand.artikel[i].rfidUid === kennung) {
+                return stand.artikel[i];
+            }
+        }
+        return null;
+    }
+
+    /** Was liegt in diesem Behälter? */
+    function inhaltVon(kennung) {
+        if (!kennung) {
+            return [];
+        }
+        return stand.artikel.filter(function (eintrag) {
+            return eintrag.behaelterKennung === kennung;
+        });
+    }
+
+    /**
+     * Behälter, in die dieser Artikel darf: nicht er selbst, und nichts, das
+     * schon in ihm liegt - sonst stäke er in sich selbst.
+     */
+    function moeglicheBehaelter(artikel) {
+        var tabu = {};
+        if (artikel && artikel.rfidUid) {
+            var offen = [artikel.rfidUid];
+            while (offen.length) {
+                var kennung = offen.pop();
+                if (tabu[kennung]) {
+                    continue;
+                }
+                tabu[kennung] = true;
+                inhaltVon(kennung).forEach(function (kind) {
+                    if (kind.rfidUid) {
+                        offen.push(kind.rfidUid);
+                    }
+                });
+            }
+        }
+        return stand.artikel.filter(function (eintrag) {
+            return eintrag.istBehaelter && eintrag.rfidUid && !tabu[eintrag.rfidUid]
+                && (!artikel || eintrag.id !== artikel.id);
+        }).sort(function (a, b) {
+            return a.name.localeCompare(b.name, 'de');
+        });
     }
 
     function bestandZeichnen() {
@@ -316,8 +404,14 @@
             var status = STATUS[artikel.status] || {text: artikel.status, farbe: 'var(--gedaempft)'};
             var bild = artikel.bildUrl ? '<img alt="" data-bild="'
                 + text(artikel.bildUrl) + '">' : '';
+            var marke = artikel.istBehaelter
+                ? '<span class="behaelterzeichen" title="Behälter">▦</span> ' : '';
             zeile.innerHTML = '<td class="bild">' + bild + '</td>'
-                + '<td>' + text(artikel.name) + '</td>'
+                + '<td>' + marke + text(artikel.name)
+                + (artikel.istBehaelter
+                    ? ' <span class="leer">' + text(artikel.behaelterArt || 'Behälter')
+                      + ' · ' + inhaltVon(artikel.rfidUid).length + '</span>' : '')
+                + '</td>'
                 + '<td class="optional">' + text(artikel.kategorie || '') + '</td>'
                 + '<td class="optional">' + text(ort(artikel)) + '</td>'
                 + '<td class="optional"><code>' + text(artikel.rfidUid || '') + '</code></td>'
@@ -382,6 +476,9 @@
         $('feldKennung').value = stand.offen.rfidUid || '';
         $('feldStandort').value = stand.offen.standort || '';
         $('feldLagerort').value = stand.offen.lagerort || '';
+        $('feldIstBehaelter').checked = !!stand.offen.istBehaelter;
+        $('feldBehaelterArt').value = stand.offen.behaelterArt || '';
+        behaelterFelder(artikel);
         $('feldStatus').value = stand.offen.status || 'vorhanden';
         $('feldWarnung').value = stand.offen.scanWarnung || '1j';
         $('feldVerliehenAn').value = stand.offen.verliehenAn || '';
@@ -443,6 +540,64 @@
         $('feldRueckgabeHuelle').style.display = verliehen ? '' : 'none';
     }
 
+    /**
+     * Auswahl "liegt in" fuellen und, wenn der Artikel selbst ein Behälter
+     * ist, zeigen was drinsteckt. Ohne eigene Kennung kann er keiner sein -
+     * die klebt am Möbel und wird beim Einräumen gescannt.
+     */
+    function behaelterFelder(artikel) {
+        var wahl = $('feldLiegtIn');
+        wahl.innerHTML = '<option value="">– nirgends –</option>';
+        moeglicheBehaelter(artikel).forEach(function (behaelter) {
+            var eintrag = document.createElement('option');
+            eintrag.value = behaelter.rfidUid;
+            eintrag.textContent = (behaelter.behaelterArt
+                ? behaelter.behaelterArt + ': ' : '') + behaelter.name;
+            wahl.appendChild(eintrag);
+        });
+        var liegtIn = stand.offen.behaelterKennung || '';
+        if (liegtIn && !wahl.querySelector('option[value="' + CSS.escape(liegtIn) + '"]')) {
+            // Der Behälter ist weg oder gesperrt - trotzdem anzeigen, was dasteht.
+            var rest = document.createElement('option');
+            rest.value = liegtIn;
+            rest.textContent = liegtIn + ' (nicht gefunden)';
+            wahl.appendChild(rest);
+        }
+        wahl.value = liegtIn;
+
+        $('feldBehaelterArtHuelle').hidden = !$('feldIstBehaelter').checked;
+
+        var kasten = $('behaelterInhalt');
+        var inhalt = artikel && artikel.istBehaelter ? inhaltVon(artikel.rfidUid) : [];
+        if (!artikel || !artikel.istBehaelter) {
+            kasten.hidden = true;
+            return;
+        }
+        kasten.hidden = false;
+        if (!inhalt.length) {
+            kasten.innerHTML = '<h4>Inhalt</h4><p class="leer">Noch nichts eingeräumt.'
+                + ' Beim jeweiligen Artikel „liegt in" auf diesen Behälter stellen.</p>';
+            return;
+        }
+        kasten.innerHTML = '<h4>Inhalt · ' + inhalt.length + '</h4><ul class="inhaltsliste">'
+            + inhalt.map(function (eintrag) {
+                return '<li><button type="button" class="leise" data-zu="'
+                    + text(eintrag.id) + '">' + text(eintrag.name)
+                    + (eintrag.istBehaelter ? ' ▸' : '') + '</button></li>';
+            }).join('') + '</ul>';
+        [...kasten.querySelectorAll('button[data-zu]')].forEach(function (knopf) {
+            knopf.onclick = function () {
+                var ziel = stand.artikel.filter(function (e) {
+                    return e.id === knopf.dataset.zu;
+                })[0];
+                if (ziel) {
+                    $('artikelFenster').close();
+                    artikelOeffnen(ziel);
+                }
+            };
+        });
+    }
+
     function artikelSpeichern() {
         var eingabe = {
             name: $('feldName').value.trim(),
@@ -451,6 +606,10 @@
             rfidUid: $('feldKennung').value.trim() || null,
             standort: $('feldStandort').value.trim() || null,
             lagerort: $('feldLagerort').value.trim() || null,
+            istBehaelter: $('feldIstBehaelter').checked,
+            behaelterArt: $('feldIstBehaelter').checked
+                ? ($('feldBehaelterArt').value.trim() || null) : null,
+            behaelterKennung: $('feldLiegtIn').value || null,
             status: $('feldStatus').value,
             scanWarnung: $('feldWarnung').value,
             verliehenAn: $('feldStatus').value === 'verliehen'
@@ -870,6 +1029,10 @@
         $('suche').oninput = bestandZeichnen;
         $('filterKategorie').onchange = bestandZeichnen;
         $('filterStandort').onchange = bestandZeichnen;
+        $('filterBehaelter').onchange = bestandZeichnen;
+        $('feldIstBehaelter').onchange = function () {
+            $('feldBehaelterArtHuelle').hidden = !$('feldIstBehaelter').checked;
+        };
         $('knopfNeu').onclick = function () {
             artikelOeffnen(null);
         };

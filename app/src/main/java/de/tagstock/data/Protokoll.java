@@ -27,6 +27,8 @@ public class Protokoll {
     public static final String GESCANNT = "Gescannt";
     public static final String VERLIEHEN = "Verliehen";
     public static final String ZURUECK = "Zurückgenommen";
+    /** Gleiche Bezeichnung wie auf dem Server, damit das Protokoll zusammenpasst. */
+    public static final String EINGERAEUMT = "Eingeräumt";
 
     @PrimaryKey(autoGenerate = true)
     public long id;

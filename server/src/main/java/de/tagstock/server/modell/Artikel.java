@@ -17,6 +17,15 @@ public class Artikel {
     public Long rueckgabeDatum;
     public Long zuletztGescannt;
     public String scanWarnung = "1j";
+
+    /** true, wenn dieser Eintrag selbst etwas aufnimmt - Box, Schublade, Regal. */
+    public boolean istBehaelter;
+
+    /** Was fuer ein Behaelter, z. B. "Box" oder "Schublade". Nur zur Anzeige. */
+    public String behaelterArt;
+
+    /** Kennung des Behaelters, in dem dieser Artikel liegt - null, wenn frei. */
+    public String behaelterKennung;
     public long erstelltAm;
     public long geaendertAm;
     public boolean geloescht;

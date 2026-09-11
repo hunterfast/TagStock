@@ -27,6 +27,7 @@ import java.util.List;
 import de.tagstock.R;
 import de.tagstock.data.Abgleich;
 import de.tagstock.data.Artikel;
+import de.tagstock.data.Behaelterkette;
 import de.tagstock.data.ArtikelStatus;
 import de.tagstock.data.Kategorie;
 import de.tagstock.data.Repository;
@@ -67,6 +68,11 @@ public class ArtikelFormFragment extends Fragment {
     private Long rueckgabeDatum;
     private final List<String> kategorien = new ArrayList<>();
 
+    /** Behaelter, in die dieser Artikel darf - Reihenfolge wie im Auswahlfeld. */
+    private final List<Artikel> behaelter = new ArrayList<>();
+    @Nullable
+    private String liegtIn;
+
     /** Die Kennung wird waehrend der Eingabe geprueft - verzoegert, nicht bei jedem Zeichen. */
     private final android.os.Handler pruefer = new android.os.Handler(Looper.getMainLooper());
     private final Runnable kennungPruefen = this::kennungPruefen;
@@ -83,6 +89,18 @@ public class ArtikelFormFragment extends Fragment {
                 ScanResult scan = ScanResult.fromIntent(ergebnis.getData());
                 if (scan != null) {
                     binding.editKennung.setText(scan.code);
+                }
+            });
+
+    /** Denselben Scanner, aber der Code gehoert zum Behaelter, nicht zum Artikel. */
+    private final ActivityResultLauncher<Intent> behaelterScan = registerForActivityResult(
+            new ActivityResultContracts.StartActivityForResult(), ergebnis -> {
+                if (ergebnis.getResultCode() != android.app.Activity.RESULT_OK) {
+                    return;
+                }
+                ScanResult scan = ScanResult.fromIntent(ergebnis.getData());
+                if (scan != null) {
+                    behaelterUebernehmen(scan.code);
                 }
             });
 
@@ -143,6 +161,10 @@ public class ArtikelFormFragment extends Fragment {
         });
         binding.buttonKennungScannen.setOnClickListener(v ->
                 scanLauncher.launch(ScannerActivity.intent(requireContext())));
+        binding.buttonBehaelterScannen.setOnClickListener(v ->
+                behaelterScan.launch(ScannerActivity.intent(requireContext())));
+        binding.schalterBehaelter.setOnCheckedChangeListener((knopf, an) -> behaelterFelder());
+        behaelterArtenLaden();
         binding.editKennung.addTextChangedListener(new android.text.TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence s, int start, int anzahl, int nach) {
@@ -156,6 +178,8 @@ public class ArtikelFormFragment extends Fragment {
             public void afterTextChanged(android.text.Editable s) {
                 pruefer.removeCallbacks(kennungPruefen);
                 pruefer.postDelayed(kennungPruefen, 350L);
+                // Ohne Kennung kein Behaelter - der Hinweis haengt am Feld.
+                behaelterFelder();
             }
         });
         binding.buttonKennungOeffnen.setOnClickListener(v -> {
@@ -198,6 +222,8 @@ public class ArtikelFormFragment extends Fragment {
             if (kennung != null) {
                 binding.editKennung.setText(kennung);
             }
+            behaelterFelder();
+            behaelterLaden();
         }
         verleihFelder();
         fotoAnzeigen();
@@ -248,7 +274,7 @@ public class ArtikelFormFragment extends Fragment {
             binding.buttonKennungOeffnen.setVisibility(fremd ? View.VISIBLE : View.GONE);
             if (fremd) {
                 binding.textKennungHinweis.setVisibility(View.VISIBLE);
-                String wo = Formatter.zeile(requireContext(), treffer);
+                String wo = Formatter.zeile(requireContext(), treffer, null);
                 binding.textKennungHinweis.setText(wo.isEmpty()
                         ? getString(R.string.kennung_belegt_kurz, treffer.name)
                         : getString(R.string.kennung_belegt_kurz_wo, treffer.name, wo));
@@ -372,8 +398,121 @@ public class ArtikelFormFragment extends Fragment {
         bildUrl = artikel.bildUrl;
         statusSetzen(artikel.status);
         warnungSetzen(artikel.scanWarnung);
+        binding.schalterBehaelter.setChecked(artikel.istBehaelter);
+        binding.dropdownBehaelterArt.setText(artikel.behaelterArt, false);
+        liegtIn = artikel.behaelterKennung;
         verleihFelder();
+        behaelterFelder();
+        behaelterLaden();
         fotoAnzeigen();
+    }
+
+    // ------------------------------------------------------------- Behaelter
+
+    /** Vorschlaege fuer die Art - frei ueberschreibbar. */
+    private void behaelterArtenLaden() {
+        binding.dropdownBehaelterArt.setAdapter(new ArrayAdapter<>(requireContext(),
+                android.R.layout.simple_list_item_1,
+                getResources().getStringArray(R.array.behaelter_arten)));
+    }
+
+    /**
+     * Sichtbarkeit und Hinweis. Ohne eigene Kennung kann nichts ein Behaelter
+     * sein - sie klebt am Moebel und wird beim Einraeumen gescannt.
+     */
+    private void behaelterFelder() {
+        boolean behaelterFall = binding.schalterBehaelter.isChecked();
+        binding.inputBehaelterArt.setVisibility(behaelterFall ? View.VISIBLE : View.GONE);
+        boolean ohneKennung = behaelterFall
+                && text(binding.editKennung.getText()).trim().isEmpty();
+        binding.textBehaelterHinweis.setVisibility(ohneKennung ? View.VISIBLE : View.GONE);
+    }
+
+    /**
+     * Die Auswahl "liegt in" fuellen. Ausgelassen wird, was einen Ring ergaebe:
+     * der Artikel selbst und alles, was schon in ihm steckt.
+     */
+    private void behaelterLaden() {
+        repository.ladeAlleArtikel(alle -> {
+            if (binding == null) {
+                return;
+            }
+            behaelter.clear();
+            behaelter.addAll(Behaelterkette.moegliche(alle, original));
+            List<String> namen = new ArrayList<>();
+            namen.add(getString(R.string.behaelter_nirgends));
+            for (Artikel eintrag : behaelter) {
+                namen.add(eintrag.behaelterArt == null || eintrag.behaelterArt.isEmpty()
+                        ? eintrag.name : eintrag.behaelterArt + ": " + eintrag.name);
+            }
+            binding.dropdownLiegtIn.setAdapter(new ArrayAdapter<>(requireContext(),
+                    android.R.layout.simple_list_item_1, namen));
+            binding.dropdownLiegtIn.setOnItemClickListener((eltern, sicht, stelle, id) ->
+                    liegtIn = stelle == 0 ? null : behaelter.get(stelle - 1).rfidUid);
+            liegtInAnzeigen(namen);
+        });
+    }
+
+    private void liegtInAnzeigen(List<String> namen) {
+        if (liegtIn == null || liegtIn.isEmpty()) {
+            binding.dropdownLiegtIn.setText(namen.get(0), false);
+            return;
+        }
+        for (int i = 0; i < behaelter.size(); i++) {
+            if (liegtIn.equals(behaelter.get(i).rfidUid)) {
+                binding.dropdownLiegtIn.setText(namen.get(i + 1), false);
+                return;
+            }
+        }
+        // Der Behaelter ist nicht (mehr) waehlbar - trotzdem zeigen, was dasteht.
+        binding.dropdownLiegtIn.setText(liegtIn, false);
+    }
+
+    /** Ein gescannter Code soll den Behaelter treffen, nicht irgendetwas. */
+    private void behaelterUebernehmen(String code) {
+        repository.ladeAlleArtikel(alle -> {
+            if (binding == null) {
+                return;
+            }
+            Artikel treffer = null;
+            for (Artikel eintrag : alle) {
+                if (code.equals(eintrag.rfidUid)) {
+                    treffer = eintrag;
+                    break;
+                }
+            }
+            if (treffer == null) {
+                Toast.makeText(requireContext(),
+                        getString(R.string.behaelter_unbekannt, code), Toast.LENGTH_LONG).show();
+                return;
+            }
+            if (!treffer.istBehaelter) {
+                Toast.makeText(requireContext(),
+                        getString(R.string.behaelter_kein_behaelter, treffer.name),
+                        Toast.LENGTH_LONG).show();
+                return;
+            }
+            if (original != null && treffer.id == original.id) {
+                Toast.makeText(requireContext(), R.string.behaelter_selbst,
+                        Toast.LENGTH_LONG).show();
+                return;
+            }
+            boolean erlaubt = false;
+            for (Artikel moeglich : Behaelterkette.moegliche(alle, original)) {
+                if (moeglich.id == treffer.id) {
+                    erlaubt = true;
+                    break;
+                }
+            }
+            if (!erlaubt) {
+                Toast.makeText(requireContext(),
+                        getString(R.string.behaelter_ring, treffer.name),
+                        Toast.LENGTH_LONG).show();
+                return;
+            }
+            liegtIn = treffer.rfidUid;
+            behaelterLaden();
+        });
     }
 
     private void statusSetzen(ArtikelStatus status) {
@@ -466,6 +605,20 @@ public class ArtikelFormFragment extends Fragment {
         ziel.standort = Formatter.leerZuNull(text(binding.editStandort.getText()));
         ziel.lagerort = Formatter.leerZuNull(text(binding.editLagerort.getText()));
         ziel.rfidUid = Formatter.leerZuNull(text(binding.editKennung.getText()));
+        ziel.istBehaelter = binding.schalterBehaelter.isChecked();
+        ziel.behaelterArt = ziel.istBehaelter
+                ? Formatter.leerZuNull(text(binding.dropdownBehaelterArt.getText())) : null;
+        ziel.behaelterKennung = Formatter.leerZuNull(liegtIn);
+        if (ziel.istBehaelter && ziel.rfidUid == null) {
+            binding.editKennung.setError(getString(R.string.behaelter_braucht_kennung));
+            binding.editKennung.requestFocus();
+            behaelterFelder();
+            return;
+        }
+        if (ziel.behaelterKennung != null && ziel.behaelterKennung.equals(ziel.rfidUid)) {
+            Toast.makeText(requireContext(), R.string.behaelter_selbst, Toast.LENGTH_LONG).show();
+            return;
+        }
         ziel.status = status();
         ziel.scanWarnung = warnung();
         ziel.fotoPfad = fotoPfad;
@@ -554,7 +707,12 @@ public class ArtikelFormFragment extends Fragment {
         binding.editRueckgabe.setText("");
         statusSetzen(ArtikelStatus.VORHANDEN);
         warnungSetzen(ScanWarnung.JAHR);
+        binding.schalterBehaelter.setChecked(false);
+        binding.dropdownBehaelterArt.setText("", false);
+        liegtIn = null;
         verleihFelder();
+        behaelterFelder();
+        behaelterLaden();
         fotoAnzeigen();
     }
 
@@ -573,6 +731,8 @@ public class ArtikelFormFragment extends Fragment {
                 || !text(binding.editStandort.getText()).equals(wert(original.standort))
                 || !text(binding.editLagerort.getText()).equals(wert(original.lagerort))
                 || !text(binding.editKennung.getText()).equals(wert(original.rfidUid))
+                || binding.schalterBehaelter.isChecked() != original.istBehaelter
+                || !wert(liegtIn).equals(wert(original.behaelterKennung))
                 || status() != original.status;
     }
 

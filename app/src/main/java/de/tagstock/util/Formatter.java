@@ -65,7 +65,8 @@ public final class Formatter {
      * Zweite Zeile der Artikelkarte: bei verliehenen Artikeln die Person,
      * sonst die Kategorie - dahinter jeweils der Lagerort.
      */
-    public static String zeile(Context context, Artikel artikel) {
+    public static String zeile(Context context, Artikel artikel,
+                               @Nullable String behaelterName) {
         StringBuilder text = new StringBuilder();
         if (artikel.status == ArtikelStatus.VERLIEHEN
                 && artikel.verliehenAn != null && !artikel.verliehenAn.isEmpty()) {
@@ -73,7 +74,11 @@ public final class Formatter {
         } else if (artikel.kategorie != null && !artikel.kategorie.isEmpty()) {
             text.append(artikel.kategorie);
         }
-        if (artikel.lagerort != null && !artikel.lagerort.isEmpty()) {
+        // Der Behaelter schlaegt den Ort: "in Ikea-Box blau" sagt mehr als
+        // der Raum, in dem die Box gerade steht.
+        if (behaelterName != null && !behaelterName.isEmpty()) {
+            anhaengen(text, context.getString(R.string.behaelter_in, behaelterName));
+        } else if (artikel.lagerort != null && !artikel.lagerort.isEmpty()) {
             anhaengen(text, artikel.lagerort);
         } else if (artikel.standort != null && !artikel.standort.isEmpty()) {
             anhaengen(text, artikel.standort);

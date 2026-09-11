@@ -34,6 +34,24 @@ Server läuft die App vollständig allein auf dem Gerät.
   Jahre oder nie).
 - **Mehrfachauswahl**: Status setzen, Standort ändern, Etikettenbogen als PDF.
 
+### Behälter – ein Lager im Lager
+Eine Ikea-Box, eine Schublade, ein Regal: Wer etwas wegstellt, legt es als
+**Behälter** an und klebt ihm eine eigene Kennung auf – NFC-Tag oder Barcode.
+Danach lässt sich hineinräumen.
+
+- Im Formular: Schalter *„Ist ein Behälter"* samt Art (Box, Schublade, Regal …)
+  und die Auswahl *„Liegt in"* – wahlweise durch Scannen des Behälters.
+- In der Detailansicht eines Behälters steht sein **Inhalt**; ein Tipp springt
+  hinein. Über *„Etwas einräumen"* scannt man Gegenstand für Gegenstand direkt
+  hinein.
+- In der Liste sind Behälter mit ▦ gekennzeichnet; bei allem Eingeräumten steht
+  „in Ikea-Box blau" statt des Lagerorts.
+- Behälter dürfen **ineinanderstecken** – nur nicht im Kreis: Eine Box in ihre
+  eigene Schublade zu legen, wird gar nicht erst angeboten.
+- Ein Behälter braucht eine eigene Kennung – sie klebt am Möbel und ist das,
+  was beim Einräumen gescannt wird. Bekommt er eine neue, zieht sein Inhalt mit;
+  verschwindet er, wird sein Inhalt frei statt unauffindbar.
+
 ### Kennungen und Scannen
 - Je Artikel eine Kennung – NFC-Tag oder Barcode/QR –, **eindeutig** im Bestand.
   Ist sie vergeben, zeigt die App, zu welchem Artikel sie gehört.
@@ -102,8 +120,10 @@ legst ein Team an oder trittst per Einladungscode einem bei.
 ### Oberfläche im Browser
 
 `http://<server-ip>:8080/` zeigt dieselben Daten wie die App: Bestand mit Suche
-und Filtern, Artikel anlegen und bearbeiten, Bilder, Kategorien, Mitglieder,
-Anfragen und der Bereich *System* mit Version und bereitliegenden App-Fassungen.
+und Filtern, Artikel anlegen und bearbeiten, Bilder, Behälter samt Inhalt,
+Kategorien, Mitglieder, Anfragen und der Bereich *System* mit Version und
+bereitliegenden App-Fassungen. Unter der Anmeldemaske steht außerdem der
+Knopf, mit dem ein frisches Gerät die App lädt – dafür braucht es kein Konto.
 Gescannt wird weiterhin mit der App – Kennungen lassen sich im Browser von Hand
 eintragen. Das **erste angelegte Konto betreut den Server** und sieht alle Lager.
 

@@ -295,6 +295,33 @@
     <string name="update_sicherung">Sicherung: %1$s</string>
     <string name="update_sicherung_fehler">Die Sicherung ist nicht gelungen – die Aktualisierung wurde abgebrochen.</string>
     <string name="update_kein_installer">Auf diesem Gerät lässt sich die Datei nicht öffnen.</string>
+    <string-array name="behaelter_arten">
+        <item>Box</item>
+        <item>Schublade</item>
+        <item>Regal</item>
+        <item>Schrank</item>
+        <item>Kiste</item>
+        <item>Koffer</item>
+        <item>Tasche</item>
+    </string-array>
+    <string name="behaelter_zeichen">▦ %1$s</string>
+    <string name="behaelter_in">in %1$s</string>
+    <string name="behaelter_schalter">Ist ein Behälter – Box, Schublade, Regal …</string>
+    <string name="behaelter_braucht_kennung">Ein Behälter braucht eine eigene Kennung. Sie klebt am Möbel und wird beim Einräumen gescannt.</string>
+    <string name="behaelter_art">Art des Behälters</string>
+    <string name="behaelter_liegt_in">Liegt in</string>
+    <string name="behaelter_nirgends">– nirgends –</string>
+    <string name="behaelter_scannen">Behälter scannen</string>
+    <string name="behaelter_unbekannt">Kein Behälter mit der Kennung %1$s</string>
+    <string name="behaelter_kein_behaelter">„%1$s“ ist kein Behälter</string>
+    <string name="behaelter_ring">Das ergäbe einen Ring: „%1$s“ liegt schon darin</string>
+    <string name="behaelter_selbst">Ein Behälter kann nicht in sich selbst liegen</string>
+    <string name="behaelter_inhalt">Inhalt · %1$d</string>
+    <string name="behaelter_inhalt_leer">Noch nichts eingeräumt. Beim jeweiligen Artikel „Liegt in“ auf diesen Behälter stellen – oder hier scannen.</string>
+    <string name="behaelter_einraeumen">Etwas einräumen</string>
+    <string name="behaelter_eingeraeumt">„%1$s“ liegt jetzt in „%2$s“</string>
+    <string name="behaelter_liegt_in_anzeige">Liegt in: %1$s</string>
+    <string name="behaelter_freigegeben">%1$d Stück liegen jetzt nirgends mehr</string>
     <string name="update_beschaedigt">Die geladene Datei ist unvollständig oder beschädigt. Bitte noch einmal versuchen.</string>
     <string name="signatur_titel">Andere Signatur – Update nicht möglich</string>
     <string name="signatur_text">Die installierte App und die neue Fassung stammen aus verschiedenen Bauten und tragen deshalb verschiedene Signaturen. Android lehnt das mit „App nicht installiert“ ab und nennt keinen Grund.\n\nEinmalig hilft nur der Weg über eine Neuinstallation:\n\n1. Oben „Abgleichen“ drücken, damit alles auf dem Server liegt.\n2. „Datei in den Download-Ordner legen“ – dort überlebt sie das Deinstallieren.\n3. TagStock deinstallieren.\n4. Die Datei im Dateimanager öffnen und installieren.\n5. Wieder am Server anmelden – der Bestand kommt zurück.\n\nAb dieser Fassung tragen alle Auslieferungen denselben Schlüssel; künftige Updates laufen dann ohne Deinstallieren durch.</string>

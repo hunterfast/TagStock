@@ -52,6 +52,11 @@
                 <input id="suche" type="search" placeholder="Suchen – Name, Kennung, Ort, Beschreibung">
                 <select id="filterKategorie"><option value="">Alle Kategorien</option></select>
                 <select id="filterStandort"><option value="">Alle Standorte</option></select>
+                <select id="filterBehaelter">
+                    <option value="">Überall</option>
+                    <option value="#behaelter">Nur Behälter</option>
+                    <option value="#frei">Nicht eingeräumt</option>
+                </select>
                 <button id="knopfNeu">Neuer Artikel</button>
             </div>
             <div class="zahlen" id="zahlen"></div>
@@ -126,6 +131,16 @@
 </div>
 
 <!-- Artikelfenster -------------------------------------------------------- -->
+<datalist id="behaelterArten">
+    <option value="Box"></option>
+    <option value="Schublade"></option>
+    <option value="Regal"></option>
+    <option value="Schrank"></option>
+    <option value="Kiste"></option>
+    <option value="Koffer"></option>
+    <option value="Tasche"></option>
+</datalist>
+
 <dialog id="artikelFenster">
     <form method="dialog">
         <div class="kopf"><span id="artikelTitel">Artikel</span></div>
@@ -137,6 +152,16 @@
                 <label>Kennung (NFC, Barcode)<input id="feldKennung"></label>
                 <label>Standort<input id="feldStandort" list="standorteVorschlag"></label>
                 <label>Lagerort<input id="feldLagerort"></label>
+                <label>Liegt in
+                    <select id="feldLiegtIn"><option value="">– nirgends –</option></select>
+                </label>
+                <label class="breit ankreuz">
+                    <input id="feldIstBehaelter" type="checkbox">
+                    <span>Ist selbst ein Behälter – ein Lager im Lager</span>
+                </label>
+                <label id="feldBehaelterArtHuelle">Art des Behälters
+                    <input id="feldBehaelterArt" list="behaelterArten" placeholder="Box, Schublade, Regal …">
+                </label>
                 <label>Status
                     <select id="feldStatus">
                         <option value="vorhanden">Vorhanden</option>
@@ -164,6 +189,7 @@
                     </span>
                 </label>
             </div>
+            <div id="behaelterInhalt" hidden></div>
             <div id="artikelProtokoll"></div>
         </div>
         <div class="fuss">

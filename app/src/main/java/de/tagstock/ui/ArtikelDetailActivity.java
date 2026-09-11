@@ -27,6 +27,7 @@ import java.util.List;
 import de.tagstock.R;
 import de.tagstock.data.Artikel;
 import de.tagstock.data.ArtikelStatus;
+import de.tagstock.data.Abgleich;
 import de.tagstock.data.Protokoll;
 import de.tagstock.data.Repository;
 import de.tagstock.databinding.ActivityArtikelDetailBinding;
@@ -40,6 +41,7 @@ import de.tagstock.util.NfcHelper;
 import de.tagstock.util.PdfErzeuger;
 import de.tagstock.util.QrErzeuger;
 import de.tagstock.util.Randabstand;
+import de.tagstock.util.ScanResult;
 import de.tagstock.util.Serverbilder;
 import de.tagstock.util.Sicherung;
 
@@ -68,6 +70,18 @@ public class ArtikelDetailActivity extends AppCompatActivity {
 
     private final ActivityResultLauncher<String> etikettLauncher = registerForActivityResult(
             new ActivityResultContracts.CreateDocument("application/pdf"), this::etikettSchreiben);
+
+    /** Einraeumen: Der gescannte Gegenstand wandert in diesen Behaelter. */
+    private final ActivityResultLauncher<Intent> einraeumScan = registerForActivityResult(
+            new ActivityResultContracts.StartActivityForResult(), ergebnis -> {
+                if (ergebnis.getResultCode() != android.app.Activity.RESULT_OK) {
+                    return;
+                }
+                ScanResult scan = ScanResult.fromIntent(ergebnis.getData());
+                if (scan != null) {
+                    einraeumen(scan.code);
+                }
+            });
 
     public static Intent intent(Context context, long artikelId) {
         Intent intent = new Intent(context, ArtikelDetailActivity.class);
@@ -169,8 +183,84 @@ public class ArtikelDetailActivity extends AppCompatActivity {
         }
 
         binding.textVermisst.setVisibility(artikel.istVermisst() ? View.VISIBLE : View.GONE);
+        behaelterZeichnen(artikel);
         qrZeichnen();
         invalidateOptionsMenu();
+    }
+
+    // ------------------------------------------------------------- Behaelter
+
+    /**
+     * Zwei Seiten derselben Sache: Wo liegt dieser Artikel - und, wenn er
+     * selbst ein Behaelter ist, was liegt in ihm.
+     */
+    private void behaelterZeichnen(Artikel artikel) {
+        binding.gruppeLiegtIn.setVisibility(View.GONE);
+        if (artikel.behaelterKennung != null && !artikel.behaelterKennung.isEmpty()) {
+            repository.ladeNachKennung(artikel.behaelterKennung, behaelter -> {
+                binding.gruppeLiegtIn.setVisibility(View.VISIBLE);
+                binding.buttonLiegtIn.setText(behaelter == null
+                        ? artikel.behaelterKennung : behaelter.name);
+                binding.buttonLiegtIn.setOnClickListener(behaelter == null ? null : v ->
+                        startActivity(ArtikelDetailActivity.intent(this, behaelter.id)));
+                binding.buttonLiegtIn.setEnabled(behaelter != null);
+            });
+        }
+
+        boolean istBehaelter = artikel.istBehaelter
+                && artikel.rfidUid != null && !artikel.rfidUid.isEmpty();
+        binding.cardInhalt.setVisibility(istBehaelter ? View.VISIBLE : View.GONE);
+        if (!istBehaelter) {
+            return;
+        }
+        binding.buttonEinraeumen.setOnClickListener(v ->
+                einraeumScan.launch(ScannerActivity.intent(this)));
+        repository.ladeInhalt(artikel.rfidUid, inhalt -> {
+            binding.textInhaltTitel.setText(getString(R.string.behaelter_inhalt, inhalt.size()));
+            binding.textInhaltLeer.setVisibility(inhalt.isEmpty() ? View.VISIBLE : View.GONE);
+            binding.gruppeInhalt.removeAllViews();
+            for (Artikel drin : inhalt) {
+                com.google.android.material.chip.Chip marke =
+                        new com.google.android.material.chip.Chip(this);
+                marke.setText(drin.istBehaelter ? drin.name + " ▸" : drin.name);
+                marke.setOnClickListener(v ->
+                        startActivity(ArtikelDetailActivity.intent(this, drin.id)));
+                binding.gruppeInhalt.addView(marke);
+            }
+        });
+    }
+
+    /** Gescannten Gegenstand in diesen Behaelter legen. */
+    private void einraeumen(String code) {
+        if (artikel == null) {
+            return;
+        }
+        Artikel behaelter = artikel;
+        repository.ladeNachKennung(code, gefunden -> {
+            if (gefunden == null) {
+                Toast.makeText(this, getString(R.string.behaelter_unbekannt, code),
+                        Toast.LENGTH_LONG).show();
+                return;
+            }
+            if (gefunden.id == behaelter.id) {
+                Toast.makeText(this, R.string.behaelter_selbst, Toast.LENGTH_LONG).show();
+                return;
+            }
+            repository.einraeumen(gefunden, behaelter, Einstellungen.nutzer(this), erfolg -> {
+                if (!erfolg) {
+                    Toast.makeText(this, getString(R.string.behaelter_ring, gefunden.name),
+                            Toast.LENGTH_LONG).show();
+                    return;
+                }
+                Toast.makeText(this, getString(R.string.behaelter_eingeraeumt,
+                        gefunden.name, behaelter.name), Toast.LENGTH_SHORT).show();
+                behaelterZeichnen(behaelter);
+                if (Einstellungen.serverAktiv(this)) {
+                    Abgleich.ausfuehren(getApplicationContext(), abgleich -> {
+                    });
+                }
+            });
+        });
     }
 
     private void text(android.widget.TextView view, @Nullable String wert) {

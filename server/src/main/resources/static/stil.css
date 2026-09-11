@@ -252,3 +252,25 @@ dialog .inhalt { padding: 16px; max-height: 65vh; overflow: auto; }
     .felder { grid-template-columns: 1fr; }
     th.optional, td.optional { display: none; }
 }
+
+/* Behaelter: Box, Schublade, Regal - ein Lager im Lager. */
+.behaelterzeichen { color: var(--marke); }
+
+.felder label.ankreuz {
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+}
+
+.felder label.ankreuz input { width: auto; }
+
+.inhaltsliste {
+    list-style: none;
+    margin: 6px 0 0;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+#behaelterInhalt h4 { margin: 14px 0 0; }

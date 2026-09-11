@@ -68,12 +68,19 @@ CREATE TABLE IF NOT EXISTS artikel (
     rueckgabe_datum  INTEGER,
     zuletzt_gescannt INTEGER,
     scan_warnung     TEXT NOT NULL DEFAULT '1j',
+    -- Behaelter: eine Box, Schublade, ein Regal ... - also ein Lager im Lager.
+    -- Wer drin liegt, merkt sich die Kennung des Behaelters; die klebt am
+    -- Moebel und ist genau das, was beim Einraeumen gescannt wird.
+    ist_behaelter    INTEGER NOT NULL DEFAULT 0,
+    behaelter_art    TEXT,
+    behaelter_kennung TEXT,
     erstellt_am      INTEGER NOT NULL,
     geaendert_am     INTEGER NOT NULL,
     geloescht        INTEGER NOT NULL DEFAULT 0
 );
 CREATE INDEX IF NOT EXISTS idx_artikel_team ON artikel (team_id);
 CREATE INDEX IF NOT EXISTS idx_artikel_geaendert ON artikel (team_id, geaendert_am);
+CREATE INDEX IF NOT EXISTS idx_artikel_behaelter ON artikel (team_id, behaelter_kennung);
 -- Eine Kennung gehoert je Team zu genau einem Artikel.
 CREATE UNIQUE INDEX IF NOT EXISTS idx_artikel_kennung ON artikel (team_id, rfid_uid)
     WHERE rfid_uid IS NOT NULL AND geloescht = 0;

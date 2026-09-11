@@ -37,6 +37,9 @@ public class Schemapflege implements ApplicationRunner {
         spalten("artikel").put("bild_url", "TEXT");
         spalten("kategorien").put("geloescht", "INTEGER NOT NULL DEFAULT 0");
         spalten("anfragen").put("antwort", "TEXT");
+        spalten("artikel").put("ist_behaelter", "INTEGER NOT NULL DEFAULT 0");
+        spalten("artikel").put("behaelter_art", "TEXT");
+        spalten("artikel").put("behaelter_kennung", "TEXT");
     }
 
     private static Map<String, String> spalten(String tabelle) {

@@ -69,6 +69,7 @@ public class ArtikelController {
         zugriff.rolleZumBearbeiten(anfrage, teamId);
         pruefeName(eingabe);
         pruefeKennung(teamId, eingabe.rfidUid, null);
+        pruefeBehaelter(teamId, eingabe, null);
 
         eingabe.teamId = teamId;
         eingabe.id = null;
@@ -89,12 +90,14 @@ public class ArtikelController {
         }
         pruefeName(eingabe);
         pruefeKennung(teamId, eingabe.rfidUid, artikelId);
+        pruefeBehaelter(teamId, eingabe, artikelId);
 
         eingabe.id = artikelId;
         eingabe.teamId = teamId;
         eingabe.erstelltAm = vorher.erstelltAm;
         eingabe.geloescht = false;
         Artikel neu = artikelDaten.aktualisieren(eingabe);
+        inhaltNachziehen(teamId, vorher, neu, benutzer.name);
         unterschiedeProtokollieren(teamId, vorher, neu, benutzer.name);
         return neu;
     }
@@ -108,10 +111,18 @@ public class ArtikelController {
         if (vorher == null) {
             throw ApiFehler.nichtGefunden("Artikel nicht gefunden");
         }
+        // Erst den Inhalt freigeben: Loeschen raeumt die Kennung weg, danach
+        // waere nicht mehr zu erkennen, wer in diesem Behaelter lag.
+        int frei = vorher.istBehaelter
+                ? artikelDaten.inhaltUmhaengen(teamId, vorher.rfidUid, null) : 0;
         bilder.entfernen(teamId, artikelId);
         artikelDaten.loeschen(teamId, artikelId);
         protokoll(teamId, vorher, "Artikel gelöscht", vorher.name, null, benutzer.name);
-        return Map.of("geloescht", true);
+        if (frei > 0) {
+            protokoll(teamId, vorher, "Inhalt freigegeben", vorher.name,
+                    frei + " Stück liegen jetzt nirgends mehr", benutzer.name);
+        }
+        return Map.of("geloescht", true, "freigegeben", frei);
     }
 
     @GetMapping("/artikel/{artikelId}/protokoll")
@@ -161,6 +172,74 @@ public class ArtikelController {
 
     // ----------------------------------------------------------------- Hilfen
 
+    /**
+     * Ein Behaelter braucht eine eigene Kennung: Die klebt am Moebel und ist
+     * das, was beim Einraeumen gescannt wird - ohne sie liesse sich nichts
+     * zuordnen. Und nichts darf in sich selbst liegen, auch nicht ueber Ecken.
+     */
+    private void pruefeBehaelter(String teamId, Artikel eingabe, String eigeneId) {
+        String eigene = sauber(eingabe.rfidUid);
+        if (eingabe.istBehaelter && eigene == null) {
+            throw ApiFehler.ungueltig("Ein Behälter braucht eine eigene Kennung –"
+                    + " sie klebt am Möbel und wird beim Einräumen gescannt");
+        }
+        String ziel = sauber(eingabe.behaelterKennung);
+        eingabe.behaelterKennung = ziel;
+        eingabe.behaelterArt = sauber(eingabe.behaelterArt);
+        if (ziel == null) {
+            return;
+        }
+        if (ziel.equals(eigene)) {
+            throw ApiFehler.ungueltig("Ein Behälter kann nicht in sich selbst liegen");
+        }
+        String lauf = ziel;
+        for (int tiefe = 0; lauf != null; tiefe++) {
+            if (tiefe > 20) {
+                throw ApiFehler.ungueltig("Die Behälter stecken zu tief ineinander");
+            }
+            Artikel schritt = artikelDaten.nachKennung(teamId, lauf);
+            if (schritt == null) {
+                if (lauf.equals(ziel)) {
+                    throw ApiFehler.ungueltig("Kein Behälter mit der Kennung " + ziel);
+                }
+                return;
+            }
+            if (lauf.equals(ziel) && !schritt.istBehaelter) {
+                throw ApiFehler.ungueltig("„" + schritt.name + "\u201c ist kein Behälter");
+            }
+            if (eigeneId != null && eigeneId.equals(schritt.id)) {
+                throw ApiFehler.ungueltig("Das ergäbe einen Ring: „" + schritt.name
+                        + "\u201c liegt schon darin");
+            }
+            lauf = sauber(schritt.behaelterKennung);
+        }
+    }
+
+    /**
+     * Bekommt ein Behaelter eine neue Kennung, zieht sein Inhalt mit. Ist er
+     * keiner mehr, wird der Inhalt frei - sonst zeigte er auf ein Moebel, das
+     * es nicht mehr gibt.
+     */
+    private void inhaltNachziehen(String teamId, Artikel vorher, Artikel neu, String nutzer) {
+        if (!vorher.istBehaelter) {
+            return;
+        }
+        String alte = sauber(vorher.rfidUid);
+        String neue = neu.istBehaelter ? sauber(neu.rfidUid) : null;
+        if (alte == null || alte.equals(neue)) {
+            return;
+        }
+        int betroffen = artikelDaten.inhaltUmhaengen(teamId, alte, neue);
+        if (betroffen > 0) {
+            protokoll(teamId, neu, neue == null ? "Inhalt freigegeben" : "Inhalt mitgezogen",
+                    alte, neue, nutzer);
+        }
+    }
+
+    private String sauber(String wert) {
+        return wert == null || wert.trim().isEmpty() ? null : wert.trim();
+    }
+
     private void pruefeName(Artikel artikel) {
         if (artikel.name == null || artikel.name.trim().isEmpty()) {
             throw ApiFehler.ungueltig("Bezeichnung fehlt");
@@ -193,6 +272,23 @@ public class ArtikelController {
         if (!gleich(vorher.lagerort, neu.lagerort)) {
             protokoll(teamId, neu, "Lagerort geändert", vorher.lagerort, neu.lagerort, nutzer);
         }
+        if (!gleich(vorher.behaelterKennung, neu.behaelterKennung)) {
+            protokoll(teamId, neu, "Eingeräumt", benennen(teamId, vorher.behaelterKennung),
+                    benennen(teamId, neu.behaelterKennung), nutzer);
+        }
+        if (vorher.istBehaelter != neu.istBehaelter) {
+            protokoll(teamId, neu, neu.istBehaelter ? "Ist jetzt ein Behälter"
+                    : "Ist kein Behälter mehr", null, neu.behaelterArt, nutzer);
+        }
+    }
+
+    /** Im Protokoll soll der Name stehen, nicht die nackte Kennung. */
+    private String benennen(String teamId, String kennung) {
+        if (kennung == null || kennung.isEmpty()) {
+            return null;
+        }
+        Artikel behaelter = artikelDaten.nachKennung(teamId, kennung);
+        return behaelter == null ? kennung : behaelter.name;
     }
 
     private void protokoll(String teamId, Artikel artikel, String aktion, String alt, String neu,

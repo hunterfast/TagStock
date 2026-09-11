@@ -12,7 +12,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase;
 
 @Database(
         entities = {Artikel.class, Kategorie.class, Protokoll.class},
-        version = 3,
+        version = 4,
         exportSchema = true)
 @TypeConverters(Converters.class)
 public abstract class AppDatabase extends RoomDatabase {
@@ -38,7 +38,7 @@ public abstract class AppDatabase extends RoomDatabase {
                 if (instance == null) {
                     instance = Room.databaseBuilder(
                                     context.getApplicationContext(), AppDatabase.class, DB_NAME)
-                            .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
                             .addCallback(new Callback() {
                                 @Override
                                 public void onCreate(@NonNull SupportSQLiteDatabase db) {
@@ -245,6 +245,23 @@ public abstract class AppDatabase extends RoomDatabase {
             db.execSQL("DROP TABLE `verleih`");
             db.execSQL("DROP TABLE `items`");
             db.execSQL("DROP TABLE `lager`");
+        }
+    };
+
+    /**
+     * Behaelter: Ein Artikel kann selbst etwas aufnehmen - eine Box, eine
+     * Schublade, ein Regal -, und jeder Artikel kann in einem solchen liegen.
+     * Wer drin liegt, merkt sich die Kennung des Behaelters und nicht dessen
+     * laufende Nummer: Die Kennung klebt am Moebel, wird beim Einraeumen
+     * gescannt und bedeutet auf jedem Geraet dasselbe.
+     */
+    public static final Migration MIGRATION_3_4 = new Migration(3, 4) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase db) {
+            db.execSQL("ALTER TABLE `artikel` ADD COLUMN `istBehaelter`"
+                    + " INTEGER NOT NULL DEFAULT 0");
+            db.execSQL("ALTER TABLE `artikel` ADD COLUMN `behaelterArt` TEXT");
+            db.execSQL("ALTER TABLE `artikel` ADD COLUMN `behaelterKennung` TEXT");
         }
     };
 }

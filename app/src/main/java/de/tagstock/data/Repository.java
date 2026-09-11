@@ -132,6 +132,39 @@ public class Repository {
     }
 
     /** Wie viele Artikel warten noch auf die Uebertragung zum Server? */
+    /** Der Artikel mit dieser Kennung - null, wenn keiner sie traegt. */
+    public void ladeNachKennung(String kennung, Callback<Artikel> callback) {
+        starte(() -> artikelDao.nachKennung(kennung), callback);
+    }
+
+    /** Was liegt in diesem Behaelter? */
+    public void ladeInhalt(String kennung, Callback<List<Artikel>> callback) {
+        starte(() -> artikelDao.inhaltVon(kennung), callback);
+    }
+
+    /**
+     * Einen Gegenstand in einen Behaelter legen. Gibt false zurueck, wenn das
+     * einen Ring ergaebe - der Behaelter laege dann in sich selbst.
+     */
+    public void einraeumen(Artikel was, Artikel wohin, String nutzer, Callback<Boolean> callback) {
+        starte(() -> {
+            if (!Behaelterkette.darfHinein(was, wohin, artikelDao::nachKennung)) {
+                return false;
+            }
+            Artikel aktuell = artikelDao.nachId(was.id);
+            if (aktuell == null) {
+                return false;
+            }
+            String vorher = aktuell.behaelterKennung;
+            aktuell.behaelterKennung = wohin.rfidUid;
+            aktuell.geaendertAm = System.currentTimeMillis();
+            aktuell.offen = true;
+            artikelDao.update(aktuell);
+            eintragen(aktuell, Protokoll.EINGERAEUMT, benennen(vorher), wohin.name, nutzer);
+            return true;
+        }, callback);
+    }
+
     public void zaehleOffene(Callback<Integer> callback) {
         starte(artikelDao::anzahlOffene, callback);
     }
@@ -177,6 +210,7 @@ public class Repository {
                     return new Speicherergebnis(true, id, null);
                 }
                 artikelDao.update(neu);
+                inhaltNachziehen(vorher, neu, nutzer);
                 if (vorher != null) {
                     protokolliereUnterschiede(vorher, neu, nutzer);
                 }
@@ -186,6 +220,35 @@ public class Repository {
                 return new Speicherergebnis(false, 0L, belegt);
             }
         }, callback);
+    }
+
+    /**
+     * Bekommt ein Behaelter eine neue Kennung, zieht sein Inhalt mit; ist er
+     * keiner mehr, wird der Inhalt frei. Sonst zeigte er auf ein Moebel, das
+     * es so nicht mehr gibt. Der Server macht dasselbe - beide Seiten kommen
+     * also zum gleichen Ergebnis, egal wo geaendert wurde.
+     */
+    private void inhaltNachziehen(@Nullable Artikel vorher, Artikel neu, String nutzer) {
+        if (vorher == null || !vorher.istBehaelter) {
+            return;
+        }
+        String alte = leer(vorher.rfidUid);
+        String neue = neu.istBehaelter ? leer(neu.rfidUid) : null;
+        if (alte == null || alte.equals(neue)) {
+            return;
+        }
+        long jetzt = System.currentTimeMillis();
+        for (Artikel drin : artikelDao.inhaltVon(alte)) {
+            drin.behaelterKennung = neue;
+            drin.geaendertAm = jetzt;
+            drin.offen = true;
+            artikelDao.update(drin);
+            eintragen(drin, Protokoll.EINGERAEUMT, alte, neue, nutzer);
+        }
+    }
+
+    private String leer(String wert) {
+        return wert == null || wert.trim().isEmpty() ? null : wert.trim();
     }
 
     private void protokolliereUnterschiede(Artikel vorher, Artikel neu, String nutzer) {
@@ -201,6 +264,20 @@ public class Repository {
         if (!gleich(vorher.lagerort, neu.lagerort)) {
             eintragen(neu, Protokoll.LAGERORT, vorher.lagerort, neu.lagerort, nutzer);
         }
+        if (!gleich(vorher.behaelterKennung, neu.behaelterKennung)) {
+            eintragen(neu, Protokoll.EINGERAEUMT, benennen(vorher.behaelterKennung),
+                    benennen(neu.behaelterKennung), nutzer);
+        }
+    }
+
+    /** Im Protokoll soll der Name des Behaelters stehen, nicht seine Kennung. */
+    @Nullable
+    private String benennen(@Nullable String kennung) {
+        if (kennung == null || kennung.isEmpty()) {
+            return null;
+        }
+        Artikel behaelter = artikelDao.nachKennung(kennung);
+        return behaelter == null ? kennung : behaelter.name;
     }
 
     /** Setzt den Status eines Artikels und schreibt einen Protokolleintrag. */
@@ -330,7 +407,20 @@ public class Repository {
     }
 
     public void loeschen(Artikel artikel) {
-        executor.execute(() -> artikelDao.delete(artikel));
+        executor.execute(() -> {
+            // Erst den Inhalt freigeben - sonst zeigt er auf einen Behaelter,
+            // den es nicht mehr gibt, und taucht nirgends mehr auf.
+            if (artikel.istBehaelter && artikel.rfidUid != null && !artikel.rfidUid.isEmpty()) {
+                long jetzt = System.currentTimeMillis();
+                for (Artikel drin : artikelDao.inhaltVon(artikel.rfidUid)) {
+                    drin.behaelterKennung = null;
+                    drin.geaendertAm = jetzt;
+                    drin.offen = true;
+                    artikelDao.update(drin);
+                }
+            }
+            artikelDao.delete(artikel);
+        });
     }
 
     // -------------------------------------------------------------- Kategorien

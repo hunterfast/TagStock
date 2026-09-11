@@ -75,6 +75,25 @@ public class Artikel {
     @ColumnInfo(name = "scanWarnung")
     public ScanWarnung scanWarnung = ScanWarnung.JAHR;
 
+    /**
+     * true, wenn dieser Eintrag selbst etwas aufnimmt - eine Box, eine
+     * Schublade, ein Regal. Also ein Lager im Lager.
+     */
+    @ColumnInfo(name = "istBehaelter")
+    public boolean istBehaelter;
+
+    /** Was fuer einer, z. B. "Box" oder "Schublade" - nur zur Anzeige. */
+    @ColumnInfo(name = "behaelterArt")
+    public String behaelterArt;
+
+    /**
+     * Kennung des Behaelters, in dem dieser Artikel liegt. Bewusst die
+     * Kennung und keine laufende Nummer: Sie klebt am Moebel, wird beim
+     * Einraeumen gescannt und ueberlebt jeden Abgleich unveraendert.
+     */
+    @ColumnInfo(name = "behaelterKennung")
+    public String behaelterKennung;
+
     @ColumnInfo(name = "erstelltAm")
     public long erstelltAm = System.currentTimeMillis();
 
@@ -134,6 +153,9 @@ public class Artikel {
         kopie.rueckgabeDatum = rueckgabeDatum;
         kopie.zuletztGescannt = zuletztGescannt;
         kopie.scanWarnung = scanWarnung;
+        kopie.istBehaelter = istBehaelter;
+        kopie.behaelterArt = behaelterArt;
+        kopie.behaelterKennung = behaelterKennung;
         kopie.erstelltAm = erstelltAm;
         kopie.geaendertAm = geaendertAm;
         kopie.offen = offen;
@@ -153,7 +175,10 @@ public class Artikel {
                 && gleich(lagerort, andere.lagerort)
                 && gleich(verliehenAn, andere.verliehenAn)
                 && gleich(fotoPfad, andere.fotoPfad)
-                && gleich(rfidUid, andere.rfidUid);
+                && gleich(rfidUid, andere.rfidUid)
+                && istBehaelter == andere.istBehaelter
+                && gleich(behaelterArt, andere.behaelterArt)
+                && gleich(behaelterKennung, andere.behaelterKennung);
     }
 
     private boolean gleich(String a, String b) {

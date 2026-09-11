@@ -171,7 +171,78 @@
                             style="@style/Widget.TagStock.Datenzeile.Wert"
                             tools:text="Regal A3, Fach 2" />
                     </LinearLayout>
+
+                    <LinearLayout
+                        android:id="@+id/gruppeLiegtIn"
+                        style="@style/Widget.TagStock.Datenzeile"
+                        android:visibility="gone"
+                        tools:visibility="visible">
+
+                        <TextView
+                            style="@style/Widget.TagStock.Datenzeile.Label"
+                            android:text="@string/behaelter_liegt_in" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/buttonLiegtIn"
+                            style="@style/Widget.Material3.Button.TextButton"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:insetTop="0dp"
+                            android:insetBottom="0dp"
+                            android:paddingStart="0dp"
+                            android:paddingEnd="8dp"
+                            tools:text="Ikea-Box blau" />
+                    </LinearLayout>
                 </LinearLayout>
+
+                <!-- Behaelter: was liegt hier drin? -->
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/cardInhalt"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:visibility="gone"
+                    tools:visibility="visible">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="16dp">
+
+                        <TextView
+                            android:id="@+id/textInhaltTitel"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:textAppearance="?attr/textAppearanceTitleMedium"
+                            tools:text="Inhalt · 3" />
+
+                        <TextView
+                            android:id="@+id/textInhaltLeer"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="6dp"
+                            android:text="@string/behaelter_inhalt_leer"
+                            android:textAppearance="?attr/textAppearanceBodySmall"
+                            android:visibility="gone"
+                            tools:visibility="visible" />
+
+                        <com.google.android.material.chip.ChipGroup
+                            android:id="@+id/gruppeInhalt"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/buttonEinraeumen"
+                            style="@style/Widget.Material3.Button.OutlinedButton.Icon"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:text="@string/behaelter_einraeumen"
+                            app:icon="@drawable/ic_scan" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
 
                 <!-- Verleih -->
                 <com.google.android.material.card.MaterialCardView

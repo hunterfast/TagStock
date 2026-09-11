@@ -1,6 +1,7 @@
 package de.tagstock;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
@@ -83,7 +84,8 @@ public class MigrationTest {
 
     private void migrieren() {
         db = Room.databaseBuilder(context, AppDatabase.class, DB)
-                .addMigrations(AppDatabase.MIGRATION_1_2, AppDatabase.MIGRATION_2_3)
+                .addMigrations(AppDatabase.MIGRATION_1_2, AppDatabase.MIGRATION_2_3,
+                        AppDatabase.MIGRATION_3_4)
                 .allowMainThreadQueries()
                 .build();
         db.artikelDao().alle();
@@ -240,5 +242,65 @@ public class MigrationTest {
         assertEquals(ArtikelStatus.VERLIEHEN, leiter.status);
         assertEquals("Anna", leiter.verliehenAn);
         assertEquals(2000L, leiter.geaendertAm);
+    }
+
+    // ------------------------------------------------------------ Version 3
+
+    /**
+     * Aus Version 3 kommen nur drei Spalten dazu - der Bestand muss dabei
+     * unangetastet bleiben, und die neuen Felder stehen auf "kein Behaelter".
+     */
+    @Test
+    public void ausVersion3KommenDieBehaelterDazu() {
+        alteDatenbank(3, db -> {
+            db.execSQL("CREATE TABLE IF NOT EXISTS `artikel` ("
+                    + "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, "
+                    + "`serverId` TEXT, `teamId` TEXT, `rfidUid` TEXT, "
+                    + "`name` TEXT NOT NULL, `beschreibung` TEXT, `kategorie` TEXT, "
+                    + "`standort` TEXT, `lagerort` TEXT, `fotoPfad` TEXT, `bildUrl` TEXT, "
+                    + "`status` TEXT NOT NULL, `verliehenAn` TEXT, `rueckgabeDatum` INTEGER, "
+                    + "`zuletztGescannt` INTEGER, `scanWarnung` TEXT NOT NULL, "
+                    + "`erstelltAm` INTEGER NOT NULL, `geaendertAm` INTEGER NOT NULL, "
+                    + "`offen` INTEGER NOT NULL)");
+            db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_artikel_rfidUid`"
+                    + " ON `artikel` (`rfidUid`)");
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_artikel_serverId`"
+                    + " ON `artikel` (`serverId`)");
+            db.execSQL("CREATE TABLE IF NOT EXISTS `kategorien` ("
+                    + "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `serverId` TEXT, "
+                    + "`name` TEXT NOT NULL, `reihenfolge` INTEGER NOT NULL)");
+            db.execSQL("CREATE TABLE IF NOT EXISTS `protokoll` ("
+                    + "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, "
+                    + "`artikelId` INTEGER NOT NULL, `artikelName` TEXT NOT NULL, "
+                    + "`aktion` TEXT NOT NULL, `alterWert` TEXT, `neuerWert` TEXT, "
+                    + "`nutzer` TEXT, `zeitpunkt` INTEGER NOT NULL, `offen` INTEGER NOT NULL)");
+            db.execSQL("INSERT INTO artikel (id, rfidUid, name, standort, status, scanWarnung,"
+                    + " erstelltAm, geaendertAm, offen)"
+                    + " VALUES (3, 'BOX-1', 'Ikea-Box blau', 'Werkstatt', 'vorhanden', '1j',"
+                    + " 1000, 2000, 0)");
+        });
+        migrieren();
+
+        Artikel box = db.artikelDao().nachId(3);
+        assertNotNull(box);
+        assertEquals("Ikea-Box blau", box.name);
+        assertEquals("Werkstatt", box.standort);
+        assertFalse(box.istBehaelter);
+        assertNull(box.behaelterArt);
+        assertNull(box.behaelterKennung);
+
+        // Und ab jetzt laesst sich daraus ein Behaelter machen.
+        box.istBehaelter = true;
+        box.behaelterArt = "Box";
+        db.artikelDao().update(box);
+        Artikel zange = new Artikel();
+        zange.name = "Zange";
+        zange.rfidUid = "WZ-1";
+        zange.behaelterKennung = "BOX-1";
+        db.artikelDao().insert(zange);
+
+        assertEquals(1, db.artikelDao().inhaltVon("BOX-1").size());
+        assertEquals("Zange", db.artikelDao().inhaltVon("BOX-1").get(0).name);
+        assertEquals(1, db.artikelDao().behaelter().size());
     }
 }
