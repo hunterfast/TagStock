@@ -154,7 +154,7 @@ public class Selbstpflege implements ApplicationListener<ApplicationReadyEvent> 
             return ergebnis;
         }
 
-        byte[] inhalt = anfordern(neueste.jarUrl, true);
+        byte[] inhalt = anfordern(neueste.jarUrl, true, ALS_DATEI);
         if (inhalt.length < 1024 * 1024 || inhalt[0] != 'P' || inhalt[1] != 'K') {
             throw new IOException("Die heruntergeladene Datei ist kein brauchbares Jar");
         }
@@ -233,7 +233,7 @@ public class Selbstpflege implements ApplicationListener<ApplicationReadyEvent> 
     }
 
     private Veroeffentlichung neuesteSuchen() throws IOException, InterruptedException {
-        JsonNode liste = json.readTree(anfordern(quelle, true));
+        JsonNode liste = json.readTree(anfordern(quelle, true, ALS_JSON));
         for (JsonNode eintrag : liste) {
             if (eintrag.path("draft").asBoolean()) {
                 continue;
@@ -300,13 +300,17 @@ public class Selbstpflege implements ApplicationListener<ApplicationReadyEvent> 
         }
     }
 
-    private byte[] anfordern(String adresse, boolean mitToken)
+    /** Die Liste kommt als JSON, der Anhang als Datei - sonst schickt GitHub
+     * dessen Beschreibung statt des Inhalts. */
+    private static final String ALS_JSON = "application/vnd.github+json";
+    private static final String ALS_DATEI = "application/octet-stream";
+
+    private byte[] anfordern(String adresse, boolean mitToken, String annahme)
             throws IOException, InterruptedException {
         HttpRequest.Builder bauen = HttpRequest.newBuilder(URI.create(adresse))
                 .timeout(Duration.ofMinutes(5))
                 .header("User-Agent", "TagStock-Server")
-                .header("Accept", adresse.contains("/releases")
-                        ? "application/vnd.github+json" : "application/octet-stream")
+                .header("Accept", annahme)
                 .GET();
         if (mitToken && !token.isEmpty()) {
             bauen.header("Authorization", "Bearer " + token);
@@ -319,7 +323,7 @@ public class Selbstpflege implements ApplicationListener<ApplicationReadyEvent> 
             if (weiter == null) {
                 throw new IOException("Weiterleitung ohne Ziel");
             }
-            return anfordern(weiter, false);
+            return anfordern(weiter, false, annahme);
         }
         if (status >= 400) {
             throw new IOException("Antwort " + status + " von " + adresse);

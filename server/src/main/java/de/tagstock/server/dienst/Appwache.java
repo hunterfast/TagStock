@@ -182,7 +182,7 @@ public class Appwache implements ApplicationRunner {
     }
 
     private void neuesteHolen() throws IOException, InterruptedException {
-        JsonNode liste = json.readTree(anfordern(quelle, true));
+        JsonNode liste = json.readTree(anfordern(quelle, true, ALS_JSON));
         String angabenUrl = null;
         String apkUrl = null;
         // Die Liste kommt neueste zuerst; die erste mit beiden Dateien zaehlt.
@@ -215,16 +215,21 @@ public class Appwache implements ApplicationRunner {
             return;
         }
 
-        String angaben = new String(anfordern(angabenUrl, true), StandardCharsets.UTF_8);
+        String angaben = new String(anfordern(angabenUrl, true, ALS_DATEI),
+                StandardCharsets.UTF_8);
         int neueVersion = json.readTree(angaben).path("versionCode").asInt();
         int habenWir = versionCode(AKTUELL);
-        if (neueVersion == 0 || neueVersion <= habenWir) {
+        if (neueVersion == 0) {
+            letzteMeldung = "Die Veroeffentlichung nennt keine versionCode";
+            return;
+        }
+        if (neueVersion <= habenWir) {
             letzteMeldung = null;
             return;
         }
 
         LOG.info("Neue App gefunden: {} (bisher {})", neueVersion, habenWir);
-        byte[] apk = anfordern(apkUrl, true);
+        byte[] apk = anfordern(apkUrl, true, ALS_DATEI);
         if (apk.length < 1024) {
             letzteMeldung = "Heruntergeladene Datei ist zu klein";
             return;
@@ -292,17 +297,24 @@ public class Appwache implements ApplicationRunner {
         }
     }
 
+    /** Die Liste der Veroeffentlichungen kommt als JSON. */
+    private static final String ALS_JSON = "application/vnd.github+json";
+    /**
+     * Anhaenge brauchen ausdruecklich den Rohinhalt. Fragt man sie als JSON,
+     * antwortet GitHub mit der Beschreibung des Anhangs - nicht mit der Datei.
+     */
+    private static final String ALS_DATEI = "application/octet-stream";
+
     /**
      * Holt eine Adresse. Bei einer Weiterleitung wird der Zugangsschluessel
      * nicht mitgeschickt - der Ablageort weist eine zweite Anmeldung sonst ab.
      */
-    private byte[] anfordern(String adresse, boolean mitToken)
+    private byte[] anfordern(String adresse, boolean mitToken, String annahme)
             throws IOException, InterruptedException {
         HttpRequest.Builder bau = HttpRequest.newBuilder(URI.create(adresse))
                 .timeout(Duration.ofMinutes(3))
                 .header("User-Agent", "TagStock-Server")
-                .header("Accept", adresse.endsWith(".json") || adresse.contains("/releases")
-                        ? "application/vnd.github+json" : "application/octet-stream")
+                .header("Accept", annahme)
                 .GET();
         if (mitToken && !token.isEmpty()) {
             bau.header("Authorization", "Bearer " + token);
@@ -315,7 +327,7 @@ public class Appwache implements ApplicationRunner {
             if (weiter == null) {
                 throw new IOException("Weiterleitung ohne Ziel");
             }
-            return anfordern(weiter, false);
+            return anfordern(weiter, false, annahme);
         }
         if (status >= 400) {
             throw new IOException("Antwort " + status + " von " + adresse);
