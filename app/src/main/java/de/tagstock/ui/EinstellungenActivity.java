@@ -82,6 +82,7 @@ public class EinstellungenActivity extends AppCompatActivity {
         binding.schalterNachschlagen.setChecked(Einstellungen.gtinNachschlagen(this));
         binding.schalterNachschlagen.setOnCheckedChangeListener((knopf, an) ->
                 Einstellungen.setzeGtinNachschlagen(this, an));
+        nachschlagedienstZeigen();
         binding.buttonServer.setOnClickListener(v ->
                 startActivity(new Intent(this, ServerActivity.class)));
 
@@ -303,6 +304,31 @@ public class EinstellungenActivity extends AppCompatActivity {
             aus.write(Sicherung.alsJson(bestand).getBytes(java.nio.charset.StandardCharsets.UTF_8));
         }
         return ziel;
+    }
+
+    /**
+     * Der Schalter allein sagt nichts: Ohne eingerichteten Dienst auf dem
+     * Server bleibt das Nachschlagen wirkungslos. Das gehoert hierher, sonst
+     * sucht man den Fehler an der falschen Stelle.
+     */
+    private void nachschlagedienstZeigen() {
+        String url = Einstellungen.serverUrl(this);
+        if (!Einstellungen.serverAktiv(this) || url == null) {
+            return;
+        }
+        String grundtext = getString(R.string.einstellungen_nachschlagen_hinweis);
+        Hintergrund.starte(() -> new ServerClient(url, null).status(), status -> {
+            if (binding == null || status == null) {
+                return;
+            }
+            binding.textNachschlagenHinweis.setText(status.optBoolean("gtinDienst")
+                    ? grundtext + " " + getString(R.string.einstellungen_nachschlagen_dienst,
+                            status.optString("gtinDienstName", "einen Dienst"))
+                    : grundtext + " "
+                            + getString(R.string.einstellungen_nachschlagen_ohne_dienst));
+        }, fehler -> {
+            // Server gerade nicht erreichbar - dann bleibt der allgemeine Text.
+        });
     }
 
     private void serverstandZeigen(@Nullable JSONObject stand) {

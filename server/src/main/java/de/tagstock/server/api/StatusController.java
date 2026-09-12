@@ -41,6 +41,10 @@ public class StatusController {
         ergebnis.put("eingerichtet", konten != null && konten > 0);
         // Damit die App das Nachschlagen gar nicht erst anbietet, wenn es fehlt.
         ergebnis.put("gtinDienst", produktsuche.eingeschaltet());
+        if (produktsuche.eingeschaltet()) {
+            // Damit die App sagen kann, wen sie fragt.
+            ergebnis.put("gtinDienstName", produktsuche.dienst());
+        }
         // Welcher Stand hier laeuft - ohne dafuer irgendwo nachzufragen.
         ergebnis.put("version", wache.version());
         ergebnis.put("gebautAm", wache.gebautAm() == null ? null : wache.gebautAm().toString());

@@ -12,7 +12,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase;
 
 @Database(
         entities = {Artikel.class, Kategorie.class, Protokoll.class},
-        version = 4,
+        version = 5,
         exportSchema = true)
 @TypeConverters(Converters.class)
 public abstract class AppDatabase extends RoomDatabase {
@@ -38,7 +38,8 @@ public abstract class AppDatabase extends RoomDatabase {
                 if (instance == null) {
                     instance = Room.databaseBuilder(
                                     context.getApplicationContext(), AppDatabase.class, DB_NAME)
-                            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+                            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4,
+                                    MIGRATION_4_5)
                             .addCallback(new Callback() {
                                 @Override
                                 public void onCreate(@NonNull SupportSQLiteDatabase db) {
@@ -262,6 +263,23 @@ public abstract class AppDatabase extends RoomDatabase {
                     + " INTEGER NOT NULL DEFAULT 0");
             db.execSQL("ALTER TABLE `artikel` ADD COLUMN `behaelterArt` TEXT");
             db.execSQL("ALTER TABLE `artikel` ADD COLUMN `behaelterKennung` TEXT");
+        }
+    };
+
+    /**
+     * Mengen und Verpackungseinheiten. Was es bisher gab, ist genau ein
+     * Stueck - deshalb steht die Menge auf 1 und nicht auf 0.
+     */
+    public static final Migration MIGRATION_4_5 = new Migration(4, 5) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase db) {
+            db.execSQL("ALTER TABLE `artikel` ADD COLUMN `menge`"
+                    + " INTEGER NOT NULL DEFAULT 1");
+            db.execSQL("ALTER TABLE `artikel` ADD COLUMN `istVerpackung`"
+                    + " INTEGER NOT NULL DEFAULT 0");
+            db.execSQL("ALTER TABLE `artikel` ADD COLUMN `packungsGroesse`"
+                    + " INTEGER NOT NULL DEFAULT 0");
+            db.execSQL("ALTER TABLE `artikel` ADD COLUMN `angebrochen` TEXT");
         }
     };
 }

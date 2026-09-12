@@ -76,6 +76,28 @@ public class Artikel {
     public ScanWarnung scanWarnung = ScanWarnung.JAHR;
 
     /**
+     * Wie viele. Ohne Verpackungseinheit die Stueckzahl, mit einer die Zahl
+     * der <b>vollen, ungeoeffneten</b> Packungen.
+     */
+    @ColumnInfo(name = "menge", defaultValue = "1")
+    public int menge = 1;
+
+    /** true, wenn dieser Artikel in Packungen kommt - etwa ein 4er-Pack. */
+    @ColumnInfo(name = "istVerpackung", defaultValue = "0")
+    public boolean istVerpackung;
+
+    /** Stueck je Packung. Nur bei einer Verpackungseinheit belegt. */
+    @ColumnInfo(name = "packungsGroesse", defaultValue = "0")
+    public int packungsGroesse;
+
+    /**
+     * Reste der angebrochenen Packungen, etwa "2,3". Einzeln, weil durchaus
+     * mehr als eine Packung offen sein kann - versehentlich oder nicht.
+     */
+    @ColumnInfo(name = "angebrochen")
+    public String angebrochen;
+
+    /**
      * true, wenn dieser Eintrag selbst etwas aufnimmt - eine Box, eine
      * Schublade, ein Regal. Also ein Lager im Lager.
      */
@@ -130,6 +152,11 @@ public class Artikel {
                 && rueckgabeDatum <= System.currentTimeMillis() + 3L * 24 * 60 * 60 * 1000;
     }
 
+    /** Stueck insgesamt - volle Packungen und angebrochene zusammengerechnet. */
+    public int gesamtStueck() {
+        return Packungen.gesamt(this);
+    }
+
     /** Wert, der im QR-Code steht: die Kennung, ersatzweise die laufende Nummer. */
     public String qrWert() {
         return rfidUid != null && !rfidUid.isEmpty() ? rfidUid : ("TS-" + id);
@@ -153,6 +180,10 @@ public class Artikel {
         kopie.rueckgabeDatum = rueckgabeDatum;
         kopie.zuletztGescannt = zuletztGescannt;
         kopie.scanWarnung = scanWarnung;
+        kopie.menge = menge;
+        kopie.istVerpackung = istVerpackung;
+        kopie.packungsGroesse = packungsGroesse;
+        kopie.angebrochen = angebrochen;
         kopie.istBehaelter = istBehaelter;
         kopie.behaelterArt = behaelterArt;
         kopie.behaelterKennung = behaelterKennung;
@@ -176,6 +207,10 @@ public class Artikel {
                 && gleich(verliehenAn, andere.verliehenAn)
                 && gleich(fotoPfad, andere.fotoPfad)
                 && gleich(rfidUid, andere.rfidUid)
+                && menge == andere.menge
+                && istVerpackung == andere.istVerpackung
+                && packungsGroesse == andere.packungsGroesse
+                && gleich(angebrochen, andere.angebrochen)
                 && istBehaelter == andere.istBehaelter
                 && gleich(behaelterArt, andere.behaelterArt)
                 && gleich(behaelterKennung, andere.behaelterKennung);

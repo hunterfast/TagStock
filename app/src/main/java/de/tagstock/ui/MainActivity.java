@@ -50,7 +50,8 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         binding = ActivityMainBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
-        Randabstand.anwenden(binding.getRoot());
+        Randabstand.mitLeiste(binding.getRoot(), binding.bottomNavigation,
+                binding.fragmentContainer);
         repository = Repository.getInstance(this);
 
         setSupportActionBar(binding.toolbar);

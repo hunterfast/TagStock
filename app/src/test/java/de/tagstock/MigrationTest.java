@@ -85,7 +85,7 @@ public class MigrationTest {
     private void migrieren() {
         db = Room.databaseBuilder(context, AppDatabase.class, DB)
                 .addMigrations(AppDatabase.MIGRATION_1_2, AppDatabase.MIGRATION_2_3,
-                        AppDatabase.MIGRATION_3_4)
+                        AppDatabase.MIGRATION_3_4, AppDatabase.MIGRATION_4_5)
                 .allowMainThreadQueries()
                 .build();
         db.artikelDao().alle();
@@ -317,5 +317,63 @@ public class MigrationTest {
         assertEquals(1, db.artikelDao().inhaltVon("BOX-1").size());
         assertEquals("Zange", db.artikelDao().inhaltVon("BOX-1").get(0).name);
         assertEquals(1, db.artikelDao().behaelter().size());
+    }
+
+    // ------------------------------------------------------------ Version 4
+
+    /**
+     * Aus Version 4 kommen Menge und Verpackungseinheit dazu. Was bisher im
+     * Bestand stand, ist genau ein Stueck - deshalb steht die Menge danach
+     * auf 1 und nicht auf 0.
+     */
+    @Test
+    public void ausVersion4KommenDieMengenDazu() {
+        alteDatenbank(4, db -> {
+            db.execSQL("CREATE TABLE IF NOT EXISTS `artikel` ("
+                    + "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, "
+                    + "`serverId` TEXT, `teamId` TEXT, `rfidUid` TEXT, "
+                    + "`name` TEXT NOT NULL, `beschreibung` TEXT, `kategorie` TEXT, "
+                    + "`standort` TEXT, `lagerort` TEXT, `fotoPfad` TEXT, `bildUrl` TEXT, "
+                    + "`status` TEXT NOT NULL, `verliehenAn` TEXT, `rueckgabeDatum` INTEGER, "
+                    + "`zuletztGescannt` INTEGER, `scanWarnung` TEXT NOT NULL, "
+                    + "`erstelltAm` INTEGER NOT NULL, `geaendertAm` INTEGER NOT NULL, "
+                    + "`offen` INTEGER NOT NULL, "
+                    // Hinten angehaengt, genau wie ALTER TABLE es tut.
+                    + "`istBehaelter` INTEGER NOT NULL DEFAULT 0, `behaelterArt` TEXT, "
+                    + "`behaelterKennung` TEXT)");
+            db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_artikel_rfidUid`"
+                    + " ON `artikel` (`rfidUid`)");
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_artikel_serverId`"
+                    + " ON `artikel` (`serverId`)");
+            db.execSQL("CREATE TABLE IF NOT EXISTS `kategorien` ("
+                    + "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, "
+                    + "`serverId` TEXT, `teamId` TEXT, `name` TEXT NOT NULL, "
+                    + "`reihenfolge` INTEGER NOT NULL)");
+            db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_kategorien_name`"
+                    + " ON `kategorien` (`name`)");
+            db.execSQL("CREATE TABLE IF NOT EXISTS `protokoll` ("
+                    + "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, "
+                    + "`serverId` TEXT, `artikelId` INTEGER NOT NULL, "
+                    + "`artikelName` TEXT NOT NULL, `aktion` TEXT NOT NULL, "
+                    + "`alterWert` TEXT, `neuerWert` TEXT, `nutzer` TEXT, "
+                    + "`zeitpunkt` INTEGER NOT NULL, `offen` INTEGER NOT NULL, "
+                    + "FOREIGN KEY(`artikelId`) REFERENCES `artikel`(`id`)"
+                    + " ON UPDATE NO ACTION ON DELETE CASCADE )");
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_protokoll_artikelId`"
+                    + " ON `protokoll` (`artikelId`)");
+            db.execSQL("INSERT INTO artikel (id, name, status, scanWarnung, istBehaelter,"
+                    + " erstelltAm, geaendertAm, offen)"
+                    + " VALUES (4, 'Akkuschrauber', 'vorhanden', '1j', 0, 1000, 2000, 0)");
+        });
+        migrieren();
+
+        Artikel schrauber = db.artikelDao().nachId(4);
+        assertNotNull(schrauber);
+        assertEquals("Akkuschrauber", schrauber.name);
+        assertEquals(1, schrauber.menge);
+        assertFalse(schrauber.istVerpackung);
+        assertEquals(0, schrauber.packungsGroesse);
+        assertNull(schrauber.angebrochen);
+        assertEquals(1, schrauber.gesamtStueck());
     }
 }

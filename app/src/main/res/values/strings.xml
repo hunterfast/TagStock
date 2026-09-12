@@ -280,6 +280,12 @@
     <string name="kennung_belegt_kurz">Gehört schon zu „%1$s“</string>
     <string name="kennung_belegt_kurz_wo">Gehört schon zu „%1$s“ (%2$s)</string>
     <string name="kennung_pruefziffer_falsch">%1$s · Prüfziffer stimmt nicht</string>
+    <string name="nachschlagen_aus">Nachschlagen ist aus</string>
+    <string name="nachschlagen_ohne_server">ohne Server kein Nachschlagen</string>
+    <string name="nachschlagen_unbekannt">Nummer unbekannt</string>
+    <string name="nachschlagen_fehlgeschlagen">Nachschlagen nicht möglich</string>
+    <string name="einstellungen_nachschlagen_dienst">Der Server nutzt %1$s.</string>
+    <string name="einstellungen_nachschlagen_ohne_dienst">Auf dem Server ist kein Nachschlagedienst eingerichtet – setze TAGSTOCK_GTIN_DIENST auf opengtindb oder eansearch.</string>
     <string name="vorschlag_text">Vorschlag: %1$s</string>
     <string name="vorschlag_uebernehmen">Übernehmen</string>
     <string name="einstellungen_version">Version</string>

@@ -315,33 +315,64 @@ public class ArtikelFormFragment extends Fragment {
     }
 
     /** Fragt den Server nach dem Produktnamen - nur wenn das Feld noch leer ist. */
+    /**
+     * Zu einer Handelsnummer den Produktnamen erfragen. Scheitert das, bleibt
+     * es nicht still: Wer eine EAN scannt und nichts passieren sieht, soll am
+     * Feld lesen koennen, woran es liegt - am ausgeschalteten Schalter, am
+     * Server ohne Nachschlagedienst oder daran, dass die Nummer unbekannt ist.
+     */
     private void nachschlagen(String kennung) {
-        if (!Einstellungen.gtinNachschlagen(requireContext())
-                || !Einstellungen.serverAktiv(requireContext())
-                || !Gtin.pruefzifferStimmt(kennung) || Gtin.intern(kennung)
-                || !text(binding.editName.getText()).isEmpty()) {
+        if (!Gtin.pruefzifferStimmt(kennung) || Gtin.intern(kennung)) {
+            return;
+        }
+        if (!text(binding.editName.getText()).isEmpty()) {
+            // Es steht schon ein Name da - dann waere ein Vorschlag im Weg.
+            return;
+        }
+        if (!Einstellungen.gtinNachschlagen(requireContext())) {
+            nachschlagHinweis(getString(R.string.nachschlagen_aus));
             return;
         }
         String url = Einstellungen.serverUrl(requireContext());
         String token = Einstellungen.token(requireContext());
-        if (url == null || token == null) {
+        if (!Einstellungen.serverAktiv(requireContext()) || url == null || token == null) {
+            nachschlagHinweis(getString(R.string.nachschlagen_ohne_server));
             return;
         }
         Hintergrund.starte(() -> new ServerClient(url, token).gtin(kennung), antwort -> {
-            if (binding == null || antwort == null || !antwort.optBoolean("gefunden")) {
+            if (binding == null || !kennung.equals(text(binding.editKennung.getText()))
+                    || !text(binding.editName.getText()).isEmpty()) {
                 return;
             }
-            String name = antwort.optString("name", "");
-            if (name.isEmpty() || !kennung.equals(text(binding.editKennung.getText()))
-                    || !text(binding.editName.getText()).isEmpty()) {
+            String name = antwort == null ? "" : antwort.optString("name", "");
+            if (!antwort.optBoolean("gefunden") || name.isEmpty()) {
+                nachschlagHinweis(getString(R.string.nachschlagen_unbekannt));
                 return;
             }
             vorschlagName = name;
             binding.textVorschlag.setText(getString(R.string.vorschlag_text, name));
             binding.gruppeVorschlag.setVisibility(View.VISIBLE);
         }, fehler -> {
-            // Kein Treffer, kein Dienst, kein Netz - dann eben ohne Vorschlag.
+            if (binding == null || !kennung.equals(text(binding.editKennung.getText()))) {
+                return;
+            }
+            // Der Server sagt, warum - meist "kein Nachschlagedienst eingerichtet".
+            String meldung = fehler.getMessage();
+            nachschlagHinweis(meldung == null || meldung.isEmpty()
+                    ? getString(R.string.nachschlagen_fehlgeschlagen) : meldung);
         });
+    }
+
+    /** Haengt den Grund hinten an die Zeile unter dem Kennungsfeld. */
+    private void nachschlagHinweis(String grund) {
+        if (binding == null) {
+            return;
+        }
+        CharSequence bisher = binding.textKennungHinweis.getVisibility() == View.VISIBLE
+                ? binding.textKennungHinweis.getText() : "";
+        binding.textKennungHinweis.setVisibility(View.VISIBLE);
+        binding.textKennungHinweis.setText(bisher.length() == 0
+                ? grund : bisher + " · " + grund);
     }
 
     // ---------------------------------------------------------------- Bestueckung
