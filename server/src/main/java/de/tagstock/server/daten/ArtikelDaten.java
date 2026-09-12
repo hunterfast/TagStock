@@ -35,6 +35,10 @@ public class ArtikelDaten {
         artikel.rueckgabeDatum = (Long) zeile.getObject("rueckgabe_datum");
         artikel.zuletztGescannt = (Long) zeile.getObject("zuletzt_gescannt");
         artikel.scanWarnung = zeile.getString("scan_warnung");
+        artikel.menge = zeile.getInt("menge");
+        artikel.istVerpackung = zeile.getInt("ist_verpackung") == 1;
+        artikel.packungsGroesse = zeile.getInt("packungs_groesse");
+        artikel.angebrochen = zeile.getString("angebrochen");
         artikel.istBehaelter = zeile.getInt("ist_behaelter") == 1;
         artikel.behaelterArt = zeile.getString("behaelter_art");
         artikel.behaelterKennung = zeile.getString("behaelter_kennung");
@@ -78,13 +82,16 @@ public class ArtikelDaten {
         artikel.geaendertAm = jetzt;
         jdbc.update("INSERT INTO artikel (id, team_id, rfid_uid, name, beschreibung, kategorie,"
                         + " standort, lagerort, bild_url, status, verliehen_an, rueckgabe_datum,"
-                        + " zuletzt_gescannt, scan_warnung, ist_behaelter, behaelter_art,"
+                        + " zuletzt_gescannt, scan_warnung, menge, ist_verpackung,"
+                        + " packungs_groesse, angebrochen, ist_behaelter, behaelter_art,"
                         + " behaelter_kennung, erstellt_am, geaendert_am, geloescht)"
-                        + " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,0)",
+                        + " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,0)",
                 artikel.id, artikel.teamId, leer(artikel.rfidUid), artikel.name,
                 artikel.beschreibung, artikel.kategorie, artikel.standort, artikel.lagerort,
                 artikel.bildUrl, artikel.status, artikel.verliehenAn, artikel.rueckgabeDatum,
-                artikel.zuletztGescannt, artikel.scanWarnung, artikel.istBehaelter ? 1 : 0,
+                artikel.zuletztGescannt, artikel.scanWarnung, artikel.menge,
+                artikel.istVerpackung ? 1 : 0, artikel.packungsGroesse,
+                leer(artikel.angebrochen), artikel.istBehaelter ? 1 : 0,
                 leer(artikel.behaelterArt), leer(artikel.behaelterKennung), artikel.erstelltAm,
                 artikel.geaendertAm);
         return artikel;
@@ -95,13 +102,16 @@ public class ArtikelDaten {
         jdbc.update("UPDATE artikel SET rfid_uid = ?, name = ?, beschreibung = ?, kategorie = ?,"
                         + " standort = ?, lagerort = ?, bild_url = ?, status = ?, verliehen_an = ?,"
                         + " rueckgabe_datum = ?, zuletzt_gescannt = ?, scan_warnung = ?,"
-                        + " ist_behaelter = ?, behaelter_art = ?, behaelter_kennung = ?,"
-                        + " geaendert_am = ?, geloescht = ?"
+                        + " menge = ?, ist_verpackung = ?, packungs_groesse = ?,"
+                        + " angebrochen = ?, ist_behaelter = ?, behaelter_art = ?,"
+                        + " behaelter_kennung = ?, geaendert_am = ?, geloescht = ?"
                         + " WHERE team_id = ? AND id = ?",
                 leer(artikel.rfidUid), artikel.name, artikel.beschreibung, artikel.kategorie,
                 artikel.standort, artikel.lagerort, artikel.bildUrl, artikel.status,
                 artikel.verliehenAn, artikel.rueckgabeDatum, artikel.zuletztGescannt,
-                artikel.scanWarnung, artikel.istBehaelter ? 1 : 0, leer(artikel.behaelterArt),
+                artikel.scanWarnung, artikel.menge, artikel.istVerpackung ? 1 : 0,
+                artikel.packungsGroesse, leer(artikel.angebrochen),
+                artikel.istBehaelter ? 1 : 0, leer(artikel.behaelterArt),
                 leer(artikel.behaelterKennung), artikel.geaendertAm, artikel.geloescht ? 1 : 0,
                 artikel.teamId, artikel.id);
         return artikel;

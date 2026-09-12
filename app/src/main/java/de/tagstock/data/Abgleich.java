@@ -183,6 +183,10 @@ public final class Abgleich {
         o.put("zuletztGescannt", artikel.zuletztGescannt == null
                 ? JSONObject.NULL : artikel.zuletztGescannt);
         o.put("scanWarnung", artikel.scanWarnung.schluessel);
+        o.put("menge", artikel.menge);
+        o.put("istVerpackung", artikel.istVerpackung);
+        o.put("packungsGroesse", artikel.packungsGroesse);
+        o.put("angebrochen", artikel.angebrochen);
         o.put("istBehaelter", artikel.istBehaelter);
         o.put("behaelterArt", artikel.behaelterArt);
         o.put("behaelterKennung", artikel.behaelterKennung);
@@ -345,6 +349,10 @@ public final class Abgleich {
             ziel.rueckgabeDatum = o.isNull("rueckgabeDatum") ? null : o.optLong("rueckgabeDatum");
             ziel.zuletztGescannt = o.isNull("zuletztGescannt") ? null : o.optLong("zuletztGescannt");
             ziel.scanWarnung = ScanWarnung.vonSchluessel(o.optString("scanWarnung"));
+            ziel.menge = o.optInt("menge", 1);
+            ziel.istVerpackung = o.optBoolean("istVerpackung");
+            ziel.packungsGroesse = o.optInt("packungsGroesse");
+            ziel.angebrochen = leer(o.optString("angebrochen", null));
             ziel.istBehaelter = o.optBoolean("istBehaelter");
             ziel.behaelterArt = leer(o.optString("behaelterArt", null));
             ziel.behaelterKennung = leer(o.optString("behaelterKennung", null));

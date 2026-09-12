@@ -28,9 +28,11 @@ import de.tagstock.R;
 import de.tagstock.data.Artikel;
 import de.tagstock.data.ArtikelStatus;
 import de.tagstock.data.Abgleich;
+import de.tagstock.data.Packungen;
 import de.tagstock.data.Protokoll;
 import de.tagstock.data.Repository;
 import de.tagstock.databinding.ActivityArtikelDetailBinding;
+import de.tagstock.databinding.DialogMengeBinding;
 import de.tagstock.util.Dialogs;
 import de.tagstock.util.Einstellungen;
 import de.tagstock.util.Formatter;
@@ -49,6 +51,9 @@ import de.tagstock.util.Sicherung;
 public class ArtikelDetailActivity extends AppCompatActivity {
 
     private static final String EXTRA_ID = "de.tagstock.extra.ARTIKEL_ID";
+
+    /** Die gewoehnliche Schriftfarbe der grossen Zahl - 0 heisst: noch unbekannt. */
+    private int mengeFarbe;
 
     private ActivityArtikelDetailBinding binding;
     private Repository repository;
@@ -183,9 +188,159 @@ public class ArtikelDetailActivity extends AppCompatActivity {
         }
 
         binding.textVermisst.setVisibility(artikel.istVermisst() ? View.VISIBLE : View.GONE);
+        mengeZeichnen(artikel);
         behaelterZeichnen(artikel);
         qrZeichnen();
         invalidateOptionsMenu();
+    }
+
+    // ----------------------------------------------------------------- Menge
+
+    /**
+     * Gross steht, was man in die Hand nimmt - Packungen, wenn es welche
+     * gibt, sonst Stueck. Klein darunter die Einzelteile insgesamt, denn die
+     * Packungszahl allein sagt nicht, wie viele Shellys noch da sind.
+     */
+    private void mengeZeichnen(Artikel artikel) {
+        int gesamt = Packungen.gesamt(artikel);
+        boolean verpackung = artikel.istVerpackung && artikel.packungsGroesse > 0;
+
+        binding.textMengeGross.setText(String.valueOf(verpackung ? artikel.menge : gesamt));
+        binding.textMengeEinheit.setText(getString(verpackung
+                ? R.string.menge_packungen : R.string.menge_stueck));
+        // Die Farbe aus dem Thema einmal merken, sonst bleibt Rot kleben.
+        if (mengeFarbe == 0) {
+            mengeFarbe = binding.textMengeGross.getCurrentTextColor();
+        }
+        binding.textMengeGross.setTextColor(gesamt == 0
+                ? androidx.core.content.ContextCompat.getColor(this, R.color.status_fehlt)
+                : mengeFarbe);
+
+        binding.textMengeGesamt.setVisibility(verpackung ? View.VISIBLE : View.GONE);
+        if (verpackung) {
+            binding.textMengeGesamt.setText(getString(R.string.menge_gesamt_stueck, gesamt)
+                    + " · " + getString(R.string.menge_je_packung, artikel.packungsGroesse));
+        }
+
+        binding.gruppeOffene.removeAllViews();
+        for (int rest : Packungen.offene(artikel.angebrochen)) {
+            com.google.android.material.chip.Chip marke =
+                    new com.google.android.material.chip.Chip(this);
+            marke.setText(getString(R.string.verpackung_offen_kurz, rest));
+            marke.setClickable(false);
+            binding.gruppeOffene.addView(marke);
+        }
+
+        binding.buttonEntnehmen.setEnabled(gesamt > 0);
+        binding.buttonEntnehmen.setOnClickListener(v -> mengeFragen(artikel, true));
+        binding.buttonZugang.setOnClickListener(v -> mengeFragen(artikel, false));
+        binding.buttonPackungAnbrechen.setVisibility(
+                verpackung && artikel.menge > 0 ? View.VISIBLE : View.GONE);
+        binding.buttonPackungAnbrechen.setOnClickListener(v ->
+                repository.packungAnbrechen(artikel.id, Einstellungen.nutzer(this), erfolg -> {
+                    if (!erfolg) {
+                        Toast.makeText(this, R.string.verpackung_nichts_anzubrechen,
+                                Toast.LENGTH_SHORT).show();
+                    }
+                    nachTragen();
+                }));
+    }
+
+    /**
+     * Wie viele? Vorgabe ist eins - das ist der haeufigste Fall -, mehr geht
+     * ueber die Knoepfe oder durch Eintippen.
+     */
+    private void mengeFragen(Artikel artikel, boolean entnahme) {
+        int vorhanden = Packungen.gesamt(artikel);
+        boolean verpackung = artikel.istVerpackung && artikel.packungsGroesse > 0;
+        DialogMengeBinding maske = DialogMengeBinding.inflate(getLayoutInflater());
+
+        maske.textKopf.setText(entnahme
+                ? getString(R.string.entnehmen_kopf, artikel.name, vorhanden)
+                : getString(verpackung ? R.string.zugang_kopf_packungen
+                        : R.string.zugang_kopf_stueck, artikel.name));
+        maske.textHinweis.setVisibility(entnahme && verpackung ? View.VISIBLE : View.GONE);
+        maske.editAnzahl.setText("1");
+
+        Runnable danach = () -> {
+            int anzahl = gelesen(maske.editAnzahl);
+            int rest = entnahme
+                    ? Math.max(0, vorhanden - anzahl)
+                    : vorhanden + anzahl * (verpackung ? artikel.packungsGroesse : 1);
+            maske.textDanach.setText(android.text.Html.fromHtml(
+                    getString(R.string.entnehmen_danach, rest),
+                    android.text.Html.FROM_HTML_MODE_LEGACY));
+        };
+        danach.run();
+        maske.buttonWeniger.setOnClickListener(v -> {
+            maske.editAnzahl.setText(String.valueOf(Math.max(1, gelesen(maske.editAnzahl) - 1)));
+            danach.run();
+        });
+        maske.buttonMehr.setOnClickListener(v -> {
+            maske.editAnzahl.setText(String.valueOf(gelesen(maske.editAnzahl) + 1));
+            danach.run();
+        });
+        maske.editAnzahl.addTextChangedListener(new android.text.TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int a, int b, int c) {
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int a, int b, int c) {
+            }
+
+            @Override
+            public void afterTextChanged(android.text.Editable s) {
+                danach.run();
+            }
+        });
+
+        new MaterialAlertDialogBuilder(this)
+                .setTitle(entnahme ? R.string.entnehmen_titel : R.string.zugang_titel)
+                .setView(maske.getRoot())
+                .setNegativeButton(R.string.action_cancel, null)
+                .setPositiveButton(entnahme ? R.string.entnehmen : R.string.zugang,
+                        (dialog, welcher) -> {
+                            int anzahl = gelesen(maske.editAnzahl);
+                            String nutzer = Einstellungen.nutzer(this);
+                            if (entnahme) {
+                                repository.entnehmen(artikel.id, anzahl, nutzer, genommen -> {
+                                    Toast.makeText(this, genommen == 0
+                                            ? getString(R.string.entnehmen_nichts_da)
+                                            : getString(R.string.entnehmen_erledigt, genommen,
+                                                    Math.max(0, vorhanden - genommen)),
+                                            Toast.LENGTH_SHORT).show();
+                                    nachTragen();
+                                });
+                            } else {
+                                repository.zugang(artikel.id, anzahl, nutzer, neu ->
+                                        Toast.makeText(this,
+                                                getString(R.string.zugang_erledigt, neu),
+                                                Toast.LENGTH_SHORT).show());
+                                nachTragen();
+                            }
+                        })
+                .show();
+    }
+
+    private int gelesen(com.google.android.material.textfield.TextInputEditText eingabe) {
+        String roh = eingabe.getText() == null ? "" : eingabe.getText().toString().trim();
+        if (roh.isEmpty()) {
+            return 1;
+        }
+        try {
+            return Math.max(1, Integer.parseInt(roh));
+        } catch (NumberFormatException unbrauchbar) {
+            return 1;
+        }
+    }
+
+    /** Nach einer Mengenaenderung weiterreichen, damit der Server es erfaehrt. */
+    private void nachTragen() {
+        if (Einstellungen.serverAktiv(this)) {
+            Abgleich.ausfuehren(getApplicationContext(), abgleich -> {
+            });
+        }
     }
 
     // ------------------------------------------------------------- Behaelter

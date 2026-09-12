@@ -56,8 +56,8 @@ android {
         targetSdk 35
         // Beim Ausliefern hochzaehlen: die App vergleicht diese Nummer mit der
         // Fassung, die auf dem Server liegt.
-        versionCode 7
-        versionName "2.1.1"
+        versionCode 8
+        versionName "2.2.0"
         vectorDrawables.useSupportLibrary = true
 
         javaCompileOptions {

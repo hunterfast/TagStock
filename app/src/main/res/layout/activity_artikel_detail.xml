@@ -195,6 +195,94 @@
                     </LinearLayout>
                 </LinearLayout>
 
+                <!-- Menge: grosse Zahl, darunter die Einzelteile -->
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/cardMenge"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="16dp">
+
+                        <LinearLayout
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:baselineAligned="true"
+                            android:orientation="horizontal">
+
+                            <TextView
+                                android:id="@+id/textMengeGross"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:textAppearance="?attr/textAppearanceHeadlineMedium"
+                                tools:text="5" />
+
+                            <TextView
+                                android:id="@+id/textMengeEinheit"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginStart="8dp"
+                                android:textAppearance="?attr/textAppearanceBodyLarge"
+                                android:textColor="?attr/colorOnSurfaceVariant"
+                                tools:text="Packungen" />
+                        </LinearLayout>
+
+                        <TextView
+                            android:id="@+id/textMengeGesamt"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:textAppearance="?attr/textAppearanceBodyMedium"
+                            android:textColor="?attr/colorPrimary"
+                            android:textStyle="bold"
+                            android:visibility="gone"
+                            tools:text="25 Stück gesamt · 4 je Packung"
+                            tools:visibility="visible" />
+
+                        <com.google.android.material.chip.ChipGroup
+                            android:id="@+id/gruppeOffene"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="6dp" />
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="10dp"
+                            android:orientation="horizontal">
+
+                            <com.google.android.material.button.MaterialButton
+                                android:id="@+id/buttonEntnehmen"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="@string/entnehmen" />
+
+                            <com.google.android.material.button.MaterialButton
+                                android:id="@+id/buttonZugang"
+                                style="@style/Widget.Material3.Button.OutlinedButton"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_marginStart="10dp"
+                                android:layout_weight="1"
+                                android:text="@string/zugang" />
+                        </LinearLayout>
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/buttonPackungAnbrechen"
+                            style="@style/Widget.Material3.Button.OutlinedButton"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:text="@string/verpackung_anbrechen"
+                            android:visibility="gone"
+                            tools:visibility="visible" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
                 <!-- Behaelter: was liegt hier drin? -->
                 <com.google.android.material.card.MaterialCardView
                     android:id="@+id/cardInhalt"

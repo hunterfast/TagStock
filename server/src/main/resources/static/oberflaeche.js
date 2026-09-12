@@ -330,6 +330,21 @@
         }
     }
 
+    /** Gross die Packungen (oder Stück), klein darunter die Einzelteile. */
+    function mengeZelle(artikel) {
+        var gesamt = gesamtStueck(artikel);
+        var verpackung = artikel.istVerpackung && artikel.packungsGroesse > 0;
+        if (!verpackung && (artikel.menge === undefined || artikel.menge === 1)) {
+            return '';
+        }
+        var gross = verpackung ? artikel.menge : gesamt;
+        return '<span class="mengegross' + (gesamt === 0 ? ' leerbestand' : '') + '">'
+            + gross + '</span> <span class="leer">'
+            + (gesamt === 0 ? 'leer' : verpackung ? 'Pack.' : 'Stück') + '</span>'
+            + (verpackung && gesamt > 0
+                ? '<div class="mengeklein">' + gesamt + ' Stück</div>' : '');
+    }
+
     function ort(artikel) {
         var teile = [artikel.standort, artikel.lagerort].filter(Boolean);
         var behaelter = nachKennung(artikel.behaelterKennung);
@@ -339,6 +354,55 @@
             teile.push('in ' + artikel.behaelterKennung);
         }
         return teile.join(' · ');
+    }
+
+    /** Stück insgesamt - volle Packungen und angebrochene zusammen. */
+    function gesamtStueck(artikel) {
+        if (!artikel.istVerpackung || !artikel.packungsGroesse) {
+            return Math.max(0, artikel.menge || 0);
+        }
+        var summe = Math.max(0, artikel.menge || 0) * artikel.packungsGroesse;
+        offeneReste(artikel.angebrochen).forEach(function (rest) {
+            summe += rest;
+        });
+        return summe;
+    }
+
+    function offeneReste(text) {
+        if (!text) {
+            return [];
+        }
+        return String(text).split(',').map(function (teil) {
+            return parseInt(teil.trim(), 10);
+        }).filter(function (zahl) {
+            return zahl > 0;
+        });
+    }
+
+    /** Sichtbarkeit der Verpackungsfelder und die Zusammenfassung darunter. */
+    function mengenFelder() {
+        var an = $('feldIstVerpackung').checked;
+        $('feldPackungHuelle').hidden = !an;
+        $('feldOffeneHuelle').hidden = !an;
+        var kasten = $('mengeUebersicht');
+        // Entnehmen und Zugang gibt es erst, wenn der Artikel angelegt ist.
+        $('mengeKnoepfe').hidden = !stand.offen.id;
+        $('knopfAnbrechen').hidden = !an;
+        if (!an) {
+            kasten.hidden = true;
+            return;
+        }
+        var probe = {
+            menge: Math.max(0, parseInt($('feldMenge').value, 10) || 0),
+            istVerpackung: true,
+            packungsGroesse: Math.max(1, parseInt($('feldPackungsGroesse').value, 10) || 1),
+            angebrochen: $('feldAngebrochen').value
+        };
+        var reste = offeneReste(probe.angebrochen);
+        kasten.hidden = false;
+        kasten.textContent = 'Gesamt ' + gesamtStueck(probe) + ' Stück – '
+            + probe.menge + ' volle Packungen à ' + probe.packungsGroesse
+            + (reste.length ? ', dazu ' + reste.join(' + ') + ' in den angebrochenen' : '');
     }
 
     /** Der Artikel mit dieser Kennung - so finden sich Behälter wieder. */
@@ -415,6 +479,7 @@
                 + '<td class="optional">' + text(artikel.kategorie || '') + '</td>'
                 + '<td class="optional">' + text(ort(artikel)) + '</td>'
                 + '<td class="optional"><code>' + text(artikel.rfidUid || '') + '</code></td>'
+                + '<td>' + mengeZelle(artikel) + '</td>'
                 + '<td><span class="plakette" style="background:' + status.farbe + '">'
                 + status.text + '</span></td>';
             zeile.onclick = function () {
@@ -476,6 +541,11 @@
         $('feldKennung').value = stand.offen.rfidUid || '';
         $('feldStandort').value = stand.offen.standort || '';
         $('feldLagerort').value = stand.offen.lagerort || '';
+        $('feldMenge').value = stand.offen.menge === undefined ? 1 : stand.offen.menge;
+        $('feldIstVerpackung').checked = !!stand.offen.istVerpackung;
+        $('feldPackungsGroesse').value = stand.offen.packungsGroesse || '';
+        $('feldAngebrochen').value = stand.offen.angebrochen || '';
+        mengenFelder();
         $('feldIstBehaelter').checked = !!stand.offen.istBehaelter;
         $('feldBehaelterArt').value = stand.offen.behaelterArt || '';
         behaelterFelder(artikel);
@@ -598,6 +668,35 @@
         });
     }
 
+    /**
+     * Entnehmen, Zugang, Anbrechen - der Server rechnet, damit App und
+     * Oberfläche dieselbe Regel benutzen.
+     */
+    function mengeAendern(was, frage) {
+        var anzahl = 1;
+        if (frage) {
+            var eingabe = prompt(frage, '1');
+            if (eingabe === null) {
+                return;
+            }
+            anzahl = Math.max(1, parseInt(eingabe, 10) || 1);
+        }
+        api('/teams/' + stand.teamId + '/artikel/' + stand.offen.id + '/menge', {
+            method: 'POST',
+            body: JSON.stringify({was: was, anzahl: anzahl})
+        }).then(function (artikel) {
+            stand.offen = artikel;
+            $('feldMenge').value = artikel.menge;
+            $('feldAngebrochen').value = artikel.angebrochen || '';
+            $('feldStatus').value = artikel.status;
+            mengenFelder();
+            melden('Übernommen');
+            bestandLaden();
+        }).catch(function (fehler) {
+            melden(fehler.message);
+        });
+    }
+
     function artikelSpeichern() {
         var eingabe = {
             name: $('feldName').value.trim(),
@@ -606,6 +705,12 @@
             rfidUid: $('feldKennung').value.trim() || null,
             standort: $('feldStandort').value.trim() || null,
             lagerort: $('feldLagerort').value.trim() || null,
+            menge: Math.max(0, parseInt($('feldMenge').value, 10) || 0),
+            istVerpackung: $('feldIstVerpackung').checked,
+            packungsGroesse: $('feldIstVerpackung').checked
+                ? Math.max(1, parseInt($('feldPackungsGroesse').value, 10) || 1) : 0,
+            angebrochen: $('feldIstVerpackung').checked
+                ? ($('feldAngebrochen').value.trim() || null) : null,
             istBehaelter: $('feldIstBehaelter').checked,
             behaelterArt: $('feldIstBehaelter').checked
                 ? ($('feldBehaelterArt').value.trim() || null) : null,
@@ -1030,6 +1135,20 @@
         $('filterKategorie').onchange = bestandZeichnen;
         $('filterStandort').onchange = bestandZeichnen;
         $('filterBehaelter').onchange = bestandZeichnen;
+        $('knopfEntnehmen').onclick = function () {
+            mengeAendern('entnehmen', 'Wie viele Stück entnehmen?');
+        };
+        $('knopfZugang').onclick = function () {
+            mengeAendern('zugang', $('feldIstVerpackung').checked
+                ? 'Wie viele Packungen kommen dazu?' : 'Wie viele Stück kommen dazu?');
+        };
+        $('knopfAnbrechen').onclick = function () {
+            mengeAendern('anbrechen', null);
+        };
+        $('feldIstVerpackung').onchange = mengenFelder;
+        $('feldMenge').oninput = mengenFelder;
+        $('feldPackungsGroesse').oninput = mengenFelder;
+        $('feldAngebrochen').oninput = mengenFelder;
         $('feldIstBehaelter').onchange = function () {
             $('feldBehaelterArtHuelle').hidden = !$('feldIstBehaelter').checked;
         };

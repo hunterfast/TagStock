@@ -28,11 +28,13 @@ import de.tagstock.R;
 import de.tagstock.data.Abgleich;
 import de.tagstock.data.Artikel;
 import de.tagstock.data.Behaelterkette;
+import de.tagstock.data.Packungen;
 import de.tagstock.data.ArtikelStatus;
 import de.tagstock.data.Kategorie;
 import de.tagstock.data.Repository;
 import de.tagstock.data.ScanWarnung;
 import de.tagstock.databinding.FragmentArtikelFormBinding;
+import de.tagstock.databinding.ZeileOffenePackungBinding;
 import de.tagstock.util.Einstellungen;
 import de.tagstock.util.Formatter;
 import de.tagstock.util.FotoLader;
@@ -72,6 +74,9 @@ public class ArtikelFormFragment extends Fragment {
     private final List<Artikel> behaelter = new ArrayList<>();
     @Nullable
     private String liegtIn;
+
+    /** Reste der angebrochenen Packungen, wie sie gerade im Formular stehen. */
+    private final List<Integer> offenePackungen = new ArrayList<>();
 
     /** Die Kennung wird waehrend der Eingabe geprueft - verzoegert, nicht bei jedem Zeichen. */
     private final android.os.Handler pruefer = new android.os.Handler(Looper.getMainLooper());
@@ -165,6 +170,11 @@ public class ArtikelFormFragment extends Fragment {
                 behaelterScan.launch(ScannerActivity.intent(requireContext())));
         binding.schalterBehaelter.setOnCheckedChangeListener((knopf, an) -> behaelterFelder());
         behaelterArtenLaden();
+
+        binding.schalterVerpackung.setOnCheckedChangeListener((knopf, an) -> mengenFelder());
+        binding.buttonAnbrechen.setOnClickListener(v -> packungAnbrechen());
+        zahlBeobachten(binding.editMenge);
+        zahlBeobachten(binding.editPackungsGroesse);
         binding.editKennung.addTextChangedListener(new android.text.TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence s, int start, int anzahl, int nach) {
@@ -222,6 +232,8 @@ public class ArtikelFormFragment extends Fragment {
             if (kennung != null) {
                 binding.editKennung.setText(kennung);
             }
+            binding.editMenge.setText("1");
+            mengenFelder();
             behaelterFelder();
             behaelterLaden();
         }
@@ -429,6 +441,13 @@ public class ArtikelFormFragment extends Fragment {
         bildUrl = artikel.bildUrl;
         statusSetzen(artikel.status);
         warnungSetzen(artikel.scanWarnung);
+        binding.editMenge.setText(String.valueOf(artikel.menge));
+        binding.schalterVerpackung.setChecked(artikel.istVerpackung);
+        binding.editPackungsGroesse.setText(artikel.packungsGroesse > 0
+                ? String.valueOf(artikel.packungsGroesse) : "");
+        offenePackungen.clear();
+        offenePackungen.addAll(Packungen.offene(artikel.angebrochen));
+        mengenFelder();
         binding.schalterBehaelter.setChecked(artikel.istBehaelter);
         binding.dropdownBehaelterArt.setText(artikel.behaelterArt, false);
         liegtIn = artikel.behaelterKennung;
@@ -436,6 +455,143 @@ public class ArtikelFormFragment extends Fragment {
         behaelterFelder();
         behaelterLaden();
         fotoAnzeigen();
+    }
+
+    // ----------------------------------------------------------------- Menge
+
+    /** Zahl aus einem Feld; leer oder unsinnig zaehlt als der Ersatzwert. */
+    private int zahl(com.google.android.material.textfield.TextInputEditText feld, int ersatz) {
+        String roh = text(feld.getText()).trim();
+        if (roh.isEmpty()) {
+            return ersatz;
+        }
+        try {
+            return Math.max(0, Integer.parseInt(roh));
+        } catch (NumberFormatException unbrauchbar) {
+            return ersatz;
+        }
+    }
+
+    /** Aendert sich eine Zahl, stimmt die Zusammenfassung sonst nicht mehr. */
+    private void zahlBeobachten(com.google.android.material.textfield.TextInputEditText feld) {
+        feld.addTextChangedListener(new android.text.TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int anzahl, int nach) {
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int vorher, int anzahl) {
+            }
+
+            @Override
+            public void afterTextChanged(android.text.Editable s) {
+                if (binding != null) {
+                    gesamtZeigen();
+                }
+            }
+        });
+    }
+
+    /** Sichtbarkeit der Verpackungsfelder und die Liste der offenen Packungen. */
+    private void mengenFelder() {
+        boolean verpackung = binding.schalterVerpackung.isChecked();
+        int sicht = verpackung ? View.VISIBLE : View.GONE;
+        binding.inputPackungsGroesse.setVisibility(sicht);
+        binding.textOffeneTitel.setVisibility(sicht);
+        binding.listeOffene.setVisibility(sicht);
+        binding.buttonAnbrechen.setVisibility(sicht);
+        binding.inputMenge.setHint(getString(verpackung
+                ? R.string.menge_packungen : R.string.menge_feld));
+        offeneZeichnen();
+        gesamtZeigen();
+    }
+
+    /** Je angebrochene Packung eine Zeile - mit eigenem Rest und Wegwerfen. */
+    private void offeneZeichnen() {
+        binding.listeOffene.removeAllViews();
+        int jePackung = zahl(binding.editPackungsGroesse, 0);
+        for (int i = 0; i < offenePackungen.size(); i++) {
+            final int stelle = i;
+            ZeileOffenePackungBinding zeile = ZeileOffenePackungBinding.inflate(
+                    getLayoutInflater(), binding.listeOffene, false);
+            zeile.textNummer.setText(getString(R.string.verpackung_nummer, i + 1));
+            zeile.editRest.setText(String.valueOf(offenePackungen.get(stelle)));
+            zeile.textVon.setText(jePackung > 0
+                    ? getString(R.string.verpackung_von, jePackung) : "");
+            zeile.editRest.addTextChangedListener(new android.text.TextWatcher() {
+                @Override
+                public void beforeTextChanged(CharSequence s, int a, int b, int c) {
+                }
+
+                @Override
+                public void onTextChanged(CharSequence s, int a, int b, int c) {
+                }
+
+                @Override
+                public void afterTextChanged(android.text.Editable s) {
+                    if (binding == null || stelle >= offenePackungen.size()) {
+                        return;
+                    }
+                    offenePackungen.set(stelle, zahl(zeile.editRest, 0));
+                    gesamtZeigen();
+                }
+            });
+            zeile.buttonWeg.setOnClickListener(v -> {
+                if (stelle < offenePackungen.size()) {
+                    offenePackungen.remove(stelle);
+                    offeneZeichnen();
+                    gesamtZeigen();
+                }
+            });
+            binding.listeOffene.addView(zeile.getRoot());
+        }
+    }
+
+    /** Eine weitere Packung anbrechen - eine volle wird dafuer aufgebraucht. */
+    private void packungAnbrechen() {
+        int voll = zahl(binding.editMenge, 0);
+        int jePackung = zahl(binding.editPackungsGroesse, 0);
+        if (voll <= 0 || jePackung <= 0
+                || offenePackungen.size() >= Packungen.HOECHSTENS_OFFEN) {
+            Toast.makeText(requireContext(), R.string.verpackung_nichts_anzubrechen,
+                    Toast.LENGTH_SHORT).show();
+            return;
+        }
+        binding.editMenge.setText(String.valueOf(voll - 1));
+        offenePackungen.add(jePackung);
+        offeneZeichnen();
+        gesamtZeigen();
+    }
+
+    /** Die Zusammenfassung unter den Feldern - sie rechnet mit. */
+    private void gesamtZeigen() {
+        if (!binding.schalterVerpackung.isChecked()) {
+            binding.textGesamt.setVisibility(View.GONE);
+            return;
+        }
+        int voll = zahl(binding.editMenge, 0);
+        int jePackung = zahl(binding.editPackungsGroesse, 0);
+        if (jePackung <= 0) {
+            binding.textGesamt.setVisibility(View.GONE);
+            return;
+        }
+        int gesamt = voll * jePackung;
+        StringBuilder reste = new StringBuilder();
+        for (int rest : offenePackungen) {
+            gesamt += rest;
+            if (reste.length() > 0) {
+                reste.append(" + ");
+            }
+            reste.append(rest);
+        }
+        String beschreibung = reste.length() == 0
+                ? getString(R.string.verpackung_gesamt_nur_voll, voll, jePackung)
+                : getString(R.string.verpackung_gesamt_mit_offen, voll, jePackung,
+                        reste.toString());
+        binding.textGesamt.setVisibility(View.VISIBLE);
+        binding.textGesamt.setText(android.text.Html.fromHtml(
+                getString(R.string.verpackung_gesamt, gesamt, beschreibung),
+                android.text.Html.FROM_HTML_MODE_LEGACY));
     }
 
     // ------------------------------------------------------------- Behaelter
@@ -636,6 +792,12 @@ public class ArtikelFormFragment extends Fragment {
         ziel.standort = Formatter.leerZuNull(text(binding.editStandort.getText()));
         ziel.lagerort = Formatter.leerZuNull(text(binding.editLagerort.getText()));
         ziel.rfidUid = Formatter.leerZuNull(text(binding.editKennung.getText()));
+        ziel.menge = zahl(binding.editMenge, 1);
+        ziel.istVerpackung = binding.schalterVerpackung.isChecked();
+        ziel.packungsGroesse = ziel.istVerpackung ? zahl(binding.editPackungsGroesse, 1) : 0;
+        ziel.angebrochen = ziel.istVerpackung ? Packungen.alsText(offenePackungen) : null;
+        // Raeumt Widersprueche weg, etwa einen Rest groesser als die Packung.
+        Packungen.geradeziehen(ziel);
         ziel.istBehaelter = binding.schalterBehaelter.isChecked();
         ziel.behaelterArt = ziel.istBehaelter
                 ? Formatter.leerZuNull(text(binding.dropdownBehaelterArt.getText())) : null;
@@ -738,6 +900,11 @@ public class ArtikelFormFragment extends Fragment {
         binding.editRueckgabe.setText("");
         statusSetzen(ArtikelStatus.VORHANDEN);
         warnungSetzen(ScanWarnung.JAHR);
+        binding.editMenge.setText("1");
+        binding.schalterVerpackung.setChecked(false);
+        binding.editPackungsGroesse.setText("");
+        offenePackungen.clear();
+        mengenFelder();
         binding.schalterBehaelter.setChecked(false);
         binding.dropdownBehaelterArt.setText("", false);
         liegtIn = null;

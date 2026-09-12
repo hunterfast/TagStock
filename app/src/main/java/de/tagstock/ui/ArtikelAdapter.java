@@ -20,6 +20,7 @@ import java.util.Set;
 
 import de.tagstock.R;
 import de.tagstock.data.Artikel;
+import de.tagstock.data.Packungen;
 import de.tagstock.databinding.ItemArtikelBinding;
 import de.tagstock.util.Formatter;
 import de.tagstock.util.FotoLader;
@@ -121,11 +122,43 @@ public class ArtikelAdapter extends ListAdapter<Artikel, ArtikelAdapter.ArtikelH
 
     static class ArtikelHolder extends RecyclerView.ViewHolder {
 
+        /** Die gewoehnliche Schriftfarbe der Zahl - 0 heisst: noch unbekannt. */
+        private int mengeFarbe;
+
         private final ItemArtikelBinding binding;
 
         ArtikelHolder(ItemArtikelBinding binding) {
             super(binding.getRoot());
             this.binding = binding;
+        }
+
+        /**
+         * Gross steht, was man greift - Packungen, wenn es welche gibt, sonst
+         * Stueck. Bei einer Verpackungseinheit darunter klein die Einzelteile;
+         * die Packungszahl allein sagt ja nicht, wie viele noch da sind.
+         */
+        private void mengeZeigen(Context context, Artikel artikel) {
+            int gesamt = Packungen.gesamt(artikel);
+            boolean verpackung = artikel.istVerpackung && artikel.packungsGroesse > 0;
+            // Einzelstuecke sind der Normalfall und brauchen keine Zahl.
+            boolean zeigen = verpackung || artikel.menge != 1;
+            binding.gruppeMenge.setVisibility(zeigen ? View.VISIBLE : View.GONE);
+            if (!zeigen) {
+                return;
+            }
+            if (mengeFarbe == 0) {
+                mengeFarbe = binding.textMenge.getCurrentTextColor();
+            }
+            binding.textMenge.setText(String.valueOf(verpackung ? artikel.menge : gesamt));
+            binding.textMenge.setTextColor(gesamt == 0
+                    ? ContextCompat.getColor(context, R.color.status_fehlt) : mengeFarbe);
+            binding.textMengeEinheit.setText(context.getString(gesamt == 0
+                    ? R.string.menge_leer
+                    : verpackung ? R.string.menge_packungen : R.string.menge_stueck));
+            binding.textMengeGesamt.setVisibility(verpackung && gesamt > 0
+                    ? View.VISIBLE : View.GONE);
+            binding.textMengeGesamt.setText(
+                    context.getString(R.string.menge_gesamt_stueck, gesamt));
         }
 
         void bind(Artikel artikel, Listener listener, boolean auswahlModus, boolean ausgewaehlt,
@@ -144,6 +177,8 @@ public class ArtikelAdapter extends ListAdapter<Artikel, ArtikelAdapter.ArtikelH
                             : behaelterNamen.get(artikel.behaelterKennung));
             binding.textZeile.setVisibility(zeile.isEmpty() ? View.GONE : View.VISIBLE);
             binding.textZeile.setText(zeile);
+
+            mengeZeigen(context, artikel);
 
             boolean hatKennung = artikel.rfidUid != null && !artikel.rfidUid.isEmpty();
             binding.textKennung.setVisibility(hatKennung ? View.VISIBLE : View.GONE);

@@ -34,6 +34,22 @@ Server läuft die App vollständig allein auf dem Gerät.
   Jahre oder nie).
 - **Mehrfachauswahl**: Status setzen, Standort ändern, Etikettenbogen als PDF.
 
+### Menge und Verpackungseinheit
+Jeder Artikel hat eine Stückzahl. Wer nur ein Stück von etwas hat, sieht keine
+Zahl – erst ab zwei wird sie angezeigt.
+
+Für Sachen im Pack – etwa ein Shelly 1 Gen4 im 4er-Pack – lässt sich
+**Verpackungseinheit** einschalten. Dann zählt die Menge die **vollen**
+Packungen, und angebrochene stehen **einzeln** daneben, jede mit eigenem Rest;
+mehrere dürfen offen sein. Angezeigt wird groß die Packungszahl und klein
+darunter die Einzelteile insgesamt.
+
+**Entnehmen** und **Zugang** sind zwei Knöpfe in der Artikelansicht, Vorgabe
+immer 1 und über − / + oder Eintippen änderbar. Bei Packungen wird zuerst die
+angebrochene geleert, dann die nächste angebrochen; *Zugang* zählt dabei
+Packungen, sonst Stück. Fällt der Bestand auf 0, wird die Zahl rot und der
+Status wandert auf *nicht vorhanden* – kommt etwas herein, wieder zurück.
+
 ### Behälter – ein Lager im Lager
 Eine Ikea-Box, eine Schublade, ein Regal: Wer etwas wegstellt, legt es als
 **Behälter** an und klebt ihm eine eigene Kennung auf – NFC-Tag oder Barcode.

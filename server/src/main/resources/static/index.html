@@ -68,6 +68,7 @@
                     <th class="optional">Kategorie</th>
                     <th class="optional">Ort</th>
                     <th class="optional">Kennung</th>
+                    <th>Menge</th>
                     <th>Status</th>
                 </tr>
                 </thead>
@@ -152,8 +153,19 @@
                 <label>Kennung (NFC, Barcode)<input id="feldKennung"></label>
                 <label>Standort<input id="feldStandort" list="standorteVorschlag"></label>
                 <label>Lagerort<input id="feldLagerort"></label>
+                <label>Menge<input id="feldMenge" type="number" min="0" step="1"></label>
                 <label>Liegt in
                     <select id="feldLiegtIn"><option value="">– nirgends –</option></select>
+                </label>
+                <label class="breit ankreuz">
+                    <input id="feldIstVerpackung" type="checkbox">
+                    <span>Verpackungseinheit – mehrere Stück je Packung</span>
+                </label>
+                <label id="feldPackungHuelle">Stück je Packung
+                    <input id="feldPackungsGroesse" type="number" min="1" step="1">
+                </label>
+                <label id="feldOffeneHuelle" class="breit">Angebrochene Packungen
+                    <input id="feldAngebrochen" placeholder="z. B. 2,3">
                 </label>
                 <label class="breit ankreuz">
                     <input id="feldIstBehaelter" type="checkbox">
@@ -188,6 +200,12 @@
                         <button type="button" class="leise" id="knopfBildWeg" hidden>Bild entfernen</button>
                     </span>
                 </label>
+            </div>
+            <div id="mengeUebersicht" class="leer" hidden></div>
+            <div id="mengeKnoepfe" class="mengeknoepfe" hidden>
+                <button type="button" id="knopfEntnehmen">Entnehmen</button>
+                <button type="button" class="leise" id="knopfZugang">Zugang</button>
+                <button type="button" class="leise" id="knopfAnbrechen">Packung anbrechen</button>
             </div>
             <div id="behaelterInhalt" hidden></div>
             <div id="artikelProtokoll"></div>

@@ -68,6 +68,13 @@ CREATE TABLE IF NOT EXISTS artikel (
     rueckgabe_datum  INTEGER,
     zuletzt_gescannt INTEGER,
     scan_warnung     TEXT NOT NULL DEFAULT '1j',
+    -- Menge: ohne Verpackungseinheit Stueck, mit einer die vollen Packungen.
+    -- Was in angebrochenen Packungen liegt, steht einzeln in behaelter-freier
+    -- Form daneben ("2,3") - es koennen durchaus mehrere offen sein.
+    menge            INTEGER NOT NULL DEFAULT 1,
+    ist_verpackung   INTEGER NOT NULL DEFAULT 0,
+    packungs_groesse INTEGER NOT NULL DEFAULT 0,
+    angebrochen      TEXT,
     -- Behaelter: eine Box, Schublade, ein Regal ... - also ein Lager im Lager.
     -- Wer drin liegt, merkt sich die Kennung des Behaelters; die klebt am
     -- Moebel und ist genau das, was beim Einraeumen gescannt wird.

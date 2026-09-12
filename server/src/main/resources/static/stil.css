@@ -274,3 +274,10 @@ dialog .inhalt { padding: 16px; max-height: 65vh; overflow: auto; }
 }
 
 #behaelterInhalt h4 { margin: 14px 0 0; }
+
+/* Menge: gross die Packungen, klein darunter die Einzelteile. */
+.mengegross { font-weight: 700; font-size: 1.05rem; }
+.mengegross.leerbestand { color: var(--fehlt); }
+.mengeklein { font-size: .78rem; color: var(--marke); font-weight: 600; }
+
+.mengeknoepfe { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }

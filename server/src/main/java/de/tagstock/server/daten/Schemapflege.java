@@ -47,6 +47,10 @@ public class Schemapflege implements ApplicationRunner {
         spalten("artikel").put("ist_behaelter", "INTEGER NOT NULL DEFAULT 0");
         spalten("artikel").put("behaelter_art", "TEXT");
         spalten("artikel").put("behaelter_kennung", "TEXT");
+        spalten("artikel").put("menge", "INTEGER NOT NULL DEFAULT 1");
+        spalten("artikel").put("ist_verpackung", "INTEGER NOT NULL DEFAULT 0");
+        spalten("artikel").put("packungs_groesse", "INTEGER NOT NULL DEFAULT 0");
+        spalten("artikel").put("angebrochen", "TEXT");
     }
 
     /** Indizes, die eine hier ergaenzte Spalte brauchen. */

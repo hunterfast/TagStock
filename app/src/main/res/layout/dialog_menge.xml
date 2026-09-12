@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Wie viele? Vorgabe ist eins, mehr geht ueber die Knoepfe oder das Feld. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:paddingStart="24dp"
+    android:paddingTop="8dp"
+    android:paddingEnd="24dp">
+
+    <TextView
+        android:id="@+id/textKopf"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textAppearance="?attr/textAppearanceBodyMedium"
+        android:textColor="?attr/colorOnSurfaceVariant"
+        tools:text="Patchkabel 2 m · 5 Stück vorhanden" />
+
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="14dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/buttonWeniger"
+            style="@style/Widget.Material3.Button.OutlinedButton.Icon"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:contentDescription="@string/menge_weniger"
+            app:icon="@drawable/ic_minus"
+            app:iconPadding="0dp" />
+
+        <com.google.android.material.textfield.TextInputLayout
+            style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+            android:layout_width="104dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="12dp"
+            android:layout_marginEnd="12dp">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/editAnzahl"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:inputType="number"
+                android:maxLines="1"
+                android:textAppearance="?attr/textAppearanceHeadlineSmall"
+                tools:text="1" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/buttonMehr"
+            style="@style/Widget.Material3.Button.OutlinedButton.Icon"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:contentDescription="@string/menge_mehr"
+            app:icon="@drawable/ic_add"
+            app:iconPadding="0dp" />
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/textDanach"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:background="@drawable/hinweis_hintergrund"
+        android:gravity="center"
+        android:padding="10dp"
+        android:textAppearance="?attr/textAppearanceBodyMedium"
+        tools:text="Danach noch 4 Stück" />
+
+    <TextView
+        android:id="@+id/textHinweis"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="@string/entnehmen_hinweis_packung"
+        android:textAppearance="?attr/textAppearanceBodySmall"
+        android:textColor="?attr/colorOnSurfaceVariant"
+        android:visibility="gone"
+        tools:visibility="visible" />
+</LinearLayout>

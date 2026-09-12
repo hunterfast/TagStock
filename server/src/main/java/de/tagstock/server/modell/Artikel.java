@@ -18,6 +18,18 @@ public class Artikel {
     public Long zuletztGescannt;
     public String scanWarnung = "1j";
 
+    /** Stueck, oder bei einer Verpackungseinheit die vollen Packungen. */
+    public int menge = 1;
+
+    /** true, wenn der Artikel in Packungen kommt - etwa ein 4er-Pack. */
+    public boolean istVerpackung;
+
+    /** Stueck je Packung. */
+    public int packungsGroesse;
+
+    /** Reste der angebrochenen Packungen, etwa "2,3" - mehrere sind moeglich. */
+    public String angebrochen;
+
     /** true, wenn dieser Eintrag selbst etwas aufnimmt - Box, Schublade, Regal. */
     public boolean istBehaelter;
 

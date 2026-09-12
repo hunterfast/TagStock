@@ -29,6 +29,9 @@ public class Protokoll {
     public static final String ZURUECK = "Zurückgenommen";
     /** Gleiche Bezeichnung wie auf dem Server, damit das Protokoll zusammenpasst. */
     public static final String EINGERAEUMT = "Eingeräumt";
+    public static final String ENTNOMMEN = "Entnommen";
+    public static final String ZUGANG = "Zugang";
+    public static final String ANGEBROCHEN = "Packung angebrochen";
 
     @PrimaryKey(autoGenerate = true)
     public long id;

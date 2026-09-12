@@ -4,6 +4,7 @@ import de.tagstock.server.daten.ArtikelDaten;
 import de.tagstock.server.daten.Bilderdienst;
 import de.tagstock.server.daten.KategorieDaten;
 import de.tagstock.server.daten.ProtokollDaten;
+import de.tagstock.server.dienst.Packungen;
 import de.tagstock.server.modell.Artikel;
 import de.tagstock.server.modell.Benutzer;
 import de.tagstock.server.modell.Kategorie;
@@ -70,6 +71,7 @@ public class ArtikelController {
         pruefeName(eingabe);
         pruefeKennung(teamId, eingabe.rfidUid, null);
         pruefeBehaelter(teamId, eingabe, null);
+        Packungen.geradeziehen(eingabe);
 
         eingabe.teamId = teamId;
         eingabe.id = null;
@@ -91,6 +93,7 @@ public class ArtikelController {
         pruefeName(eingabe);
         pruefeKennung(teamId, eingabe.rfidUid, artikelId);
         pruefeBehaelter(teamId, eingabe, artikelId);
+        Packungen.geradeziehen(eingabe);
 
         eingabe.id = artikelId;
         eingabe.teamId = teamId;
@@ -100,6 +103,78 @@ public class ArtikelController {
         inhaltNachziehen(teamId, vorher, neu, benutzer.name);
         unterschiedeProtokollieren(teamId, vorher, neu, benutzer.name);
         return neu;
+    }
+
+    /**
+     * Entnehmen, Zugang und Anbrechen fuer die Oberflaeche. Die App rechnet
+     * dasselbe selbst - sie muss auch ohne Netz koennen -, im Browser
+     * uebernimmt es der Server.
+     */
+    @PostMapping("/artikel/{artikelId}/menge")
+    public Artikel mengeAendern(HttpServletRequest anfrage, @PathVariable String teamId,
+                                @PathVariable String artikelId,
+                                @RequestBody Mengenwunsch wunsch) {
+        Benutzer benutzer = zugriff.benutzer(anfrage);
+        zugriff.rolleZumBearbeiten(anfrage, teamId);
+        Artikel artikel = artikelDaten.nachId(teamId, artikelId);
+        if (artikel == null || artikel.geloescht) {
+            throw ApiFehler.nichtGefunden("Artikel nicht gefunden");
+        }
+        int vorher = Packungen.gesamt(artikel);
+        String was = wunsch.was == null ? "" : wunsch.was.trim();
+        int anzahl = Math.max(1, wunsch.anzahl);
+        switch (was) {
+            case "entnehmen":
+                if (Packungen.entnehmen(artikel, anzahl) == 0) {
+                    throw ApiFehler.ungueltig("Nichts mehr vorhanden");
+                }
+                break;
+            case "zugang":
+                Packungen.zugang(artikel, anzahl);
+                break;
+            case "anbrechen":
+                if (!Packungen.anbrechen(artikel)) {
+                    throw ApiFehler.ungueltig("Keine volle Packung mehr zum Anbrechen");
+                }
+                break;
+            default:
+                throw ApiFehler.ungueltig("Unbekannter Wunsch: " + was);
+        }
+        int nachher = Packungen.gesamt(artikel);
+        statusNachBestand(teamId, artikel, nachher, benutzer.name);
+        Artikel gespeichert = artikelDaten.aktualisieren(artikel);
+        if (vorher != nachher) {
+            protokoll(teamId, gespeichert, "entnehmen".equals(was) ? "Entnommen" : "Zugang",
+                    String.valueOf(vorher), String.valueOf(nachher), benutzer.name);
+        } else {
+            protokoll(teamId, gespeichert, "Packung angebrochen", null,
+                    String.valueOf(artikel.packungsGroesse), benutzer.name);
+        }
+        return gespeichert;
+    }
+
+    /**
+     * Leer heisst "nicht vorhanden", und wer wieder etwas hat, ist wieder
+     * vorhanden. Verliehenes und Ausgelagertes bleibt unberuehrt - dort sagt
+     * der Status etwas anderes aus als die Stueckzahl.
+     */
+    private void statusNachBestand(String teamId, Artikel artikel, int bestand, String nutzer) {
+        String vorher = artikel.status;
+        if (bestand == 0 && "vorhanden".equals(vorher)) {
+            artikel.status = "nicht vorhanden";
+        } else if (bestand > 0 && "nicht vorhanden".equals(vorher)) {
+            artikel.status = "vorhanden";
+        }
+        if (!artikel.status.equals(vorher)) {
+            protokoll(teamId, artikel, "Status geändert", vorher, artikel.status, nutzer);
+        }
+    }
+
+    /** Was mit der Menge geschehen soll. */
+    public static class Mengenwunsch {
+        /** "entnehmen", "zugang" oder "anbrechen". */
+        public String was;
+        public int anzahl = 1;
     }
 
     @DeleteMapping("/artikel/{artikelId}")
@@ -271,6 +346,12 @@ public class ArtikelController {
         }
         if (!gleich(vorher.lagerort, neu.lagerort)) {
             protokoll(teamId, neu, "Lagerort geändert", vorher.lagerort, neu.lagerort, nutzer);
+        }
+        int vorherStueck = Packungen.gesamt(vorher);
+        int neuStueck = Packungen.gesamt(neu);
+        if (vorherStueck != neuStueck) {
+            protokoll(teamId, neu, "Menge geändert", String.valueOf(vorherStueck),
+                    String.valueOf(neuStueck), nutzer);
         }
         if (!gleich(vorher.behaelterKennung, neu.behaelterKennung)) {
             protokoll(teamId, neu, "Eingeräumt", benennen(teamId, vorher.behaelterKennung),

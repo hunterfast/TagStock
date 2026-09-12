@@ -165,6 +165,93 @@ public class Repository {
         }, callback);
     }
 
+    /**
+     * Entnimmt Stueck und schreibt es ins Protokoll. Faellt der Bestand auf
+     * null, wandert der Status auf "nicht vorhanden" - sonst stuende ein
+     * leeres Fach weiter als vorhanden da. Gibt zurueck, wie viele
+     * tatsaechlich entnommen wurden.
+     */
+    public void entnehmen(long artikelId, int stueck, String nutzer,
+                          Callback<Integer> callback) {
+        starte(() -> {
+            Artikel artikel = artikelDao.nachId(artikelId);
+            if (artikel == null) {
+                return 0;
+            }
+            int vorher = Packungen.gesamt(artikel);
+            int genommen = Packungen.entnehmen(artikel, stueck);
+            if (genommen == 0) {
+                return 0;
+            }
+            int nachher = Packungen.gesamt(artikel);
+            statusNachBestand(artikel, nachher, nutzer);
+            merken(artikel);
+            eintragen(artikel, Protokoll.ENTNOMMEN, String.valueOf(vorher),
+                    String.valueOf(nachher), nutzer);
+            return genommen;
+        }, callback);
+    }
+
+    /**
+     * Zugang. Mit Verpackungseinheit zaehlt es Packungen, sonst Stueck - so
+     * kauft man ein. Gibt den neuen Gesamtbestand zurueck.
+     */
+    public void zugang(long artikelId, int anzahl, String nutzer, Callback<Integer> callback) {
+        starte(() -> {
+            Artikel artikel = artikelDao.nachId(artikelId);
+            if (artikel == null || anzahl <= 0) {
+                return 0;
+            }
+            int vorher = Packungen.gesamt(artikel);
+            Packungen.zugang(artikel, anzahl);
+            int nachher = Packungen.gesamt(artikel);
+            statusNachBestand(artikel, nachher, nutzer);
+            merken(artikel);
+            eintragen(artikel, Protokoll.ZUGANG, String.valueOf(vorher),
+                    String.valueOf(nachher), nutzer);
+            return nachher;
+        }, callback);
+    }
+
+    /** Eine weitere Packung anbrechen, ohne etwas zu entnehmen. */
+    public void packungAnbrechen(long artikelId, String nutzer, Callback<Boolean> callback) {
+        starte(() -> {
+            Artikel artikel = artikelDao.nachId(artikelId);
+            if (artikel == null || !Packungen.anbrechen(artikel)) {
+                return false;
+            }
+            merken(artikel);
+            eintragen(artikel, Protokoll.ANGEBROCHEN, null,
+                    String.valueOf(artikel.packungsGroesse), nutzer);
+            return true;
+        }, callback);
+    }
+
+    /**
+     * Leer heisst "nicht vorhanden", und wer wieder etwas hat, ist wieder
+     * vorhanden. Verliehenes und Ausgelagertes bleibt unberuehrt - da sagt
+     * der Status etwas anderes aus als die blosse Stueckzahl.
+     */
+    private void statusNachBestand(Artikel artikel, int bestand, String nutzer) {
+        ArtikelStatus vorher = artikel.status;
+        if (bestand == 0 && vorher == ArtikelStatus.VORHANDEN) {
+            artikel.status = ArtikelStatus.NICHT_VORHANDEN;
+        } else if (bestand > 0 && vorher == ArtikelStatus.NICHT_VORHANDEN) {
+            artikel.status = ArtikelStatus.VORHANDEN;
+        }
+        if (artikel.status != vorher) {
+            eintragen(artikel, Protokoll.STATUS, schluessel(vorher),
+                    schluessel(artikel.status), nutzer);
+        }
+    }
+
+    /** Aenderung festhalten und zum Abgleich vormerken. */
+    private void merken(Artikel artikel) {
+        artikel.geaendertAm = System.currentTimeMillis();
+        artikel.offen = true;
+        artikelDao.update(artikel);
+    }
+
     public void zaehleOffene(Callback<Integer> callback) {
         starte(artikelDao::anzahlOffene, callback);
     }
