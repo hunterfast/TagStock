@@ -313,11 +313,14 @@ public class ArtikelDetailActivity extends AppCompatActivity {
                                     nachTragen();
                                 });
                             } else {
-                                repository.zugang(artikel.id, anzahl, nutzer, neu ->
-                                        Toast.makeText(this,
-                                                getString(R.string.zugang_erledigt, neu),
-                                                Toast.LENGTH_SHORT).show());
-                                nachTragen();
+                                repository.zugang(artikel.id, anzahl, nutzer, neu -> {
+                                    Toast.makeText(this,
+                                            getString(R.string.zugang_erledigt, neu),
+                                            Toast.LENGTH_SHORT).show();
+                                    // Erst wenn es gebucht ist - sonst ginge der
+                                    // alte Stand zum Server.
+                                    nachTragen();
+                                });
                             }
                         })
                 .show();

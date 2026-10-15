@@ -27,8 +27,13 @@ public class AbgleichArbeit extends Worker {
             return Result.success();
         }
         Abgleich.Ergebnis ergebnis = Abgleich.jetzt(context);
-        if (ergebnis.erfolgreich() || ergebnis.laeuftSchon) {
+        if (ergebnis.erfolgreich()) {
             return Result.success();
+        }
+        if (ergebnis.laeuftSchon) {
+            // Was waehrend des laufenden Abgleichs geaendert wurde, hat der
+            // nicht mehr mitgenommen - gleich danach noch einmal.
+            return Result.retry();
         }
         if (ergebnis.abgemeldet) {
             // Ein abgelaufener Token wird durch Wiederholen nicht besser.

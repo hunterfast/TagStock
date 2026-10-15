@@ -32,6 +32,8 @@ public class Protokoll {
     public static final String ENTNOMMEN = "Entnommen";
     public static final String ZUGANG = "Zugang";
     public static final String ANGEBROCHEN = "Packung angebrochen";
+    /** Menge im Formular geaendert - der Server schreibt denselben Text. */
+    public static final String MENGE = "Menge geändert";
 
     @PrimaryKey(autoGenerate = true)
     public long id;

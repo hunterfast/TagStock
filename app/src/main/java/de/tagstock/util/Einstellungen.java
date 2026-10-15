@@ -6,6 +6,9 @@ import android.content.SharedPreferences;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatDelegate;
 
+import java.util.HashSet;
+import java.util.Set;
+
 /** App-Einstellungen: Design, Name fuer das Protokoll und Serverzugang. */
 public final class Einstellungen {
 
@@ -23,6 +26,7 @@ public final class Einstellungen {
     private static final String SCHLUESSEL_ROLLE = "teamRolle";
     private static final String SCHLUESSEL_SYNC = "letzterSync";
     private static final String SCHLUESSEL_GTIN = "gtinNachschlagen";
+    private static final String SCHLUESSEL_LOESCHUNGEN = "loeschungen";
 
     private Einstellungen() {
     }
@@ -115,6 +119,31 @@ public final class Einstellungen {
         prefs(context).edit().putBoolean(SCHLUESSEL_GTIN, an).apply();
     }
 
+    // ------------------------------------------------------------- Loeschungen
+
+    /**
+     * Server-Kennungen geloeschter Artikel, die der Server noch erfahren muss.
+     * Liegt hier statt in der Datenbank, weil die Zeile dort schon weg ist.
+     */
+    public static synchronized Set<String> loeschungen(Context context) {
+        return new HashSet<>(prefs(context).getStringSet(SCHLUESSEL_LOESCHUNGEN,
+                new HashSet<>()));
+    }
+
+    public static synchronized void loeschungVormerken(Context context, String serverId) {
+        Set<String> offen = loeschungen(context);
+        if (offen.add(serverId)) {
+            prefs(context).edit().putStringSet(SCHLUESSEL_LOESCHUNGEN, offen).apply();
+        }
+    }
+
+    public static synchronized void loeschungErledigt(Context context, String serverId) {
+        Set<String> offen = loeschungen(context);
+        if (offen.remove(serverId)) {
+            prefs(context).edit().putStringSet(SCHLUESSEL_LOESCHUNGEN, offen).apply();
+        }
+    }
+
     public static void setzeServer(Context context, String url, String token) {
         prefs(context).edit()
                 .putString(SCHLUESSEL_SERVER, url)
@@ -151,6 +180,7 @@ public final class Einstellungen {
                 .remove(SCHLUESSEL_TEAM_NAME)
                 .remove(SCHLUESSEL_ROLLE)
                 .remove(SCHLUESSEL_SYNC)
+                .remove(SCHLUESSEL_LOESCHUNGEN)
                 .apply();
     }
 
@@ -161,6 +191,7 @@ public final class Einstellungen {
                 .remove(SCHLUESSEL_TEAM_NAME)
                 .remove(SCHLUESSEL_ROLLE)
                 .remove(SCHLUESSEL_SYNC)
+                .remove(SCHLUESSEL_LOESCHUNGEN)
                 .apply();
     }
 }

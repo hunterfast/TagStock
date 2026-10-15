@@ -149,7 +149,8 @@ public class BestandViewModel extends AndroidViewModel {
                 || enthaelt(artikel.lagerort, suche)
                 || enthaelt(artikel.kategorie, suche)
                 || enthaelt(artikel.beschreibung, suche)
-                || enthaelt(artikel.verliehenAn, suche);
+                || enthaelt(artikel.verliehenAn, suche)
+                || enthaelt(artikel.behaelterArt, suche);
     }
 
     /**

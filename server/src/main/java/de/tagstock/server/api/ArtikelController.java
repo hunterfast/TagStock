@@ -94,6 +94,12 @@ public class ArtikelController {
         pruefeKennung(teamId, eingabe.rfidUid, artikelId);
         pruefeBehaelter(teamId, eingabe, artikelId);
         Packungen.geradeziehen(eingabe);
+        if (gleich(vorher.status, eingabe.status)
+                && Packungen.gesamt(vorher) != Packungen.gesamt(eingabe)) {
+            // Menge im Formular auf 0 heisst "nicht vorhanden" - wie beim
+            // Entnehmen. Einen von Hand gewaehlten Status laesst das in Ruhe.
+            eingabe.status = Packungen.statusFuer(eingabe.status, Packungen.gesamt(eingabe));
+        }
 
         eingabe.id = artikelId;
         eingabe.teamId = teamId;
@@ -153,19 +159,11 @@ public class ArtikelController {
         return gespeichert;
     }
 
-    /**
-     * Leer heisst "nicht vorhanden", und wer wieder etwas hat, ist wieder
-     * vorhanden. Verliehenes und Ausgelagertes bleibt unberuehrt - dort sagt
-     * der Status etwas anderes aus als die Stueckzahl.
-     */
+    /** Status an den Bestand anpassen, siehe {@link Packungen#statusFuer}. */
     private void statusNachBestand(String teamId, Artikel artikel, int bestand, String nutzer) {
         String vorher = artikel.status;
-        if (bestand == 0 && "vorhanden".equals(vorher)) {
-            artikel.status = "nicht vorhanden";
-        } else if (bestand > 0 && "nicht vorhanden".equals(vorher)) {
-            artikel.status = "vorhanden";
-        }
-        if (!artikel.status.equals(vorher)) {
+        artikel.status = Packungen.statusFuer(vorher, bestand);
+        if (!gleich(artikel.status, vorher)) {
             protokoll(teamId, artikel, "Status geändert", vorher, artikel.status, nutzer);
         }
     }
@@ -183,7 +181,8 @@ public class ArtikelController {
         Benutzer benutzer = zugriff.benutzer(anfrage);
         zugriff.rolleZumBearbeiten(anfrage, teamId);
         Artikel vorher = artikelDaten.nachId(teamId, artikelId);
-        if (vorher == null) {
+        if (vorher == null || vorher.geloescht) {
+            // Schon weg - die App meldet eine Loeschung womoeglich zweimal.
             throw ApiFehler.nichtGefunden("Artikel nicht gefunden");
         }
         // Erst den Inhalt freigeben: Loeschen raeumt die Kennung weg, danach

@@ -10,6 +10,7 @@ import org.junit.Test;
 import java.util.Arrays;
 
 import de.tagstock.data.Artikel;
+import de.tagstock.data.ArtikelStatus;
 import de.tagstock.data.Packungen;
 
 /**
@@ -151,5 +152,19 @@ public class PackungenTest {
         Packungen.geradeziehen(kabel);
         assertNull(kabel.angebrochen);
         assertEquals(0, kabel.packungsGroesse);
+    }
+
+    @Test
+    public void statusFolgtDemBestandAberNichtBeiVerliehenem() {
+        assertEquals(ArtikelStatus.NICHT_VORHANDEN,
+                Packungen.statusFuer(ArtikelStatus.VORHANDEN, 0));
+        assertEquals(ArtikelStatus.VORHANDEN,
+                Packungen.statusFuer(ArtikelStatus.NICHT_VORHANDEN, 3));
+        assertEquals(ArtikelStatus.VORHANDEN, Packungen.statusFuer(ArtikelStatus.VORHANDEN, 3));
+        assertEquals(ArtikelStatus.NICHT_VORHANDEN,
+                Packungen.statusFuer(ArtikelStatus.NICHT_VORHANDEN, 0));
+        // Verliehen ist verliehen, egal wie viel noch im Regal liegt.
+        assertEquals(ArtikelStatus.VERLIEHEN, Packungen.statusFuer(ArtikelStatus.VERLIEHEN, 0));
+        assertEquals(ArtikelStatus.VERLIEHEN, Packungen.statusFuer(ArtikelStatus.VERLIEHEN, 4));
     }
 }

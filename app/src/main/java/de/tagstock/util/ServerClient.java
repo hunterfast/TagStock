@@ -131,6 +131,11 @@ public class ServerClient {
 
     // ---------------------------------------------------------------- Abgleich
 
+    /** Loescht einen Artikel; der Server gibt dabei auch seinen Inhalt frei. */
+    public void artikelLoeschen(String teamId, String artikelId) throws IOException {
+        hole("DELETE", "/teams/" + teamId + "/artikel/" + artikelId, null);
+    }
+
     public JSONObject abgleichHolen(String teamId, long seit) throws IOException, JSONException {
         return objekt(hole("GET", "/teams/" + teamId + "/sync?seit=" + seit, null));
     }

@@ -104,6 +104,15 @@ public class ArtikelLogikTest {
     }
 
     @Test
+    public void sucheFindetBehaelterNachIhrerArt() {
+        Artikel box = artikel("Box Elektrokleinkram", ArtikelStatus.VORHANDEN);
+        box.istBehaelter = true;
+        box.behaelterArt = "Schublade";
+
+        assertTrue(BestandViewModel.passt(box, "schubl"));
+    }
+
+    @Test
     public void filterKombiniertStatusKategorieUndStandort() {
         Artikel werkzeug = artikel("Bohrer", ArtikelStatus.VERLIEHEN);
         werkzeug.kategorie = "Werkzeug";

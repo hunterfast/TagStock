@@ -9,6 +9,7 @@ import androidx.annotation.Nullable;
 import androidx.lifecycle.LiveData;
 
 import de.tagstock.util.Abgleichplaner;
+import de.tagstock.util.Einstellungen;
 
 import java.util.List;
 import java.util.concurrent.ExecutorService;
@@ -67,26 +68,6 @@ public class Repository {
         return instance;
     }
 
-    /** Arbeitsschritt, der direkt auf den Tabellen arbeitet. */
-    public interface Arbeit<T> {
-        T mache(ArtikelDao artikel, KategorieDao kategorien, ProtokollDao protokoll)
-                throws Exception;
-    }
-
-    /**
-     * Fuehrt eine zusammenhaengende Aufgabe im Hintergrund aus - benutzt der
-     * Abgleich, der Datenbank und Server in einem Rutsch braucht.
-     */
-    public <T> void imHintergrund(Arbeit<T> arbeit, Callback<T> callback) {
-        starte(() -> arbeit.mache(artikelDao, kategorieDao, protokollDao), callback);
-    }
-
-    /** Dieselbe Aufgabe blockierend - fuer Aufrufer, die schon im Hintergrund laufen. */
-    @androidx.annotation.WorkerThread
-    public <T> T sofort(Arbeit<T> arbeit) throws Exception {
-        return arbeit.mache(artikelDao, kategorieDao, protokollDao);
-    }
-
     // ---------------------------------------------------------------- Abfragen
 
     public LiveData<List<Artikel>> beobachteArtikel() {
@@ -131,7 +112,6 @@ public class Repository {
         return wert == null || wert.trim().isEmpty() ? null : artikelDao.nachKennung(wert.trim());
     }
 
-    /** Wie viele Artikel warten noch auf die Uebertragung zum Server? */
     /** Der Artikel mit dieser Kennung - null, wenn keiner sie traegt. */
     public void ladeNachKennung(String kennung, Callback<Artikel> callback) {
         starte(() -> artikelDao.nachKennung(kennung), callback);
@@ -227,18 +207,10 @@ public class Repository {
         }, callback);
     }
 
-    /**
-     * Leer heisst "nicht vorhanden", und wer wieder etwas hat, ist wieder
-     * vorhanden. Verliehenes und Ausgelagertes bleibt unberuehrt - da sagt
-     * der Status etwas anderes aus als die blosse Stueckzahl.
-     */
+    /** Status an den Bestand anpassen, siehe {@link Packungen#statusFuer}. */
     private void statusNachBestand(Artikel artikel, int bestand, String nutzer) {
         ArtikelStatus vorher = artikel.status;
-        if (bestand == 0 && vorher == ArtikelStatus.VORHANDEN) {
-            artikel.status = ArtikelStatus.NICHT_VORHANDEN;
-        } else if (bestand > 0 && vorher == ArtikelStatus.NICHT_VORHANDEN) {
-            artikel.status = ArtikelStatus.VORHANDEN;
-        }
+        artikel.status = Packungen.statusFuer(vorher, bestand);
         if (artikel.status != vorher) {
             eintragen(artikel, Protokoll.STATUS, schluessel(vorher),
                     schluessel(artikel.status), nutzer);
@@ -252,6 +224,7 @@ public class Repository {
         artikelDao.update(artikel);
     }
 
+    /** Wie viele Artikel warten noch auf die Uebertragung zum Server? */
     public void zaehleOffene(Callback<Integer> callback) {
         starte(artikelDao::anzahlOffene, callback);
     }
@@ -287,6 +260,13 @@ public class Repository {
                     return new Speicherergebnis(false, 0L, belegt);
                 }
             }
+            if (vorher != null && vorher.status == neu.status
+                    && Packungen.gesamt(vorher) != Packungen.gesamt(neu)) {
+                // Wer im Formular die Menge auf 0 setzt, hat nichts mehr -
+                // wie beim Entnehmen. Einen von Hand gewaehlten Status laesst
+                // das in Ruhe.
+                neu.status = Packungen.statusFuer(neu.status, Packungen.gesamt(neu));
+            }
             neu.geaendertAm = System.currentTimeMillis();
             neu.offen = true;
             try {
@@ -301,6 +281,9 @@ public class Repository {
                 if (vorher != null) {
                     protokolliereUnterschiede(vorher, neu, nutzer);
                 }
+                // Auch eine geaenderte Beschreibung muss zum Server, obwohl sie
+                // keinen Protokolleintrag bekommt.
+                Abgleichplaner.vormerken(context);
                 return new Speicherergebnis(true, neu.id, null);
             } catch (SQLiteConstraintException e) {
                 Artikel belegt = neu.rfidUid == null ? null : artikelDao.nachKennung(neu.rfidUid);
@@ -350,6 +333,12 @@ public class Repository {
         }
         if (!gleich(vorher.lagerort, neu.lagerort)) {
             eintragen(neu, Protokoll.LAGERORT, vorher.lagerort, neu.lagerort, nutzer);
+        }
+        int vorherStueck = Packungen.gesamt(vorher);
+        int neuStueck = Packungen.gesamt(neu);
+        if (vorherStueck != neuStueck) {
+            eintragen(neu, Protokoll.MENGE, String.valueOf(vorherStueck),
+                    String.valueOf(neuStueck), nutzer);
         }
         if (!gleich(vorher.behaelterKennung, neu.behaelterKennung)) {
             eintragen(neu, Protokoll.EINGERAEUMT, benennen(vorher.behaelterKennung),
@@ -466,7 +455,9 @@ public class Repository {
 
     /**
      * Vermerkt einen Scan: Zeitstempel setzen und - falls der Artikel als nicht
-     * vorhanden galt - wieder auf vorhanden buchen.
+     * vorhanden galt, aber noch Stueck hat - wieder auf vorhanden buchen. Ist
+     * der Bestand leer, bleibt er "nicht vorhanden": Die leere Schachtel zu
+     * scannen, fuellt sie nicht auf.
      */
     public void alsGescanntBuchen(long artikelId, String nutzer, Callback<Artikel> callback) {
         starte(() -> {
@@ -474,7 +465,8 @@ public class Repository {
             if (artikel == null) {
                 return null;
             }
-            boolean statusWechsel = artikel.status == ArtikelStatus.NICHT_VORHANDEN;
+            boolean statusWechsel = artikel.status == ArtikelStatus.NICHT_VORHANDEN
+                    && Packungen.gesamt(artikel) > 0;
             ArtikelStatus alt = artikel.status;
             if (statusWechsel) {
                 artikel.status = ArtikelStatus.VORHANDEN;
@@ -493,20 +485,35 @@ public class Repository {
         }, callback);
     }
 
+    /**
+     * Loescht einen Artikel. Kennt ihn der Server schon, wird das vorgemerkt
+     * und beim naechsten Abgleich dorthin gemeldet - sonst laege er dort
+     * weiter und kaeme beim naechsten vollen Abgleich zurueck.
+     */
     public void loeschen(Artikel artikel) {
-        executor.execute(() -> {
+        starte(() -> {
+            Artikel aktuell = artikelDao.nachId(artikel.id);
+            if (aktuell == null) {
+                return false;
+            }
+            if (aktuell.serverId != null && Einstellungen.teamId(context) != null) {
+                Einstellungen.loeschungVormerken(context, aktuell.serverId);
+            }
             // Erst den Inhalt freigeben - sonst zeigt er auf einen Behaelter,
             // den es nicht mehr gibt, und taucht nirgends mehr auf.
-            if (artikel.istBehaelter && artikel.rfidUid != null && !artikel.rfidUid.isEmpty()) {
+            if (aktuell.istBehaelter && aktuell.rfidUid != null && !aktuell.rfidUid.isEmpty()) {
                 long jetzt = System.currentTimeMillis();
-                for (Artikel drin : artikelDao.inhaltVon(artikel.rfidUid)) {
+                for (Artikel drin : artikelDao.inhaltVon(aktuell.rfidUid)) {
                     drin.behaelterKennung = null;
                     drin.geaendertAm = jetzt;
                     drin.offen = true;
                     artikelDao.update(drin);
                 }
             }
-            artikelDao.delete(artikel);
+            artikelDao.delete(aktuell);
+            Abgleichplaner.vormerken(context);
+            return true;
+        }, geloescht -> {
         });
     }
 
@@ -637,11 +644,16 @@ public class Repository {
         return linke.equals(rechte);
     }
 
+    /**
+     * Jede Aufgabe als eine Transaktion: Der Abgleich laeuft in einem eigenen
+     * Thread, und so kann er nichts zwischen Lesen und Zurueckschreiben
+     * einer Aenderung veraendern - und umgekehrt.
+     */
     private <T> void starte(java.util.concurrent.Callable<T> arbeit, Callback<T> callback) {
         executor.execute(() -> {
             final T ergebnis;
             try {
-                ergebnis = arbeit.call();
+                ergebnis = db.runInTransaction(arbeit);
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }

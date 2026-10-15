@@ -21,6 +21,7 @@ import de.tagstock.data.Artikel;
 import de.tagstock.data.ArtikelStatus;
 import de.tagstock.data.Bestand;
 import de.tagstock.data.Kategorie;
+import de.tagstock.data.Packungen;
 import de.tagstock.data.Protokoll;
 import de.tagstock.data.ScanWarnung;
 
@@ -94,6 +95,17 @@ public final class Sicherung {
         o.put("zuletzt_gescannt", artikel.zuletztGescannt == null
                 ? JSONObject.NULL : artikel.zuletztGescannt);
         o.put("scan_warnung", artikel.scanWarnung.schluessel);
+        o.put("bild_url", text(artikel.bildUrl));
+        // Menge und Packungen - ohne sie setzte ein Zurueckspielen jeden
+        // Bestand auf ein Stueck zurueck.
+        o.put("menge", artikel.menge);
+        o.put("ist_verpackung", artikel.istVerpackung);
+        o.put("packungs_groesse", artikel.packungsGroesse);
+        o.put("angebrochen", text(artikel.angebrochen));
+        // Behaelter - ohne sie waeren danach alle Boxen leer.
+        o.put("ist_behaelter", artikel.istBehaelter);
+        o.put("behaelter_art", text(artikel.behaelterArt));
+        o.put("behaelter_kennung", text(artikel.behaelterKennung));
         o.put("erstellt_am", artikel.erstelltAm);
         o.put("geaendert_am", artikel.geaendertAm);
         return o;
@@ -155,6 +167,15 @@ public final class Sicherung {
         artikel.rueckgabeDatum = o.isNull("rueckgabe_datum") ? null : o.optLong("rueckgabe_datum");
         artikel.zuletztGescannt = o.isNull("zuletzt_gescannt") ? null : o.optLong("zuletzt_gescannt");
         artikel.scanWarnung = ScanWarnung.vonSchluessel(o.optString("scan_warnung"));
+        artikel.bildUrl = textOderNull(o, "bild_url");
+        // Aeltere Sicherungen kennen keine Menge: dann war es ein Stueck.
+        artikel.menge = o.optInt("menge", 1);
+        artikel.istVerpackung = o.optBoolean("ist_verpackung", false);
+        artikel.packungsGroesse = o.optInt("packungs_groesse", 0);
+        artikel.angebrochen = textOderNull(o, "angebrochen");
+        artikel.istBehaelter = o.optBoolean("ist_behaelter", false);
+        artikel.behaelterArt = textOderNull(o, "behaelter_art");
+        artikel.behaelterKennung = textOderNull(o, "behaelter_kennung");
         artikel.erstelltAm = o.optLong("erstellt_am", System.currentTimeMillis());
         artikel.geaendertAm = o.optLong("geaendert_am", artikel.erstelltAm);
         return artikel;
@@ -174,12 +195,30 @@ public final class Sicherung {
 
     // --------------------------------------------------------------------- CSV
 
+    private static boolean verpackt(Artikel artikel) {
+        return artikel.istVerpackung && artikel.packungsGroesse > 0;
+    }
+
+    /** In der Tabelle soll der Name des Behaelters stehen, nicht seine Kennung. */
+    private static String behaelterName(Bestand bestand, String kennung) {
+        if (kennung == null || kennung.isEmpty()) {
+            return "";
+        }
+        for (Artikel artikel : bestand.artikel) {
+            if (kennung.equals(artikel.rfidUid)) {
+                return artikel.name;
+            }
+        }
+        return kennung;
+    }
+
     public static String alsCsv(Context context, Bestand bestand) {
         SimpleDateFormat datum = new SimpleDateFormat("dd.MM.yyyy", Locale.GERMANY);
         StringBuilder csv = new StringBuilder();
         csv.append('\uFEFF');
         csv.append(zeile("Name", "Beschreibung", "Kategorie", "Standort", "Lagerort", "Status",
-                "Verliehen an", "Rückgabe", "Kennung", "Zuletzt gescannt", "Geändert am"));
+                "Verliehen an", "Rückgabe", "Kennung", "Zuletzt gescannt", "Geändert am",
+                "Stück", "Packungen", "Je Packung", "Liegt in"));
 
         for (Artikel artikel : bestand.artikel) {
             csv.append(zeile(
@@ -193,7 +232,11 @@ public final class Sicherung {
                     artikel.rueckgabeDatum == null ? "" : datum.format(new Date(artikel.rueckgabeDatum)),
                     feldText(artikel.rfidUid),
                     artikel.zuletztGescannt == null ? "" : datum.format(new Date(artikel.zuletztGescannt)),
-                    datum.format(new Date(artikel.geaendertAm))));
+                    datum.format(new Date(artikel.geaendertAm)),
+                    String.valueOf(Packungen.gesamt(artikel)),
+                    verpackt(artikel) ? String.valueOf(artikel.menge) : "",
+                    verpackt(artikel) ? String.valueOf(artikel.packungsGroesse) : "",
+                    behaelterName(bestand, artikel.behaelterKennung)));
         }
         return csv.toString();
     }

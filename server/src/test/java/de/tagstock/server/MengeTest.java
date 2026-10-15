@@ -2,6 +2,7 @@ package de.tagstock.server;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 
@@ -99,6 +100,39 @@ class MengeTest {
     }
 
     @Test
+    void mengeImFormularNimmtDenStatusMit() throws Exception {
+        String token = konto("formular@test.de");
+        String team = team(token, "Garage");
+        String id = anlegen(token, team,
+                "{\"name\":\"Kabelbinder\",\"menge\":3}").get("id").asText();
+
+        // Menge auf 0, Status nicht angefasst: nichts mehr da.
+        JsonNode nach = aendern(token, team, id,
+                "{\"name\":\"Kabelbinder\",\"menge\":0,\"status\":\"vorhanden\"}");
+        assertEquals("nicht vorhanden", nach.get("status").asText());
+
+        // Wieder aufgefuellt: wieder da.
+        nach = aendern(token, team, id,
+                "{\"name\":\"Kabelbinder\",\"menge\":5,\"status\":\"nicht vorhanden\"}");
+        assertEquals("vorhanden", nach.get("status").asText());
+
+        // Wer den Status selbst waehlt, behaelt ihn.
+        nach = aendern(token, team, id,
+                "{\"name\":\"Kabelbinder\",\"menge\":0,\"status\":\"verliehen\"}");
+        assertEquals("verliehen", nach.get("status").asText());
+
+        JsonNode protokoll = senden(mitToken(get("/api/v1/teams/" + team + "/artikel/" + id
+                + "/protokoll"), token), 200);
+        boolean mengeVermerkt = false;
+        for (JsonNode eintrag : protokoll) {
+            mengeVermerkt |= "Menge geändert".equals(eintrag.get("aktion").asText())
+                    && "3".equals(eintrag.get("alterWert").asText())
+                    && "0".equals(eintrag.get("neuerWert").asText());
+        }
+        assertTrue(mengeVermerkt, "Protokoll: " + protokoll);
+    }
+
+    @Test
     void mehrAlsVorhandenGehtNichtUndUnsinnWirdGeradegezogen() throws Exception {
         String token = konto("unsinn@test.de");
         String team = team(token, "Lager");
@@ -133,6 +167,12 @@ class MengeTest {
         return senden(mitToken(post("/api/v1/teams/" + team + "/artikel/" + id + "/menge"), token)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"was\":\"" + was + "\",\"anzahl\":" + anzahl + "}"), 200);
+    }
+
+    private JsonNode aendern(String token, String team, String id, String koerper)
+            throws Exception {
+        return senden(mitToken(put("/api/v1/teams/" + team + "/artikel/" + id), token)
+                .contentType(MediaType.APPLICATION_JSON).content(koerper), 200);
     }
 
     private JsonNode senden(MockHttpServletRequestBuilder anfrage, int erwarteterStatus)

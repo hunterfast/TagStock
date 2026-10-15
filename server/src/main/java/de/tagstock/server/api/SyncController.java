@@ -21,8 +21,10 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Abgleich mit der App. Die App holt sich alles, was sich seit ihrem letzten
@@ -46,6 +48,8 @@ public class SyncController {
         public String serverId;
         public boolean angenommen;
         public String grund;
+        /** Der Artikel ist hier schon geloescht - die App soll ihn auch loeschen. */
+        public boolean geloescht;
 
         Zuordnung(Long lokaleId, String serverId, boolean angenommen, String grund) {
             this.lokaleId = lokaleId;
@@ -109,8 +113,35 @@ public class SyncController {
         }
 
         Map<String, Object> ergebnis = abholen(anfrage, teamId, seit);
+        ergebnis.put("artikel", mitAbgelehnten(teamId, ergebnis.get("artikel"), zuordnungen));
         ergebnis.put("zuordnungen", zuordnungen);
         return ergebnis;
+    }
+
+    /**
+     * Abgelehntes kommt mit dem Serverstand zurueck - auch wenn der aelter ist
+     * als der letzte Abgleich der App. Sonst behielte sie ihre abgelehnte
+     * Fassung, und beide Seiten liefen auseinander.
+     */
+    @SuppressWarnings("unchecked")
+    private List<Artikel> mitAbgelehnten(String teamId, Object geaendert,
+                                         List<Zuordnung> zuordnungen) {
+        List<Artikel> artikel = new ArrayList<>((List<Artikel>) geaendert);
+        Set<String> dabei = new HashSet<>();
+        for (Artikel eintrag : artikel) {
+            dabei.add(eintrag.id);
+        }
+        for (Zuordnung zuordnung : zuordnungen) {
+            if (zuordnung.angenommen || zuordnung.serverId == null
+                    || !dabei.add(zuordnung.serverId)) {
+                continue;
+            }
+            Artikel server = artikelDaten.nachId(teamId, zuordnung.serverId);
+            if (server != null) {
+                artikel.add(server);
+            }
+        }
+        return artikel;
     }
 
     /** Einen hochgeladenen Artikel einsortieren. */
@@ -136,6 +167,14 @@ public class SyncController {
         Artikel server = artikelDaten.nachId(teamId, artikel.id);
         if (server == null) {
             return new Zuordnung(artikel.lokaleId, artikel.id, false, "Artikel gibt es nicht mehr");
+        }
+        if (server.geloescht) {
+            // Geloescht bleibt geloescht - eine spaete Aenderung von einem
+            // Geraet, das es noch nicht wusste, holt ihn nicht zurueck.
+            Zuordnung weg = new Zuordnung(artikel.lokaleId, server.id, false,
+                    "Artikel wurde inzwischen gelöscht");
+            weg.geloescht = true;
+            return weg;
         }
         if (server.geaendertAm > artikel.geaendertAm) {
             // Auf dem Server ist eine juengere Fassung - die gewinnt.

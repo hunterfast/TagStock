@@ -126,4 +126,86 @@ public class SicherungTest {
     public void leereDateiWirdErkannt() throws JSONException {
         assertTrue(Sicherung.ausJson("{\"version\":3}").istLeer());
     }
+
+    /**
+     * Menge, Verpackung, Behaelter und Bild muessen eine Sicherung ueberleben.
+     * Bis 2.2.0 fehlten sie: Die Sicherung vor jedem Update verlor genau
+     * diese Angaben, und ein Zurueckspielen setzte jeden Bestand auf ein Stueck
+     * und raeumte alle Boxen leer.
+     */
+    @Test
+    public void mengeVerpackungUndBehaelterUeberlebenDieSicherung() throws JSONException {
+        Bestand bestand = new Bestand();
+        Artikel box = new Artikel();
+        box.id = 1;
+        box.name = "Ikea-Box blau";
+        box.rfidUid = "BOX-1";
+        box.istBehaelter = true;
+        box.behaelterArt = "Box";
+        bestand.artikel.add(box);
+
+        Artikel shelly = new Artikel();
+        shelly.id = 2;
+        shelly.name = "Shelly 1 Gen4";
+        shelly.menge = 5;
+        shelly.istVerpackung = true;
+        shelly.packungsGroesse = 4;
+        shelly.angebrochen = "2,3";
+        shelly.behaelterKennung = "BOX-1";
+        shelly.bildUrl = "/api/v1/teams/t/bilder/b.jpg";
+        bestand.artikel.add(shelly);
+
+        Bestand zurueck = Sicherung.ausJson(Sicherung.alsJson(bestand));
+
+        Artikel boxZurueck = zurueck.artikel.get(0);
+        assertTrue(boxZurueck.istBehaelter);
+        assertEquals("Box", boxZurueck.behaelterArt);
+
+        Artikel shellyZurueck = zurueck.artikel.get(1);
+        assertEquals(5, shellyZurueck.menge);
+        assertTrue(shellyZurueck.istVerpackung);
+        assertEquals(4, shellyZurueck.packungsGroesse);
+        assertEquals("2,3", shellyZurueck.angebrochen);
+        assertEquals("BOX-1", shellyZurueck.behaelterKennung);
+        assertEquals("/api/v1/teams/t/bilder/b.jpg", shellyZurueck.bildUrl);
+        assertEquals(25, shellyZurueck.gesamtStueck());
+    }
+
+    /** Eine Sicherung von vor 2.2.0 kennt keine Menge - dann war es ein Stueck. */
+    @Test
+    public void alteSicherungOhneMengeGibtEinStueck() throws JSONException {
+        Artikel alt = Sicherung.ausJson("{\"artikel\":[{\"id\":1,\"name\":\"Leiter\"}]}")
+                .artikel.get(0);
+        assertEquals(1, alt.menge);
+        assertEquals(false, alt.istVerpackung);
+        assertEquals(false, alt.istBehaelter);
+        assertNull(alt.behaelterKennung);
+    }
+
+    @Test
+    public void csvNenntStueckzahlUndBehaelter() {
+        Context context = ApplicationProvider.getApplicationContext();
+        Bestand bestand = new Bestand();
+        Artikel box = new Artikel();
+        box.name = "Ikea-Box blau";
+        box.rfidUid = "BOX-1";
+        box.istBehaelter = true;
+        bestand.artikel.add(box);
+        Artikel shelly = new Artikel();
+        shelly.name = "Shelly 1 Gen4";
+        shelly.menge = 5;
+        shelly.istVerpackung = true;
+        shelly.packungsGroesse = 4;
+        shelly.angebrochen = "2,3";
+        shelly.behaelterKennung = "BOX-1";
+        bestand.artikel.add(shelly);
+
+        String[] zeilen = Sicherung.alsCsv(context, bestand).split("\n");
+        String[] kopf = zeilen[0].split(";");
+        String[] felder = zeilen[2].split(";");
+        assertEquals("25", felder[java.util.Arrays.asList(kopf).indexOf("Stück")]);
+        assertEquals("5", felder[java.util.Arrays.asList(kopf).indexOf("Packungen")]);
+        assertEquals("4", felder[java.util.Arrays.asList(kopf).indexOf("Je Packung")]);
+        assertEquals("Ikea-Box blau", felder[java.util.Arrays.asList(kopf).indexOf("Liegt in")]);
+    }
 }

@@ -129,6 +129,21 @@ public final class Packungen {
         return true;
     }
 
+    /**
+     * Leer heisst "nicht vorhanden", und wer wieder etwas hat, ist wieder
+     * vorhanden. Verliehenes und Ausgelagertes bleibt unberuehrt - dort sagt
+     * der Status etwas anderes aus als die Stueckzahl.
+     */
+    public static String statusFuer(String status, int bestand) {
+        if (bestand <= 0 && "vorhanden".equals(status)) {
+            return "nicht vorhanden";
+        }
+        if (bestand > 0 && "nicht vorhanden".equals(status)) {
+            return "vorhanden";
+        }
+        return status;
+    }
+
     /** Raeumt Widersprueche weg, bevor etwas in der Datenbank landet. */
     public static void geradeziehen(Artikel artikel) {
         if (artikel.menge < 0) {

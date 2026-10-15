@@ -268,6 +268,58 @@ class ApiTest {
     }
 
     @Test
+    void abgelehnteFassungKommtMitDemServerstandZurueck() throws Exception {
+        String token = neuesKonto(email());
+        String teamId = neuesTeam(token, "Dachboden");
+        String artikelId = neuerArtikel(token, teamId, "Koffer", null);
+        long stand = senden(mitToken(get("/api/v1/teams/" + teamId + "/sync?seit=0"), token), 200)
+                .get("stand").asLong();
+
+        // Die App kennt den Koffer seit ihrem letzten Abgleich, schickt aber
+        // eine aeltere Fassung - der Serverstand muss trotzdem mitkommen.
+        JsonNode antwort = senden(mitToken(post("/api/v1/teams/" + teamId + "/sync?seit="
+                + stand), token).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"artikel\":[{\"id\":\"" + artikelId + "\",\"lokaleId\":4,"
+                        + "\"name\":\"Alter Koffer\",\"geaendertAm\":1000}],\"protokoll\":[]}"),
+                200);
+
+        assertEquals(1, antwort.get("artikel").size());
+        assertEquals("Koffer", antwort.get("artikel").get(0).get("name").asText());
+    }
+
+    @Test
+    void geloeschtesBleibtGeloeschtAuchBeiSpaeterAenderung() throws Exception {
+        String token = neuesKonto(email());
+        String teamId = neuesTeam(token, "Keller");
+        String artikelId = neuerArtikel(token, teamId, "Kaputter Stuhl", null);
+        String pfad = "/api/v1/teams/" + teamId + "/artikel/" + artikelId;
+
+        senden(mitToken(delete(pfad), token), 200);
+        // Ein zweites Geraet meldet dieselbe Loeschung noch einmal.
+        senden(mitToken(delete(pfad), token), 404);
+
+        // Ein Geraet, das es noch nicht wusste, schickt eine juengere Aenderung.
+        JsonNode antwort = senden(mitToken(post("/api/v1/teams/" + teamId + "/sync"), token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"artikel\":[{\"id\":\"" + artikelId + "\",\"lokaleId\":5,"
+                        + "\"name\":\"Stuhl repariert\",\"geaendertAm\":"
+                        + (System.currentTimeMillis() + 60_000) + "}],\"protokoll\":[]}"), 200);
+        JsonNode zuordnung = antwort.get("zuordnungen").get(0);
+        assertTrue(!zuordnung.get("angenommen").asBoolean());
+        assertTrue(zuordnung.get("geloescht").asBoolean());
+        assertEquals(0, senden(mitToken(get("/api/v1/teams/" + teamId + "/artikel"), token), 200)
+                .size());
+
+        int geloescht = 0;
+        for (JsonNode eintrag : senden(mitToken(get(pfad + "/protokoll"), token), 200)) {
+            if ("Artikel gelöscht".equals(eintrag.get("aktion").asText())) {
+                geloescht++;
+            }
+        }
+        assertEquals(1, geloescht);
+    }
+
+    @Test
     void einladungUndRollenSteuernDenZugriff() throws Exception {
         String adminToken = neuesKonto(email());
         String teamId = neuesTeam(adminToken, "Verein");

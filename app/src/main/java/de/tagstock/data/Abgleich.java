@@ -1,15 +1,24 @@
 package de.tagstock.data;
 
 import android.content.Context;
+import android.os.Handler;
+import android.os.Looper;
 
 import androidx.annotation.Nullable;
+import androidx.annotation.WorkerThread;
 
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import de.tagstock.util.Einstellungen;
 import de.tagstock.util.Fotos;
@@ -43,35 +52,42 @@ public final class Abgleich {
         }
     }
 
+    /**
+     * Eigener Thread: Der Abgleich wartet auf das Netz, und solange soll
+     * niemand mit dem Entnehmen oder Speichern auf ihn warten muessen.
+     */
+    private static final ExecutorService ARBEITER = Executors.newSingleThreadExecutor();
+    private static final Handler HAUPTTHREAD = new Handler(Looper.getMainLooper());
+
     private Abgleich() {
     }
 
     /** Fuehrt einen vollstaendigen Abgleich aus; die Antwort kommt im Hauptthread. */
     public static void ausfuehren(Context context, Repository.Callback<Ergebnis> callback) {
-        Repository repository = Repository.getInstance(context);
-        Ergebnis vorab = vorpruefung(context);
+        Context app = context.getApplicationContext();
+        Ergebnis vorab = vorpruefung(app);
         if (vorab != null) {
             callback.onResult(vorab);
             return;
         }
-        repository.imHintergrund((artikelDao, kategorieDao, protokollDao) ->
-                durchfuehren(context, artikelDao, kategorieDao, protokollDao), callback);
+        ARBEITER.execute(() -> {
+            Ergebnis ergebnis = jetzt(app);
+            HAUPTTHREAD.post(() -> callback.onResult(ergebnis));
+        });
     }
 
     /**
      * Derselbe Abgleich, nur blockierend - dafuer aus einem Hintergrund-Thread
      * aufzurufen. Nutzt die geplante Uebertragung, sobald wieder Netz da ist.
      */
-    @androidx.annotation.WorkerThread
+    @WorkerThread
     public static Ergebnis jetzt(Context context) {
         Ergebnis vorab = vorpruefung(context);
         if (vorab != null) {
             return vorab;
         }
         try {
-            return Repository.getInstance(context).sofort(
-                    (artikelDao, kategorieDao, protokollDao) ->
-                            durchfuehren(context, artikelDao, kategorieDao, protokollDao));
+            return durchfuehren(context, AppDatabase.getInstance(context));
         } catch (Exception fehler) {
             Ergebnis ergebnis = new Ergebnis();
             ergebnis.fehler = fehler.getMessage() == null
@@ -93,11 +109,18 @@ public final class Abgleich {
     }
 
     /** Zwei Abgleiche gleichzeitig braucht niemand - der zweite wartet nicht, er faellt aus. */
-    private static final java.util.concurrent.atomic.AtomicBoolean LAEUFT =
-            new java.util.concurrent.atomic.AtomicBoolean(false);
+    private static final AtomicBoolean LAEUFT = new AtomicBoolean(false);
 
-    private static Ergebnis durchfuehren(Context context, ArtikelDao artikelDao,
-                                         KategorieDao kategorieDao, ProtokollDao protokollDao) {
+    /**
+     * Der Abgleich laeuft neben der Oberflaeche her. Deshalb geht nichts ueber
+     * das Netz, solange die Datenbank gesperrt ist, und was waehrend der
+     * Uebertragung geaendert wurde, bleibt offen und wird nicht vom
+     * Serverstand ueberschrieben - es geht beim naechsten Mal mit.
+     */
+    private static Ergebnis durchfuehren(Context context, AppDatabase db) {
+        ArtikelDao artikelDao = db.artikelDao();
+        KategorieDao kategorieDao = db.kategorieDao();
+        ProtokollDao protokollDao = db.protokollDao();
         Ergebnis ergebnis = new Ergebnis();
         if (!LAEUFT.compareAndSet(false, true)) {
             ergebnis.fehler = "Abgleich laeuft bereits";
@@ -110,19 +133,24 @@ public final class Abgleich {
         long seit = Einstellungen.letzterSync(context);
         ServerClient client = new ServerClient(url, token);
         try {
-            // Zuerst die Bilder der bereits bekannten Artikel, damit die
+            // Geloeschtes zuerst - sonst kaeme es mit dem Serverstand zurueck.
+            loeschungenMelden(context, client, teamId, ergebnis);
+
+            // Dann die Bilder der bereits bekannten Artikel, damit die
             // Adresse gleich mit hochgeht.
-            bilderHochladen(context, client, teamId, artikelDao, ergebnis);
+            bilderHochladen(context, client, teamId, db, ergebnis);
 
             JSONArray offeneArtikel = new JSONArray();
-            List<Artikel> offene = artikelDao.offene();
-            for (Artikel artikel : offene) {
+            // Welcher Stand ging hoch? Wer danach noch geaendert wurde, bleibt offen.
+            Map<Long, Long> gesendet = new HashMap<>();
+            for (Artikel artikel : artikelDao.offene()) {
                 offeneArtikel.put(alsJson(artikel));
+                gesendet.put(artikel.id, artikel.geaendertAm);
             }
 
             JSONArray offeneEintraege = new JSONArray();
             List<Long> gesendeteEintraege = new ArrayList<>();
-            java.util.Map<Long, String> kennungen = new java.util.HashMap<>();
+            Map<Long, String> kennungen = new HashMap<>();
             for (Protokoll eintrag : protokollDao.offene()) {
                 if (!kennungen.containsKey(eintrag.artikelId)) {
                     Artikel dazu = artikelDao.nachId(eintrag.artikelId);
@@ -135,17 +163,22 @@ public final class Abgleich {
             JSONObject antwort = client.abgleichSenden(teamId, seit, offeneArtikel,
                     offeneEintraege);
 
-            zuordnungenAnwenden(antwort.optJSONArray("zuordnungen"), artikelDao, ergebnis);
-            serverstandUebernehmen(antwort.optJSONArray("artikel"), teamId, artikelDao, ergebnis);
-            kategorienUebernehmen(antwort.optJSONArray("kategorien"), teamId, kategorieDao);
-
-            if (!gesendeteEintraege.isEmpty()) {
-                protokollDao.alsGesendetMarkieren(gesendeteEintraege);
-            }
+            // Alles Eintragen am Stueck: Dazwischen kann niemand etwas aendern,
+            // das gleich wieder ueberschrieben wuerde.
+            db.runInTransaction(() -> {
+                zuordnungenAnwenden(antwort.optJSONArray("zuordnungen"), gesendet, artikelDao,
+                        ergebnis);
+                serverstandUebernehmen(antwort.optJSONArray("artikel"), teamId,
+                        Einstellungen.loeschungen(context), artikelDao, ergebnis);
+                kategorienUebernehmen(antwort.optJSONArray("kategorien"), teamId, kategorieDao);
+                if (!gesendeteEintraege.isEmpty()) {
+                    protokollDao.alsGesendetMarkieren(gesendeteEintraege);
+                }
+            });
 
             // Neu angelegte Artikel haben jetzt eine Server-Kennung - ihre
             // Bilder koennen nachgereicht werden.
-            bilderHochladen(context, client, teamId, artikelDao, ergebnis);
+            bilderHochladen(context, client, teamId, db, ergebnis);
 
             long stand = antwort.optLong("stand", System.currentTimeMillis());
             Einstellungen.setzeLetztenSync(context, stand);
@@ -208,6 +241,33 @@ public final class Abgleich {
         return o;
     }
 
+    // ------------------------------------------------------------- Loeschungen
+
+    /**
+     * Meldet dem Server, was auf dem Geraet geloescht wurde. Kennt er den
+     * Artikel nicht mehr, ist das Ziel auch erreicht. Darf man nicht loeschen,
+     * hilft Wiederholen nicht - dann bleibt es beim Hinweis.
+     */
+    private static void loeschungenMelden(Context context, ServerClient client, String teamId,
+                                          Ergebnis ergebnis) throws java.io.IOException {
+        for (String serverId : Einstellungen.loeschungen(context)) {
+            try {
+                client.artikelLoeschen(teamId, serverId);
+                ergebnis.hochgeladen++;
+            } catch (ServerClient.ServerFehler fehler) {
+                if (fehler.status == 403) {
+                    String grund = "Löschen ist nur mit Bearbeitungsrechten möglich";
+                    if (!ergebnis.gruende.contains(grund)) {
+                        ergebnis.gruende.add(grund);
+                    }
+                } else if (fehler.status != 404) {
+                    throw fehler;
+                }
+            }
+            Einstellungen.loeschungErledigt(context, serverId);
+        }
+    }
+
     // ------------------------------------------------------------------ Bilder
 
     /**
@@ -216,7 +276,8 @@ public final class Abgleich {
      * Original im App-Verzeichnis wird nicht mehr gebraucht.
      */
     private static void bilderHochladen(Context context, ServerClient client, String teamId,
-                                        ArtikelDao artikelDao, Ergebnis ergebnis) {
+                                        AppDatabase db, Ergebnis ergebnis) {
+        ArtikelDao artikelDao = db.artikelDao();
         for (Artikel artikel : artikelDao.mitOffenemBild()) {
             byte[] daten = Serverbilder.zumHochladen(context, artikel.fotoPfad);
             if (daten == null) {
@@ -235,20 +296,26 @@ public final class Abgleich {
                 Serverbilder.uebernehmen(context, daten, adresse);
                 Fotos.loeschen(context, artikel.fotoPfad);
 
-                Artikel frisch = artikelDao.nachId(artikel.id);
-                if (frisch == null) {
-                    continue;
-                }
-                frisch.bildUrl = adresse;
-                frisch.fotoPfad = null;
-                // Der Server hat den Artikel beim Ablegen angefasst; ohne diesen
-                // Stand wuerde er unsere eigenen Aenderungen gleich abweisen.
                 long stand = antwort.optLong("geaendertAm", 0L);
-                if (stand > frisch.geaendertAm) {
-                    frisch.geaendertAm = stand;
+                boolean eingetragen = db.runInTransaction(() -> {
+                    Artikel frisch = artikelDao.nachId(artikel.id);
+                    if (frisch == null) {
+                        return false;
+                    }
+                    frisch.bildUrl = adresse;
+                    frisch.fotoPfad = null;
+                    // Der Server hat den Artikel beim Ablegen angefasst; ohne
+                    // diesen Stand wuerde er unsere eigenen Aenderungen gleich
+                    // abweisen.
+                    if (stand > frisch.geaendertAm) {
+                        frisch.geaendertAm = stand;
+                    }
+                    artikelDao.update(frisch);
+                    return true;
+                });
+                if (eingetragen) {
+                    ergebnis.bilder++;
                 }
-                artikelDao.update(frisch);
-                ergebnis.bilder++;
             } catch (Exception fehler) {
                 // Beim naechsten Abgleich noch einmal versuchen.
                 return;
@@ -259,7 +326,8 @@ public final class Abgleich {
     // ---------------------------------------------------------------- Annehmen
 
     /** Traegt die Server-Kennungen ein und merkt sich, was abgelehnt wurde. */
-    private static void zuordnungenAnwenden(@Nullable JSONArray zuordnungen, ArtikelDao artikelDao,
+    private static void zuordnungenAnwenden(@Nullable JSONArray zuordnungen,
+                                            Map<Long, Long> gesendet, ArtikelDao artikelDao,
                                             Ergebnis ergebnis) {
         if (zuordnungen == null) {
             return;
@@ -278,12 +346,23 @@ public final class Abgleich {
             if (artikel == null) {
                 continue;
             }
+            if (zuordnung.optBoolean("geloescht")) {
+                // Auf dem Server schon geloescht - dann auch hier.
+                artikelDao.delete(artikel);
+                ergebnis.geloescht++;
+                continue;
+            }
             if (serverId != null && !serverId.isEmpty()) {
                 artikel.serverId = serverId;
             }
             // In beiden Faellen ist der Artikel abgearbeitet: bei Ablehnung
-            // gewinnt der Serverstand, der gleich mit uebernommen wird.
-            artikel.offen = false;
+            // gewinnt der Serverstand, der gleich mit uebernommen wird. Es sei
+            // denn, er wurde waehrend der Uebertragung schon wieder geaendert -
+            // dann muss diese Fassung beim naechsten Mal hoch.
+            Long hochgeladen = gesendet.get(lokaleId);
+            if (hochgeladen != null && hochgeladen == artikel.geaendertAm) {
+                artikel.offen = false;
+            }
             artikelDao.update(artikel);
 
             if (angenommen) {
@@ -298,8 +377,13 @@ public final class Abgleich {
         }
     }
 
-    /** Uebernimmt die Artikel, die vom Server kommen. */
+    /**
+     * Uebernimmt die Artikel, die vom Server kommen. Was hier noch geloescht
+     * gemeldet werden muss oder noch ungesendete Aenderungen hat, bleibt,
+     * wie es ist.
+     */
     private static void serverstandUebernehmen(@Nullable JSONArray artikelListe, String teamId,
+                                               Set<String> geloeschtHier,
                                                ArtikelDao artikelDao, Ergebnis ergebnis) {
         if (artikelListe == null) {
             return;
@@ -310,7 +394,7 @@ public final class Abgleich {
                 continue;
             }
             String serverId = o.optString("id", "");
-            if (serverId.isEmpty()) {
+            if (serverId.isEmpty() || geloeschtHier.contains(serverId)) {
                 continue;
             }
             Artikel vorhanden = artikelDao.nachServerId(serverId);
@@ -320,6 +404,9 @@ public final class Abgleich {
                     artikelDao.delete(vorhanden);
                     ergebnis.geloescht++;
                 }
+                continue;
+            }
+            if (vorhanden != null && vorhanden.offen) {
                 continue;
             }
 

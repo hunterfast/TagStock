@@ -155,6 +155,21 @@ public final class Packungen {
     }
 
     /**
+     * Leer heisst "nicht vorhanden", und wer wieder etwas hat, ist wieder
+     * vorhanden. Verliehenes und Ausgelagertes bleibt unberuehrt - da sagt
+     * der Status etwas anderes aus als die blosse Stueckzahl.
+     */
+    public static ArtikelStatus statusFuer(ArtikelStatus status, int bestand) {
+        if (bestand <= 0 && status == ArtikelStatus.VORHANDEN) {
+            return ArtikelStatus.NICHT_VORHANDEN;
+        }
+        if (bestand > 0 && status == ArtikelStatus.NICHT_VORHANDEN) {
+            return ArtikelStatus.VORHANDEN;
+        }
+        return status;
+    }
+
+    /**
      * Raeumt Widersprueche auf: Reste, die groesser sind als die Packung,
      * und offene Packungen ohne Verpackungseinheit. Wird vor dem Speichern
      * aufgerufen, damit nichts Unmoegliches in der Datenbank landet.
