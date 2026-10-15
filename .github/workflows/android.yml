@@ -32,8 +32,13 @@ jobs:
           java-version: '17'
           cache: gradle
 
+      # Ohne Angabe will die Aktion auch das alte Paket "tools" installieren,
+      # das der sdkmanager auf den Laeufern nicht mehr kennt - dann bricht
+      # der Schritt ab. Plattform und Build-Tools holt Gradle selbst.
       - name: Android SDK einrichten
         uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools'
 
       - name: Gradle-Wrapper ausfuehrbar machen
         run: chmod +x ./gradlew
