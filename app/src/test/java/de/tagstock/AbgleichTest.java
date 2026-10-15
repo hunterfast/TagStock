@@ -9,21 +9,25 @@ import android.content.Context;
 
 import androidx.test.core.app.ApplicationProvider;
 
-import com.sun.net.httpserver.HttpServer;
-
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
 
+import java.io.BufferedInputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.reflect.Field;
-import java.net.InetSocketAddress;
+import java.net.InetAddress;
+import java.net.ServerSocket;
+import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -44,7 +48,8 @@ import de.tagstock.util.Einstellungen;
 public class AbgleichTest {
 
     private Context context;
-    private HttpServer server;
+    /** Schlichter Socket statt eines fertigen Servers - der Test kennt nur Android-Klassen. */
+    private ServerSocket server;
     private ArtikelDao artikelDao;
     /** Room mag den Hauptthread nicht - alles mit der Datenbank laeuft hier. */
     private final ExecutorService hintergrund = Executors.newSingleThreadExecutor();
@@ -58,34 +63,20 @@ public class AbgleichTest {
     @Before
     public void vorbereiten() throws Exception {
         context = ApplicationProvider.getApplicationContext();
-        server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
-        server.createContext("/", austausch -> {
-            String was = austausch.getRequestMethod() + " " + austausch.getRequestURI().getPath();
-            anfragen.add(was);
-            austausch.getRequestBody().readAllBytes();
-            int status = 200;
-            String text = "{}";
-            if (was.startsWith("DELETE")) {
-                if (was.endsWith("/schon-weg")) {
-                    status = 404;
-                    text = "{\"fehler\":\"Artikel nicht gefunden\"}";
-                } else {
-                    text = "{\"geloescht\":true}";
+        server = new ServerSocket(0, 50, InetAddress.getByName("127.0.0.1"));
+        Thread annahme = new Thread(() -> {
+            while (!server.isClosed()) {
+                try (Socket verbindung = server.accept()) {
+                    beantworten(verbindung);
+                } catch (IOException geschlossen) {
+                    // Der Test ist fertig oder hat den Server absichtlich angehalten.
                 }
-            } else if (was.endsWith("/sync")) {
-                waehrendDerUebertragung.run();
-                text = antwort;
-            }
-            byte[] daten = text.getBytes(StandardCharsets.UTF_8);
-            austausch.getResponseHeaders().add("Content-Type", "application/json");
-            austausch.sendResponseHeaders(status, daten.length);
-            try (OutputStream aus = austausch.getResponseBody()) {
-                aus.write(daten);
             }
         });
-        server.start();
+        annahme.setDaemon(true);
+        annahme.start();
 
-        Einstellungen.setzeServer(context, "http://127.0.0.1:" + server.getAddress().getPort(),
+        Einstellungen.setzeServer(context, "http://127.0.0.1:" + server.getLocalPort(),
                 "geheim");
         Einstellungen.setzeTeam(context, "team1", "Werkstatt", "admin");
         artikelDao = AppDatabase.getInstance(context).artikelDao();
@@ -112,11 +103,62 @@ public class AbgleichTest {
         instanz.set(null, null);
     }
 
-    private void serverAnhalten() {
+    private void serverAnhalten() throws IOException {
         if (!gestoppt) {
             gestoppt = true;
-            server.stop(0);
+            server.close();
         }
+    }
+
+    /** Eine Anfrage lesen und so antworten, wie es der echte Server taete. */
+    private void beantworten(Socket verbindung) throws IOException {
+        InputStream ein = new BufferedInputStream(verbindung.getInputStream());
+        String[] anfrage = zeile(ein).split(" ");
+        int laenge = 0;
+        for (String kopf = zeile(ein); !kopf.isEmpty(); kopf = zeile(ein)) {
+            if (kopf.toLowerCase(Locale.ROOT).startsWith("content-length:")) {
+                laenge = Integer.parseInt(kopf.substring("content-length:".length()).trim());
+            }
+        }
+        for (int i = 0; i < laenge && ein.read() != -1; i++) {
+            // Der Inhalt interessiert hier nicht, er muss nur gelesen sein.
+        }
+        String pfad = anfrage.length > 1 ? anfrage[1].split("\\?")[0] : "";
+        String was = anfrage[0] + " " + pfad;
+        anfragen.add(was);
+
+        int status = 200;
+        String text = "{}";
+        if (was.startsWith("DELETE")) {
+            if (was.endsWith("/schon-weg")) {
+                status = 404;
+                text = "{\"fehler\":\"Artikel nicht gefunden\"}";
+            } else {
+                text = "{\"geloescht\":true}";
+            }
+        } else if (was.endsWith("/sync")) {
+            waehrendDerUebertragung.run();
+            text = antwort;
+        }
+        byte[] daten = text.getBytes(StandardCharsets.UTF_8);
+        OutputStream aus = verbindung.getOutputStream();
+        aus.write(("HTTP/1.1 " + status + (status == 200 ? " OK" : " Not Found") + "\r\n"
+                + "Content-Type: application/json; charset=utf-8\r\n"
+                + "Content-Length: " + daten.length + "\r\n"
+                + "Connection: close\r\n\r\n").getBytes(StandardCharsets.US_ASCII));
+        aus.write(daten);
+        aus.flush();
+    }
+
+    private static String zeile(InputStream ein) throws IOException {
+        StringBuilder text = new StringBuilder();
+        int zeichen;
+        while ((zeichen = ein.read()) != -1 && zeichen != '\n') {
+            if (zeichen != '\r') {
+                text.append((char) zeichen);
+            }
+        }
+        return text.toString();
     }
 
     @Test
