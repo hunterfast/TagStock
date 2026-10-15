@@ -318,16 +318,16 @@ Die Daten liegen im Volume und überstehen das. Neue Tabellen legt der Server
 beim Start an, **neue Spalten in bestehenden Tabellen ergänzt er ebenfalls
 selbst** – eine Datenbank aus einer älteren Fassung läuft also einfach weiter.
 
-**Woher weißt du, dass es etwas Neues gibt?** Der Server sieht einmal am Tag
-nach und vergleicht seinen Bauzeitpunkt mit der letzten Änderung im
-Projektzweig. In der App steht das unter *Einstellungen → Version*; direkt
-abfragen kannst du es so:
+**Woher weißt du, dass es etwas Neues gibt?** Der Server vergleicht seine
+Version mit der neuesten Serverfassung unter den Veröffentlichungen – aber nur,
+wenn jemand nachfragt, und höchstens einmal pro Woche. In der App steht das
+unter *Einstellungen → Version*; direkt abfragen kannst du es so:
 
 ```bash
 curl http://<server-ip>:8080/api/v1/status        # Version und Bauzeitpunkt
 ```
 
-Soll der Server gar nicht nach draußen schauen, setze
+Soll der Server nur noch auf Knopfdruck nach draußen schauen, setze
 `TAGSTOCK_UPDATE_PRUEFEN` auf `false`.
 
 ---
@@ -351,14 +351,14 @@ Kurz: Token erzeugen, am Container als Variable eintragen:
 |---|---|
 | `TAGSTOCK_GITHUB_TOKEN` | `github_pat_…` |
 
-Danach fragt der Server jede Minute nach, ob etwas Neues veröffentlicht wurde,
-und sieht beim Start sowie alle sechs Stunden gründlich nach. Ist dort eine
-höhere `versionCode` als die, die er hat, lädt er die Datei – sonst rührt er
-sich nicht. Vor jedem Wechsel legt er eine Sicherung der Datenbank unter
+Danach sieht der Server nach, sobald die App das erste Mal fragt – und dann
+höchstens einmal pro Woche, nie von sich aus. Ist dort eine höhere
+`versionCode` als die, die er hat, lädt er die Datei – sonst rührt er sich
+nicht. Vor jedem Wechsel legt er eine Sicherung der Datenbank unter
 `/mnt/user/appdata/tagstock/sicherungen/` an; die letzten zehn bleiben liegen.
 
-Sofort nachsehen lassen (statt auf den Takt zu warten) geht aus der App heraus
-über *Einstellungen → Nach Aktualisierungen sehen*.
+Sofort nachsehen lassen (statt auf die nächste Woche zu warten) geht aus der
+App heraus über *Einstellungen → Nach Aktualisierungen sehen*.
 
 ### Von Hand ablegen
 

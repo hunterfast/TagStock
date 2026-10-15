@@ -6,8 +6,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.ApplicationArguments;
-import org.springframework.boot.ApplicationRunner;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
@@ -44,55 +42,52 @@ import java.util.Map;
  * Vor jedem Wechsel legt der Server eine Sicherung der Datenbank an. Die passt
  * dann zu der Fassung, die bis dahin lief - wer zurueckgeht, hat auch die
  * passenden Daten.
+ *
+ * <p>Ob es eine neue Fassung gibt, erfaehrt die Wache aus
+ * {@link Veroeffentlichungen} - und die fragt nur, wenn jemand wissen will, was
+ * bereitliegt, hoechstens einmal je Woche. Von selbst laedt der Server nichts.</p>
  */
 @Component
-public class Appwache implements ApplicationRunner {
+public class Appwache {
 
     private static final Logger LOG = LoggerFactory.getLogger(Appwache.class);
     private static final String APK = "tagstock.apk";
     private static final String ANGABEN = "app.json";
     public static final String AKTUELL = "aktuell";
     public static final String VORHER = "vorher";
-    private static final long NACHSEHEN_ALLE_MS = 6L * 60L * 60L * 1000L;
 
     private final Path ordner;
     private final Path sicherungen;
     private final boolean holen;
-    private final String quelle;
     private final String token;
     private final JdbcTemplate jdbc;
+    private final Veroeffentlichungen quelle;
     private final HttpClient client;
 
     private final ObjectMapper json = new ObjectMapper();
-    private long zuletztGesehen;
     private String letzteMeldung;
+    /**
+     * Eine Fassung, deren Download zuletzt scheiterte. Ohne ausdrueckliches
+     * Nachsehen wird sie nicht erneut versucht - sonst ginge bei jeder Anfrage
+     * wieder eine ganze APK ueber die Leitung.
+     */
+    private String gescheitertBei;
 
-    public Appwache(JdbcTemplate jdbc,
+    public Appwache(JdbcTemplate jdbc, Veroeffentlichungen quelle,
                     @Value("${tagstock.app-ordner:/data/app}") String ordner,
                     @Value("${tagstock.sicherungen-ordner:/data/sicherungen}") String sicherungen,
                     @Value("${tagstock.app-holen:true}") boolean holen,
-                    @Value("${tagstock.app-quelle:}") String quelle,
                     @Value("${tagstock.github-token:}") String token) {
         this.jdbc = jdbc;
+        this.quelle = quelle;
         this.ordner = Paths.get(ordner).toAbsolutePath().normalize();
         this.sicherungen = Paths.get(sicherungen).toAbsolutePath().normalize();
         this.holen = holen;
-        this.quelle = quelle == null || quelle.isBlank()
-                ? "https://api.github.com/repos/hunterfast/TagStock/releases?per_page=30"
-                : quelle.trim();
         this.token = token == null ? "" : token.trim();
         this.client = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(5))
                 .followRedirects(HttpClient.Redirect.NEVER)
                 .build();
-    }
-
-    /** Beim Start einmal nachsehen - im Hintergrund, damit nichts wartet. */
-    @Override
-    public void run(ApplicationArguments argumente) {
-        Thread nachsehen = new Thread(() -> nachsehen(false), "app-wache");
-        nachsehen.setDaemon(true);
-        nachsehen.start();
     }
 
     // ------------------------------------------------------------- Auskunft
@@ -107,6 +102,10 @@ public class Appwache implements ApplicationRunner {
         ergebnis.put(AKTUELL, fach(AKTUELL));
         ergebnis.put(VORHER, fach(VORHER));
         ergebnis.put("holtSelbst", holen && !token.isEmpty());
+        long geholt = quelle.geholtAm();
+        if (geholt > 0) {
+            ergebnis.put("nachgesehenAm", java.time.Instant.ofEpochMilli(geholt).toString());
+        }
         if (letzteMeldung != null) {
             ergebnis.put("hinweis", letzteMeldung);
         }
@@ -157,13 +156,11 @@ public class Appwache implements ApplicationRunner {
 
     // ------------------------------------------------------------- Nachsehen
 
-    /** Sieht nach einer neueren App - hoechstens alle sechs Stunden von selbst. */
+    /**
+     * Sieht nach einer neueren App. Mit {@code sofort} fragt der Server jetzt
+     * bei GitHub; ohne nur, wenn die gemerkte Liste aelter als eine Woche ist.
+     */
     public synchronized Map<String, Object> nachsehen(boolean sofort) {
-        long jetzt = System.currentTimeMillis();
-        if (!sofort && jetzt - zuletztGesehen < NACHSEHEN_ALLE_MS) {
-            return stand();
-        }
-        zuletztGesehen = jetzt;
         if (!holen) {
             letzteMeldung = "Selbst holen ist ausgeschaltet";
             return stand();
@@ -173,7 +170,7 @@ public class Appwache implements ApplicationRunner {
             return stand();
         }
         try {
-            neuesteHolen();
+            neuesteHolen(quelle.liste(sofort).liste, sofort);
         } catch (Exception fehler) {
             letzteMeldung = "Nicht erreichbar: " + fehler.getMessage();
             LOG.info("App konnte nicht geholt werden: {}", fehler.toString());
@@ -181,8 +178,15 @@ public class Appwache implements ApplicationRunner {
         return stand();
     }
 
-    private void neuesteHolen() throws IOException, InterruptedException {
-        JsonNode liste = json.readTree(anfordern(quelle, true, ALS_JSON));
+    /**
+     * Sucht in der Liste die neueste App und laedt sie, wenn sie neuer ist als
+     * die vorhandene. Die Nummer steht schon im Namen der Marke
+     * ({@code app-v2.2.0+8}); die Liste allein genuegt also, um zu sehen, ob
+     * es etwas zu tun gibt - ohne einen einzigen weiteren Abruf.
+     */
+    private void neuesteHolen(JsonNode liste, boolean sofort)
+            throws IOException, InterruptedException {
+        String marke = null;
         String angabenUrl = null;
         String apkUrl = null;
         // Die Liste kommt neueste zuerst; die erste mit beiden Dateien zaehlt.
@@ -191,53 +195,89 @@ public class Appwache implements ApplicationRunner {
                 continue;
             }
             // Neben den App-Fassungen stehen dort auch die des Servers.
-            if (!veroeffentlichung.path("tag_name").asText("").startsWith("app-v")) {
+            String name = veroeffentlichung.path("tag_name").asText("");
+            if (!name.startsWith("app-v")) {
                 continue;
             }
             String einAngaben = null;
             String einApk = null;
             for (JsonNode anhang : veroeffentlichung.path("assets")) {
-                String name = anhang.path("name").asText();
-                if (ANGABEN.equals(name)) {
+                String datei = anhang.path("name").asText();
+                if (ANGABEN.equals(datei)) {
                     einAngaben = anhang.path("url").asText();
-                } else if (APK.equals(name)) {
+                } else if (APK.equals(datei)) {
                     einApk = anhang.path("url").asText();
                 }
             }
             if (einAngaben != null && einApk != null) {
+                marke = name;
                 angabenUrl = einAngaben;
                 apkUrl = einApk;
                 break;
             }
         }
-        if (angabenUrl == null) {
-            letzteMeldung = "Keine Veroeffentlichung mit " + APK + " gefunden";
+        if (marke == null) {
+            // Noch nie nachgesehen ist kein Fehler - nur noch nichts da.
+            letzteMeldung = liste.size() == 0 ? null
+                    : "Keine Veroeffentlichung mit " + APK + " gefunden";
             return;
         }
 
-        String angaben = new String(anfordern(angabenUrl, true, ALS_DATEI),
-                StandardCharsets.UTF_8);
-        int neueVersion = json.readTree(angaben).path("versionCode").asInt();
         int habenWir = versionCode(AKTUELL);
-        if (neueVersion == 0) {
-            letzteMeldung = "Die Veroeffentlichung nennt keine versionCode";
-            return;
-        }
-        if (neueVersion <= habenWir) {
+        int laut = nummerAusMarke(marke);
+        if (laut > 0 && laut <= habenWir) {
             letzteMeldung = null;
             return;
         }
-
-        LOG.info("Neue App gefunden: {} (bisher {})", neueVersion, habenWir);
-        byte[] apk = anfordern(apkUrl, true, ALS_DATEI);
-        if (apk.length < 1024) {
-            letzteMeldung = "Heruntergeladene Datei ist zu klein";
+        if (!sofort && marke.equals(gescheitertBei)) {
+            // Schon einmal schiefgegangen; nur auf ausdrueckliches Nachsehen
+            // wird es erneut versucht.
             return;
         }
 
-        sicherungAnlegen(habenWir);
-        umlegen(apk, angaben);
-        letzteMeldung = null;
+        try {
+            String angaben = new String(anfordern(angabenUrl, true, ALS_DATEI),
+                    StandardCharsets.UTF_8);
+            int neueVersion = json.readTree(angaben).path("versionCode").asInt();
+            if (neueVersion == 0) {
+                letzteMeldung = "Die Veroeffentlichung nennt keine versionCode";
+                gescheitertBei = marke;
+                return;
+            }
+            if (neueVersion <= habenWir) {
+                letzteMeldung = null;
+                return;
+            }
+
+            LOG.info("Neue App gefunden: {} (bisher {})", neueVersion, habenWir);
+            byte[] apk = anfordern(apkUrl, true, ALS_DATEI);
+            if (apk.length < 1024) {
+                letzteMeldung = "Heruntergeladene Datei ist zu klein";
+                gescheitertBei = marke;
+                return;
+            }
+
+            sicherungAnlegen(habenWir);
+            umlegen(apk, angaben);
+            letzteMeldung = null;
+            gescheitertBei = null;
+        } catch (IOException fehler) {
+            gescheitertBei = marke;
+            throw fehler;
+        }
+    }
+
+    /** Die versionCode aus einer Marke wie {@code app-v2.2.0+8}; 0, wenn keine drinsteht. */
+    public static int nummerAusMarke(String marke) {
+        int plus = marke.lastIndexOf('+');
+        if (plus < 0 || plus == marke.length() - 1) {
+            return 0;
+        }
+        try {
+            return Integer.parseInt(marke.substring(plus + 1));
+        } catch (NumberFormatException unbrauchbar) {
+            return 0;
+        }
     }
 
     /** Die bisherige Fassung wandert nach "vorher", die neue wird "aktuell". */
@@ -297,8 +337,6 @@ public class Appwache implements ApplicationRunner {
         }
     }
 
-    /** Die Liste der Veroeffentlichungen kommt als JSON. */
-    private static final String ALS_JSON = "application/vnd.github+json";
     /**
      * Anhaenge brauchen ausdruecklich den Rohinhalt. Fragt man sie als JSON,
      * antwortet GitHub mit der Beschreibung des Anhangs - nicht mit der Datei.

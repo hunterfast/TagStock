@@ -38,16 +38,21 @@ tagstock:
   gtin-schluessel: ${TAGSTOCK_GTIN_SCHLUESSEL:}
   # So lange gilt ein Fehlschlag, bevor dieselbe Nummer erneut erfragt wird.
   gtin-fehlschlag-tage: ${TAGSTOCK_GTIN_FEHLSCHLAG_TAGE:7}
-  # Taeglich nachsehen, ob es einen neueren Stand gibt. Aktualisiert wird nie
-  # von selbst - der Server sagt nur Bescheid.
+  # Bei GitHub fragt der Server nie von selbst - nur wenn App oder
+  # Oberflaeche wissen wollen, was bereitliegt. Und auch dann hoechstens alle
+  # nachsehen-tage Tage; dazwischen antwortet er aus dem Gedaechtnis. Der Knopf
+  # "Nach Aktualisierungen sehen" fragt immer sofort. Mit false nur noch auf
+  # Knopfdruck.
   update-pruefen: ${TAGSTOCK_UPDATE_PRUEFEN:true}
-  # Woher der Vergleich kommt; leer heisst: der Zweig auf GitHub.
-  update-quelle: ${TAGSTOCK_UPDATE_QUELLE:}
+  nachsehen-tage: ${TAGSTOCK_NACHSEHEN_TAGE:7}
+  # Woher die Liste der Veroeffentlichungen kommt - fuer App und Server
+  # dieselbe; leer heisst: dieses Projekt auf GitHub. Die beiden alten Namen
+  # TAGSTOCK_APP_QUELLE und TAGSTOCK_SERVER_QUELLE gelten weiter.
+  quelle: ${TAGSTOCK_QUELLE:}
   # Hier liegen die App-Fassungen: app/aktuell und app/vorher.
   app-ordner: ${TAGSTOCK_APP_ORDNER:/data/app}
   # Der Server holt sich die neueste App selbst - nur wenn er sie nicht hat.
   app-holen: ${TAGSTOCK_APP_HOLEN:true}
-  # Woher; leer heisst: die Veroeffentlichungen dieses Projekts auf GitHub.
   app-quelle: ${TAGSTOCK_APP_QUELLE:}
   # Lesezugriff auf das Projekt. Ohne ihn holt der Server nichts von selbst.
   github-token: ${TAGSTOCK_GITHUB_TOKEN:}
@@ -57,8 +62,6 @@ tagstock:
   # Darf sich der Server selbst aktualisieren? Er tut es nie ungefragt - das
   # hier erlaubt nur den Knopf in der Oberflaeche.
   selbst-aktualisieren: ${TAGSTOCK_SELBST_AKTUALISIEREN:true}
-  # Woher die Serverfassungen kommen; leer heisst: die Veroeffentlichungen
-  # dieses Projekts auf GitHub.
   server-quelle: ${TAGSTOCK_SERVER_QUELLE:}
   # Sicherungen der Datenbank vor jedem Wechsel der App-Fassung.
   sicherungen-ordner: ${TAGSTOCK_SICHERUNGEN:/data/sicherungen}

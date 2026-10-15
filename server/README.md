@@ -83,16 +83,15 @@ mit TLS oder ein VPN.
 | `TAGSTOCK_GTIN_DIENST` | Nachschlagedienst für Produktdaten: `aus`, `opengtindb` oder `eansearch` | `aus` |
 | `TAGSTOCK_GTIN_SCHLUESSEL` | Zugangsschlüssel des Dienstes, falls nötig | leer |
 | `TAGSTOCK_GTIN_FEHLSCHLAG_TAGE` | So lange gilt ein Fehlschlag, bevor erneut gefragt wird | `7` |
-| `TAGSTOCK_UPDATE_PRUEFEN` | Täglich nachsehen, ob es einen neueren Stand gibt | `true` |
-| `TAGSTOCK_UPDATE_QUELLE` | Womit verglichen wird; leer heißt: der Projektzweig auf GitHub | leer |
+| `TAGSTOCK_UPDATE_PRUEFEN` | Auf Anfrage von App oder Oberfläche bei GitHub nachsehen; `false` heißt: nur auf Knopfdruck | `true` |
+| `TAGSTOCK_NACHSEHEN_TAGE` | Höchstens so oft wird dabei wirklich gefragt (Tage) | `7` |
+| `TAGSTOCK_QUELLE` | Liste der Veröffentlichungen, für App und Server dieselbe; leer heißt: dieses Projekt | leer |
 | `TAGSTOCK_APP_ORDNER` | Hier liegen die App-Fassungen (`aktuell/`, `vorher/`) | `/data/app` |
 | `TAGSTOCK_APP_HOLEN` | Neueste App selbst herunterladen | `true` |
-| `TAGSTOCK_APP_QUELLE` | Woher; leer heißt: die Veröffentlichungen dieses Projekts | leer |
 | `TAGSTOCK_GITHUB_TOKEN` | Lesezugriff aufs Projekt – ohne ihn holt der Server nichts | leer |
 | `TAGSTOCK_SICHERUNGEN` | Sicherungen vor jedem Wechsel der Fassung | `/data/sicherungen` |
 | `TAGSTOCK_SERVER_ORDNER` | Hier liegt eine selbst nachgeladene Serverfassung | `/data/server` |
 | `TAGSTOCK_SELBST_AKTUALISIEREN` | Darf der Server sich selbst aktualisieren? | `true` |
-| `TAGSTOCK_SERVER_QUELLE` | Woher die Serverfassungen kommen; leer heißt: dieses Projekt | leer |
 
 Das **erste Konto** darf sich immer registrieren – danach greift der Code, falls
 gesetzt. Ohne Code kann jeder, der den Server erreicht, ein Konto anlegen; setze
@@ -134,16 +133,21 @@ Der Server hält die App für die Geräte bereit und **holt sie sich selbst**:
 /data/app/vorher/tagstock.apk  + app.json     ← die davor, für den Rückweg
 ```
 
-Jede Minute fragt er nach, ob sich an den Veröffentlichungen etwas getan hat –
-mit der Kennung der letzten Antwort, sodass ein unveränderter Stand nichts
-kostet und nicht gegen das Anfragekonto zählt. Sobald sich etwas geändert hat,
-sieht er sofort richtig nach; abschalten lässt sich das mit
-`TAGSTOCK_QUELLE_BEOBACHTEN=false`, den Abstand regelt
-`TAGSTOCK_QUELLE_TAKT_SEKUNDEN`.
+Der Server fragt bei GitHub **nie von selbst** – nicht beim Start, nicht im
+Hintergrund. Nur wenn die App (beim Öffnen von *Einstellungen*) oder die
+Weboberfläche wissen will, was bereitliegt, und auch dann **höchstens einmal
+pro Woche**; dazwischen antwortet er aus dem Gedächtnis. Gemerkt wird der
+Stand in `/data/app/veroeffentlichungen.json`, sodass auch ein Neustart keine
+neue Abfrage auslöst. Hat sich seit der letzten Woche nichts getan, schickt
+GitHub nur „unverändert" zurück und nicht die ganze Liste.
 
-Zusätzlich alle sechs Stunden (und beim Start) sieht er bei den Veröffentlichungen des
-Projekts nach. Ist die dortige `versionCode` höher als die eigene, lädt er die
-Datei – sonst nicht. Vor jedem Wechsel legt er eine Sicherung der Datenbank an
+Wer es eilig hat, drückt *Nach Aktualisierungen sehen* – in der App unter
+*Einstellungen* oder in der Weboberfläche unter *System*. Das fragt sofort.
+Wann zuletzt gefragt wurde, steht in der Weboberfläche unter *System*.
+
+Ist die dortige `versionCode` höher als die eigene, lädt er die Datei – sonst
+nicht. Die Nummer steht schon im Namen der Veröffentlichung (`app-v2.2.0+8`),
+er muss also nichts weiter abrufen, um das zu entscheiden. Vor jedem Wechsel legt er eine Sicherung der Datenbank an
 (`/data/sicherungen/vor-app-<version>-<zeit>.db`, die letzten zehn bleiben
 liegen), damit zu jeder Fassung auch passende Daten bereitstehen.
 

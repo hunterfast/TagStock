@@ -1,8 +1,8 @@
 package de.tagstock.server.api;
 
-import de.tagstock.server.dienst.Aktualisierungswache;
 import de.tagstock.server.dienst.Produktsuche;
 
+import org.springframework.boot.info.BuildProperties;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -21,13 +21,12 @@ public class StatusController {
 
     private final JdbcTemplate jdbc;
     private final Produktsuche produktsuche;
-    private final Aktualisierungswache wache;
+    private final BuildProperties bau;
 
-    public StatusController(JdbcTemplate jdbc, Produktsuche produktsuche,
-                            Aktualisierungswache wache) {
+    public StatusController(JdbcTemplate jdbc, Produktsuche produktsuche, BuildProperties bau) {
         this.jdbc = jdbc;
         this.produktsuche = produktsuche;
-        this.wache = wache;
+        this.bau = bau;
     }
 
     @GetMapping("/status")
@@ -46,8 +45,8 @@ public class StatusController {
             ergebnis.put("gtinDienstName", produktsuche.dienst());
         }
         // Welcher Stand hier laeuft - ohne dafuer irgendwo nachzufragen.
-        ergebnis.put("version", wache.version());
-        ergebnis.put("gebautAm", wache.gebautAm() == null ? null : wache.gebautAm().toString());
+        ergebnis.put("version", bau.getVersion());
+        ergebnis.put("gebautAm", bau.getTime() == null ? null : bau.getTime().toString());
         return ergebnis;
     }
 }

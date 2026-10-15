@@ -23,7 +23,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.time.Duration;
-import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
@@ -54,32 +53,23 @@ public class Selbstpflege implements ApplicationListener<ApplicationReadyEvent> 
     private final JdbcTemplate jdbc;
     private final Path ordner;
     private final Path sicherungen;
-    private final String quelle;
+    private final Veroeffentlichungen quelle;
     private final String token;
     private final boolean erlaubt;
     private final ObjectMapper json = new ObjectMapper();
     private final HttpClient client;
 
-    // Was zuletzt bei der Quelle zu finden war. Steht auch dann in der
-    // Auskunft, wenn gerade niemand nachsehen laesst.
-    private volatile String gemerkteVersion;
-    private volatile String gemerkterHinweis;
-    private volatile boolean gemerktNeuer;
-    private volatile long gemerktAm;
 
-    public Selbstpflege(BuildProperties bau, JdbcTemplate jdbc,
+    public Selbstpflege(BuildProperties bau, JdbcTemplate jdbc, Veroeffentlichungen quelle,
                         @Value("${tagstock.server-ordner:/data/server}") String ordner,
                         @Value("${tagstock.sicherungen-ordner:/data/sicherungen}") String sicherungen,
-                        @Value("${tagstock.server-quelle:}") String quelle,
                         @Value("${tagstock.github-token:}") String token,
                         @Value("${tagstock.selbst-aktualisieren:true}") boolean erlaubt) {
         this.bau = bau;
         this.jdbc = jdbc;
         this.ordner = Paths.get(ordner).toAbsolutePath().normalize();
         this.sicherungen = Paths.get(sicherungen).toAbsolutePath().normalize();
-        this.quelle = quelle == null || quelle.isBlank()
-                ? "https://api.github.com/repos/hunterfast/TagStock/releases?per_page=20"
-                : quelle.trim();
+        this.quelle = quelle;
         this.token = token == null ? "" : token.trim();
         this.erlaubt = erlaubt;
         this.client = HttpClient.newBuilder()
@@ -123,19 +113,27 @@ public class Selbstpflege implements ApplicationListener<ApplicationReadyEvent> 
                     + " kann der Server nichts holen");
             return ergebnis;
         }
-        if (nachsehen) {
-            try {
-                String hinweis = neuestesMerken();
-                if (hinweis != null) {
-                    ergebnis.put("hinweis", hinweis);
-                }
-            } catch (Exception fehler) {
-                ergebnis.put("hinweis", "Nicht erreichbar: " + fehler.getMessage());
-            }
+        // Mit Knopfdruck fragt der Server jetzt nach; sonst hoechstens einmal
+        // je Woche, und dazwischen aus der gemerkten Liste.
+        JsonNode liste;
+        try {
+            liste = quelle.liste(nachsehen).liste;
+        } catch (Exception fehler) {
+            ergebnis.put("hinweis", "Nicht erreichbar: " + fehler.getMessage());
+            return ergebnis;
         }
-        // Auch ohne Knopfdruck zeigen, was zuletzt gefunden wurde - die
-        // Quellwache sieht von sich aus nach, sobald sich etwas getan hat.
-        zwischenstand(ergebnis);
+        Veroeffentlichung neueste = neuesteSuchen(liste);
+        if (neueste == null) {
+            if (liste.size() > 0) {
+                ergebnis.put("hinweis", "Keine Serverfassung veroeffentlicht");
+            }
+            return ergebnis;
+        }
+        ergebnis.put("neuesteVersion", neueste.version);
+        ergebnis.put("neuerVorhanden", istNeuer(neueste.version, bau.getVersion()));
+        if (neueste.hinweis != null && !neueste.hinweis.isEmpty()) {
+            ergebnis.put("neuesteHinweis", neueste.hinweis);
+        }
         return ergebnis;
     }
 
@@ -151,7 +149,8 @@ public class Selbstpflege implements ApplicationListener<ApplicationReadyEvent> 
                     : "Selbst aktualisieren ist ausgeschaltet");
             return ergebnis;
         }
-        Veroeffentlichung neueste = neuesteSuchen();
+        // Wer einspielen laesst, will den neuesten Stand - also jetzt fragen.
+        Veroeffentlichung neueste = neuesteSuchen(quelle.liste(true).liste);
         if (neueste == null || !istNeuer(neueste.version, bau.getVersion())) {
             ergebnis.put("gewechselt", false);
             ergebnis.put("hinweis", "Es gibt nichts Neueres");
@@ -227,39 +226,6 @@ public class Selbstpflege implements ApplicationListener<ApplicationReadyEvent> 
         nachlauf.start();
     }
 
-    /**
-     * Sieht bei der Quelle nach und merkt sich, was es gibt - damit die
-     * Oberflaeche es auch ohne Knopfdruck zeigen kann. Gibt einen Hinweis
-     * zurueck, wenn nichts zu finden war, sonst null.
-     */
-    public String neuestesMerken() throws IOException, InterruptedException {
-        if (!erlaubt || token.isEmpty()) {
-            return null;
-        }
-        Veroeffentlichung neueste = neuesteSuchen();
-        gemerktAm = System.currentTimeMillis();
-        if (neueste == null) {
-            gemerkteVersion = null;
-            return "Keine Serverfassung veroeffentlicht";
-        }
-        gemerkteVersion = neueste.version;
-        gemerkterHinweis = neueste.hinweis;
-        gemerktNeuer = istNeuer(neueste.version, bau.getVersion());
-        return null;
-    }
-
-    private void zwischenstand(Map<String, Object> ergebnis) {
-        if (gemerktAm == 0 || gemerkteVersion == null) {
-            return;
-        }
-        ergebnis.put("neuesteVersion", gemerkteVersion);
-        ergebnis.put("neuerVorhanden", gemerktNeuer);
-        if (gemerkterHinweis != null && !gemerkterHinweis.isEmpty()) {
-            ergebnis.put("neuesteHinweis", gemerkterHinweis);
-        }
-        ergebnis.put("nachgesehenAm", Instant.ofEpochMilli(gemerktAm).toString());
-    }
-
     // ------------------------------------------------------------- Suchen
 
     /** Angaben zu einer veroeffentlichten Serverfassung. */
@@ -269,8 +235,8 @@ public class Selbstpflege implements ApplicationListener<ApplicationReadyEvent> 
         String hinweis;
     }
 
-    private Veroeffentlichung neuesteSuchen() throws IOException, InterruptedException {
-        JsonNode liste = json.readTree(anfordern(quelle, true, ALS_JSON));
+    /** Die neueste Serverfassung in der Liste - null, wenn keine drinsteht. */
+    private Veroeffentlichung neuesteSuchen(JsonNode liste) {
         for (JsonNode eintrag : liste) {
             if (eintrag.path("draft").asBoolean()) {
                 continue;
@@ -339,7 +305,6 @@ public class Selbstpflege implements ApplicationListener<ApplicationReadyEvent> 
 
     /** Die Liste kommt als JSON, der Anhang als Datei - sonst schickt GitHub
      * dessen Beschreibung statt des Inhalts. */
-    private static final String ALS_JSON = "application/vnd.github+json";
     private static final String ALS_DATEI = "application/octet-stream";
 
     private byte[] anfordern(String adresse, boolean mitToken, String annahme)

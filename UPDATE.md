@@ -193,15 +193,17 @@ Nichts, was du tun müsstest. Die Datenbank liegt im Volume
 
 ### Woher weiß ich, dass es etwas Neues gibt?
 
-Der Server sieht einmal am Tag nach und vergleicht seinen Bauzeitpunkt mit der
-letzten Änderung im Projektzweig. Das Ergebnis steht
+Der Server vergleicht seine Version mit der neuesten Serverfassung unter den
+Veröffentlichungen. Gefragt wird nur, wenn jemand den Stand sehen will, und
+höchstens einmal pro Woche (siehe unten). Das Ergebnis steht
 
 - in der App unter *Einstellungen → Version*,
 - oder direkt: `curl http://<server-ip>:8080/api/v1/aktualisierung` (mit
   Anmeldung) beziehungsweise `…/api/v1/status` für Version und Bauzeitpunkt.
 
-Aktualisiert wird **nie von selbst**. Soll er gar nicht erst nachsehen, setze
-die Variable `TAGSTOCK_UPDATE_PRUEFEN` auf `false`.
+Aktualisiert wird **nie von selbst**. Soll er nur noch auf Knopfdruck
+nachsehen, setze die Variable `TAGSTOCK_UPDATE_PRUEFEN` auf `false`; den
+Wochenabstand ändert `TAGSTOCK_NACHSEHEN_TAGE`.
 
 Weil das Projekt nicht öffentlich ist, braucht die Abfrage denselben Lesezugriff
 wie das Holen der App – siehe unten. Ohne ihn bleibt die Anzeige leer, sonst
@@ -275,12 +277,17 @@ Ein Tipp darauf zeigt, was sich geändert hat. Nach dem Bestätigen
 3. und übergibt sie dem System – **installiert wird erst nach dem
    Systemdialog**, den Android selbst zeigt.
 
-Der Server fragt jede Minute nach, ob am Projekt etwas veröffentlicht wurde,
-und holt eine neue Fassung dann sofort. Das kostet nichts: Ist alles beim Alten,
-antwortet GitHub mit „unverändert" und ohne Inhalt. Als Rückfallebene sieht er
-zusätzlich alle sechs Stunden gründlich nach. Von Hand anstoßen geht weiterhin:
-derselbe Bildschirm, Knopf *Nach Aktualisierungen sehen* – oder in der
-Weboberfläche unter *System*, wo auch steht, ob er von selbst nachsieht.
+Der Server fragt bei GitHub **nie von selbst** – nicht beim Start, nicht im
+Hintergrund. Nur wenn die App (beim Öffnen von *Einstellungen*) oder die
+Weboberfläche wissen will, was bereitliegt, und auch dann **höchstens einmal
+pro Woche**; dazwischen antwortet er aus dem Gedächtnis. Gemerkt wird der
+Stand in `/data/app/veroeffentlichungen.json`, sodass auch ein Neustart keine
+neue Abfrage auslöst. Hat sich seit der letzten Woche nichts getan, schickt
+GitHub nur „unverändert" zurück und nicht die ganze Liste.
+
+Wer es eilig hat, drückt *Nach Aktualisierungen sehen* – in der App unter
+*Einstellungen* oder in der Weboberfläche unter *System*. Das fragt sofort.
+Wann zuletzt gefragt wurde, steht in der Weboberfläche unter *System*.
 
 ### Ohne Server
 
@@ -386,8 +393,9 @@ curl -s http://<server-ip>:8080/api/v1/app
 - `"holtSelbst": false` – die Variable fehlt oder ist leer.
 - `"hinweis": "Nicht erreichbar: Antwort 401 …"` – der Schlüssel stimmt nicht
   (vertippt, abgelaufen oder für das falsche Projekt).
-- `"aktuell": { "versionCode": 2, … }` – die App liegt bereit. Bis dahin können
-  ein paar Sekunden vergehen; er holt sie beim Start.
+- `"aktuell": { "versionCode": 2, … }` – die App liegt bereit. Beim ersten
+  Aufruf holt er sie; das dauert ein paar Sekunden. Steht dort noch nichts,
+  in der App *Nach Aktualisierungen sehen* drücken.
 
 Direkt am Schlüssel prüfen geht auch:
 

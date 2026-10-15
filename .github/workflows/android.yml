@@ -86,6 +86,10 @@ jobs:
           name: tagstock-debug-apk
           path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
+          # Die APK liegt dauerhaft in der Veroeffentlichung; hier nur fuer
+          # den schnellen Griff. Artefakte zaehlen gegen den Speicher des
+          # Kontos (bei GitHub Free 500 MB) - 90 Tage je Lauf waeren zu viel.
+          retention-days: 2
 
       # Die App verteilt sich ueber den Server; dafuer braucht es eine
       # Veroeffentlichung mit fester Adresse. Der Debug-Build ist signiert und
@@ -128,6 +132,7 @@ jobs:
             app/build/reports/tests/
             app/build/reports/lint-results-debug.html
           if-no-files-found: ignore
+          retention-days: 14
 
   server:
     name: "Server: Tests und Abbild"
@@ -173,13 +178,6 @@ jobs:
           docker logs tagstock-pruefung
           docker rm -f tagstock-pruefung
           exit 1
-
-      - name: Server-Jar hochladen
-        uses: actions/upload-artifact@v4
-        with:
-          name: tagstock-server-jar
-          path: server/build/libs/tagstock-server.jar
-          if-no-files-found: error
 
       # Aus dieser Veroeffentlichung holt sich der Server seine eigene naechste
       # Fassung - er legt das Jar ins Volume und startet neu, ohne dass jemand

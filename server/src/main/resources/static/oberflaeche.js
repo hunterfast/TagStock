@@ -966,6 +966,20 @@
     }
 
     /** Stand des Servers; mit nachsehen=true fragt er bei der Quelle nach. */
+    /**
+     * Wann zuletzt bei GitHub nachgefragt wurde. Von selbst fragt der Server
+     * nie - nur wenn App oder Oberfläche wissen wollen, was bereitliegt, und
+     * auch dann höchstens alle paar Tage.
+     */
+    function nachgesehenText(stand) {
+        var wann = stand.nachgesehenAm
+            ? new Date(stand.nachgesehenAm).toLocaleString('de-DE') : 'noch nie';
+        var regel = stand.geprueft
+            ? 'auf Anfrage, höchstens alle ' + (stand.nachsehenTage || 7) + ' Tage'
+            : 'nur auf Knopfdruck';
+        return text(wann) + ' <span class="leer">· ' + regel + '</span>';
+    }
+
     function serverLaden(nachsehen) {
         var aufruf = nachsehen
             ? api('/aktualisierung/pruefen', {method: 'POST'})
@@ -979,9 +993,7 @@
                     ? 'nachgeladener Fassung' : 'dem Abbild')
                 + (stand.neuesteVersion
                     ? zeile('Verfügbar', text(stand.neuesteVersion)) : '')
-                + zeile('Sieht selbst nach', stand.beobachtet
-                    ? 'ja, im Minutentakt'
-                    : 'nein – kein Zugangsschlüssel oder ausgeschaltet');
+                + zeile('Bei GitHub gefragt', nachgesehenText(stand));
 
             var neuer = stand.neuerVorhanden === true;
             $('knopfServerEinspielen').hidden = !neuer || !stand.selbstMoeglich;
