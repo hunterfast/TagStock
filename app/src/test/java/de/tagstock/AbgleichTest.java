@@ -58,7 +58,6 @@ public class AbgleichTest {
     private volatile String antwort = "{}";
     private volatile Runnable waehrendDerUebertragung = () -> {
     };
-    private boolean gestoppt;
 
     @Before
     public void vorbereiten() throws Exception {
@@ -89,7 +88,7 @@ public class AbgleichTest {
 
     @After
     public void aufraeumen() throws Exception {
-        serverAnhalten();
+        server.close();
         hintergrund.shutdownNow();
         // Sonst plant die App beim naechsten Test den Abgleich im Hintergrund ein.
         Einstellungen.abmelden(context);
@@ -101,13 +100,6 @@ public class AbgleichTest {
             db.close();
         }
         instanz.set(null, null);
-    }
-
-    private void serverAnhalten() throws IOException {
-        if (!gestoppt) {
-            gestoppt = true;
-            server.close();
-        }
     }
 
     /** Eine Anfrage lesen und so antworten, wie es der echte Server taete. */
@@ -178,13 +170,21 @@ public class AbgleichTest {
 
     @Test
     public void ohneServerBleibtDieLoeschungVorgemerkt() throws Exception {
+        // Ein Anschluss, an dem nie jemand gelauscht hat. Den laufenden
+        // Probeserver zu schliessen reicht nicht: Wartet sein Faden gerade auf
+        // eine Verbindung, nimmt der JDK gelegentlich noch eine an.
+        int tot;
+        try (ServerSocket kurz = new ServerSocket(0, 1, InetAddress.getByName("127.0.0.1"))) {
+            tot = kurz.getLocalPort();
+        }
+        Einstellungen.setzeServer(context, "http://127.0.0.1:" + tot, "geheim");
         Einstellungen.loeschungVormerken(context, "srv-1");
-        serverAnhalten();
 
         Abgleich.Ergebnis ergebnis = imHintergrund(() -> Abgleich.jetzt(context));
 
-        assertFalse(ergebnis.erfolgreich());
-        assertTrue(Einstellungen.loeschungen(context).contains("srv-1"));
+        assertFalse("Anfragen: " + anfragen, ergebnis.erfolgreich());
+        assertTrue("Fehler: " + ergebnis.fehler,
+                Einstellungen.loeschungen(context).contains("srv-1"));
     }
 
     @Test
