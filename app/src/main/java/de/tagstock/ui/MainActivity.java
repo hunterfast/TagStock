@@ -192,9 +192,4 @@ public class MainActivity extends AppCompatActivity {
         }
         return super.onOptionsItemSelected(item);
     }
-
-    /** Oeffnet einen Artikel aus einer der Listen. */
-    public void artikelOeffnen(Artikel artikel) {
-        startActivity(ArtikelDetailActivity.intent(this, artikel.id));
-    }
 }

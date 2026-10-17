@@ -45,7 +45,6 @@ import java.util.List;
         "tagstock.bilder-ordner=build/tmp/altbau-test-bilder",
         "tagstock.app-ordner=build/tmp/altbau-test-app",
         "tagstock.app-holen=false",
-        "tagstock.quelle-beobachten=false",
         "tagstock.update-pruefen=false",
         "tagstock.registrierungs-code="})
 @AutoConfigureMockMvc

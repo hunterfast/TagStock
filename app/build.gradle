@@ -10,7 +10,7 @@ plugins {
 //
 //   1. keystore.properties im Projekt - ortsgebunden, nicht im Repository
 //   2. TAGSTOCK_KEYSTORE aus der Umgebung - so reicht die CI ein Secret durch
-//   3. app/verteilung.jks - der mitgelieferte Schluessel fuers private Repo
+//   3. app/verteilung.jks - der mitgelieferte Schluessel
 //
 // Der dritte Weg genuegt fuer die eigene Verteilung. Wer ihn ersetzen will,
 // legt einen eigenen Schluessel an und hinterlegt ihn ueber Weg 1 oder 2 -
@@ -56,9 +56,16 @@ android {
         targetSdk 35
         // Beim Ausliefern hochzaehlen: die App vergleicht diese Nummer mit der
         // Fassung, die auf dem Server liegt.
-        versionCode 9
-        versionName "2.2.1"
+        versionCode 10
+        versionName "2.2.2"
         vectorDrawables.useSupportLibrary = true
+
+        // Nur ARM: Handys mit Android 7 oder neuer haben keinen Intel-Prozessor
+        // mehr. Die x86-Bibliotheken (Barcode-Erkennung) waeren 12 MB Ballast
+        // in jeder Aktualisierung - fuer Emulatoren, nicht fuer Geraete.
+        ndk {
+            abiFilters 'arm64-v8a', 'armeabi-v7a'
+        }
 
         javaCompileOptions {
             annotationProcessorOptions {
@@ -77,8 +84,9 @@ android {
     }
 
     buildTypes {
-        // Auch der Debug-Bau bekommt den festen Schluessel: veroeffentlicht
-        // wird die Debug-APK, weil sie signiert und damit installierbar ist.
+        // Veroeffentlicht wird der Release-Bau: von R8 verkleinert, ohne
+        // Debug-Ballast. Der Debug-Bau traegt denselben Schluessel, damit er
+        // sich zum Ausprobieren ueber die installierte App spielen laesst.
         debug {
             signingConfig signingConfigs.verteilung
         }

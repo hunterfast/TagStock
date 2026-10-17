@@ -39,11 +39,6 @@ public interface ArtikelDao {
     @Query("SELECT * FROM artikel WHERE serverId = :serverId LIMIT 1")
     Artikel nachServerId(String serverId);
 
-    /** Alle Standorte, die tatsaechlich vergeben sind. */
-    @Query("SELECT DISTINCT standort FROM artikel WHERE standort IS NOT NULL AND standort != ''"
-            + " ORDER BY standort COLLATE NOCASE ASC")
-    LiveData<List<String>> beobachteStandorte();
-
     @Query("SELECT DISTINCT kategorie FROM artikel WHERE kategorie IS NOT NULL AND kategorie != ''"
             + " ORDER BY kategorie COLLATE NOCASE ASC")
     LiveData<List<String>> beobachteKategorien();

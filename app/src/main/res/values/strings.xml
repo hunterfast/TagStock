@@ -299,7 +299,6 @@
     <string name="update_installieren">Laden und installieren</string>
     <string name="update_laedt">Wird vom Server geladen …</string>
     <string name="update_sicherung">Sicherung: %1$s</string>
-    <string name="update_sicherung_fehler">Die Sicherung ist nicht gelungen – die Aktualisierung wurde abgebrochen.</string>
     <string name="update_kein_installer">Auf diesem Gerät lässt sich die Datei nicht öffnen.</string>
     <string-array name="behaelter_arten">
         <item>Box</item>
@@ -344,9 +343,6 @@
     <string name="zugang_kopf_packungen">%1$s · wie viele Packungen kommen dazu?</string>
     <string name="zugang_kopf_stueck">%1$s · wie viele Stück kommen dazu?</string>
     <string name="zugang_erledigt">Jetzt %1$d Stück</string>
-    <string name="protokoll_entnommen">Entnommen</string>
-    <string name="protokoll_zugang">Zugang</string>
-    <string name="protokoll_angebrochen">Packung angebrochen</string>
     <string name="behaelter_schalter">Ist ein Behälter – Box, Schublade, Regal …</string>
     <string name="behaelter_braucht_kennung">Ein Behälter braucht eine eigene Kennung. Sie klebt am Möbel und wird beim Einräumen gescannt.</string>
     <string name="behaelter_art">Art des Behälters</string>
@@ -361,8 +357,6 @@
     <string name="behaelter_inhalt_leer">Noch nichts eingeräumt. Beim jeweiligen Artikel „Liegt in“ auf diesen Behälter stellen – oder hier scannen.</string>
     <string name="behaelter_einraeumen">Etwas einräumen</string>
     <string name="behaelter_eingeraeumt">„%1$s“ liegt jetzt in „%2$s“</string>
-    <string name="behaelter_liegt_in_anzeige">Liegt in: %1$s</string>
-    <string name="behaelter_freigegeben">%1$d Stück liegen jetzt nirgends mehr</string>
     <string name="update_beschaedigt">Die geladene Datei ist unvollständig oder beschädigt. Bitte noch einmal versuchen.</string>
     <string name="signatur_titel">Andere Signatur – Update nicht möglich</string>
     <string name="signatur_text">Die installierte App und die neue Fassung stammen aus verschiedenen Bauten und tragen deshalb verschiedene Signaturen. Android lehnt das mit „App nicht installiert“ ab und nennt keinen Grund.\n\nEinmalig hilft nur der Weg über eine Neuinstallation:\n\n1. Oben „Abgleichen“ drücken, damit alles auf dem Server liegt.\n2. „Datei in den Download-Ordner legen“ – dort überlebt sie das Deinstallieren.\n3. TagStock deinstallieren.\n4. Die Datei im Dateimanager öffnen und installieren.\n5. Wieder am Server anmelden – der Bestand kommt zurück.\n\nAb dieser Fassung tragen alle Auslieferungen denselben Schlüssel; künftige Updates laufen dann ohne Deinstallieren durch.</string>

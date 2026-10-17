@@ -53,10 +53,6 @@ public class BestandViewModel extends AndroidViewModel {
         return alle;
     }
 
-    public LiveData<List<String>> getStandorte() {
-        return repository.beobachteStandorte();
-    }
-
     public void setSuche(String wert) {
         suche = wert == null ? "" : wert.trim().toLowerCase(Locale.getDefault());
         anwenden();

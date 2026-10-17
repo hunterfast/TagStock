@@ -19,7 +19,6 @@ import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.lang.reflect.Field;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -87,19 +86,14 @@ public class AbgleichTest {
     }
 
     @After
-    public void aufraeumen() throws Exception {
+    public void aufraeumen() throws IOException {
         server.close();
         hintergrund.shutdownNow();
         // Sonst plant die App beim naechsten Test den Abgleich im Hintergrund ein.
         Einstellungen.abmelden(context);
         // Jeder Test bekommt eine eigene App - und damit eine eigene Datenbank.
-        Field instanz = AppDatabase.class.getDeclaredField("instance");
-        instanz.setAccessible(true);
-        AppDatabase db = (AppDatabase) instanz.get(null);
-        if (db != null) {
-            db.close();
-        }
-        instanz.set(null, null);
+        AppDatabase.getInstance(context).close();
+        AppDatabase.resetInstance();
     }
 
     /** Eine Anfrage lesen und so antworten, wie es der echte Server taete. */

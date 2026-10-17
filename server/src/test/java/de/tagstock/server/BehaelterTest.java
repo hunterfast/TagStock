@@ -34,7 +34,6 @@ import java.nio.charset.StandardCharsets;
         "tagstock.bilder-ordner=build/tmp/behaelter-test-bilder",
         "tagstock.app-ordner=build/tmp/behaelter-test-app",
         "tagstock.app-holen=false",
-        "tagstock.quelle-beobachten=false",
         "tagstock.update-pruefen=false",
         "tagstock.registrierungs-code="})
 @AutoConfigureMockMvc

@@ -291,12 +291,9 @@ Wann zuletzt gefragt wurde, steht in der Weboberfläche unter *System*.
 
 ### Ohne Server
 
-Die APK liegt an zwei Stellen:
-
-- **Veröffentlichungen:** `github.com/hunterfast/TagStock/releases` – dort die
-  `tagstock.apk` der obersten Marke laden.
-- **Bauläufe:** *Actions → der gewünschte Lauf → Artifacts →
-  `tagstock-debug-apk`* (kommt als ZIP, muss entpackt werden).
+Die APK liegt unter den **Veröffentlichungen**:
+`github.com/hunterfast/TagStock/releases` – dort die `tagstock.apk` der obersten
+Marke `app-v…` laden.
 
 Datei auf dem Handy öffnen und installieren. Die App wird über die vorhandene
 installiert; **Daten bleiben erhalten**, solange die Version größer ist.

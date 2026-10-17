@@ -102,11 +102,6 @@ public class ArtikelAdapter extends ListAdapter<Artikel, ArtikelAdapter.ArtikelH
         return ausgewaehlt;
     }
 
-    public void auswahlLeeren() {
-        ausgewaehlt.clear();
-        notifyDataSetChanged();
-    }
-
     @NonNull
     @Override
     public ArtikelHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {

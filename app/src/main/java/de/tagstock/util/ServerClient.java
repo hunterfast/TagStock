@@ -136,10 +136,6 @@ public class ServerClient {
         hole("DELETE", "/teams/" + teamId + "/artikel/" + artikelId, null);
     }
 
-    public JSONObject abgleichHolen(String teamId, long seit) throws IOException, JSONException {
-        return objekt(hole("GET", "/teams/" + teamId + "/sync?seit=" + seit, null));
-    }
-
     public JSONObject abgleichSenden(String teamId, long seit, JSONArray artikel,
                                      JSONArray protokoll) throws IOException, JSONException {
         JSONObject koerper = new JSONObject();

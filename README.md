@@ -177,37 +177,47 @@ in der Veröffentlichung auf GitHub und im Aktualisierungsdialog auf dem Handy.
 
 ## Bauen
 
-Der Build läuft bei jedem Push auf GitHub Actions
-(`.github/workflows/android.yml`) – ohne lokale Android-Installation. Er legt
-die APK als Artefakt `tagstock-debug-apk` am Lauf ab **und veröffentlicht sie**
-unter einer Marke je Versionsnummer (`app-v2.0+2`), zusammen mit einer
-`app.json` samt Änderungshinweis. Aus dieser Veröffentlichung bedient sich der
-Server. Derselbe Lauf baut und testet auch den Server und startet sein
-Docker-Abbild einmal zur Probe.
+Gebaut wird auf GitHub Actions, ohne lokale Android-Installation – getrennt
+nach App (`.github/workflows/android.yml`) und Server
+(`.github/workflows/server.yml`), und jeweils nur, wenn sich an dem Teil etwas
+geändert hat. Eine Änderung an der Doku baut gar nichts.
+
+Der App-Lauf testet, prüft mit Lint, baut die mit R8 verkleinerte Release-APK
+und **veröffentlicht sie** unter einer Marke je Versionsnummer
+(`app-v2.2.2+10`), zusammen mit einer `app.json` samt Änderungshinweis. Aus
+dieser Veröffentlichung bedient sich der Server. Der Server-Lauf testet, baut
+das Jar, startet das Docker-Abbild einmal zur Probe und veröffentlicht das Jar
+(`server-v2.4.2`).
 
 Lokal, mit JDK 17 und Android SDK (API 35):
 
 ```bash
 ./gradlew testDebugUnitTest    # Tests
 ./gradlew lintDebug            # Lint
-./gradlew assembleDebug        # APK unter app/build/outputs/apk/debug/
+./gradlew assembleRelease      # verkleinerte APK, wie sie veröffentlicht wird
 ./gradlew installDebug         # auf ein angeschlossenes Gerät
 ```
 
 ### Release signieren
 
-Der Release-Build wird mit R8 verkleinert und signiert, sobald im Projektwurzel-
-verzeichnis eine `keystore.properties` liegt (sie ist von der Versionierung
-ausgeschlossen):
+Jede Auslieferung muss denselben Schlüssel tragen, sonst lässt Android das
+Update nicht zu („App nicht installiert"). Gesucht wird in dieser Reihenfolge:
 
-```properties
-storeFile=/pfad/zum/schluessel.jks
-storePassword=…
-keyAlias=tagstock
-keyPassword=…
-```
+1. `keystore.properties` im Projektwurzelverzeichnis (nicht versioniert):
 
-Ohne diese Datei entsteht ein unsigniertes Release-APK.
+   ```properties
+   storeFile=/pfad/zum/schluessel.jks
+   storePassword=…
+   keyAlias=tagstock
+   keyPassword=…
+   ```
+
+2. die Umgebungsvariablen `TAGSTOCK_KEYSTORE`, `TAGSTOCK_KEYSTORE_PASSWORT`
+   (und optional `TAGSTOCK_KEY_ALIAS`, `TAGSTOCK_KEY_PASSWORT`),
+3. `app/verteilung.jks` aus dem Repository.
+
+Ein anderer Schlüssel als der bisherige erzwingt einmalig ein Deinstallieren auf
+allen Geräten.
 
 ## Tests
 
@@ -220,20 +230,26 @@ Ohne diese Datei entsteht ein unsigniertes Release-APK.
 - **ArtikelLogikTest** rechnet Warnungen, Überfälligkeit, Suche und Filter nach.
 - **SicherungTest** prüft JSON im Rundlauf und die CSV-Ausgabe samt Maskierung.
 - **GtinTest** rechnet Prüfziffern nach und ordnet Präfixe zu.
+- **PackungenTest** rechnet Mengen, Verpackungseinheiten und Entnahmen nach.
+- **BehaelterketteTest** prüft, dass kein Behälter in sich selbst landet.
+- **AbgleichTest** gleicht gegen einen kleinen Probeserver ab: Löschungen
+  kommen an, und was während der Übertragung geändert wird, geht nicht
+  verloren.
 
 Der Server hat eigene Tests unter `server/src/test`, die ihn hochfahren und die
 Schnittstelle durchgehen (`cd server && ./gradlew test`).
 
 ## Datenmodell
 
-Room, aktuell Version 3; Migrationen aus 1 und 2 sind hinterlegt, damit ein
+Room, aktuell Version 5; die Migrationen ab Version 1 sind hinterlegt, damit ein
 Update den Bestand nicht verliert.
 
 ```
 artikel    (id, serverId, teamId, rfidUid UNIQUE, name, beschreibung, kategorie,
             standort, lagerort, fotoPfad, bildUrl, status, verliehenAn,
-            rueckgabeDatum, zuletztGescannt, scanWarnung, erstelltAm,
-            geaendertAm, offen)
+            rueckgabeDatum, zuletztGescannt, scanWarnung, menge, istVerpackung,
+            packungsGroesse, angebrochen, istBehaelter, behaelterArt,
+            behaelterKennung, erstelltAm, geaendertAm, offen)
 kategorien (id, serverId, teamId, name UNIQUE, reihenfolge)
 protokoll  (id, serverId, artikelId, artikelName, aktion, alterWert, neuerWert,
             nutzer, zeitpunkt, offen)

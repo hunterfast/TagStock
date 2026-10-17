@@ -1,10 +1,22 @@
-name: Build
+name: App
 
+# Gebaut wird nur, wenn sich an der App etwas getan hat - eine Aenderung am
+# Server oder an der Doku braucht keine neue APK.
 on:
   push:
     branches:
       - main
       - 'claude/**'
+    paths:
+      - 'app/**'
+      - 'gradle/**'
+      - 'build.gradle'
+      - 'settings.gradle'
+      - 'gradle.properties'
+      - 'gradlew'
+      - 'changelog/app/**'
+      - '.github/workflows/android.yml'
+      - '.github/startprobe.sh'
   workflow_dispatch:
 
 # Fuer die Veroeffentlichung der APK braucht der Lauf Schreibrecht am Inhalt.
@@ -14,7 +26,7 @@ permissions:
 # Zwei Laeufe desselben Zweigs wuerden dieselbe Veroeffentlichung ueberschreiben.
 # Darum weicht der aeltere dem neueren.
 concurrency:
-  group: build-${{ github.ref }}
+  group: app-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -79,26 +91,33 @@ jobs:
             exit 1
           }
 
-      - name: Debug-APK bauen
-        run: ./gradlew --no-daemon --stacktrace assembleDebug
-
+      # Verkleinert von R8 und mit dem festen Schluessel signiert. Die APK
+      # liegt danach in der Veroeffentlichung - ein Artefakt am Lauf braucht
+      # es dafuer nicht.
       - name: Release-APK bauen (R8)
         run: ./gradlew --no-daemon --stacktrace assembleRelease
 
-      - name: APK als Artefakt hochladen
-        uses: actions/upload-artifact@v4
+      # Einmalig beim Wechsel auf die R8-APK: starten und bedienen, bevor sie
+      # veroeffentlicht wird.
+      - name: KVM fuer den Emulator freischalten
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
+            | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Startprobe im Emulator
+        uses: reactivecircus/android-emulator-runner@v2
         with:
-          name: tagstock-debug-apk
-          path: app/build/outputs/apk/debug/*.apk
-          if-no-files-found: error
-          # Die APK liegt dauerhaft in der Veroeffentlichung; hier nur fuer
-          # den schnellen Griff. Artefakte zaehlen gegen den Speicher des
-          # Kontos (bei GitHub Free 500 MB) - 90 Tage je Lauf waeren zu viel.
-          retention-days: 2
+          api-level: 30
+          target: google_apis
+          arch: x86_64
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+          script: bash .github/startprobe.sh
 
       # Die App verteilt sich ueber den Server; dafuer braucht es eine
-      # Veroeffentlichung mit fester Adresse. Der Debug-Build ist signiert und
-      # laesst sich installieren - das unsignierte Release-APK nicht.
+      # Veroeffentlichung mit fester Adresse.
       - name: Veroeffentlichung mit APK
         env:
           GH_TOKEN: ${{ github.token }}
@@ -113,7 +132,7 @@ jobs:
           [ -n "$NOTIZ" ] && [ -f "$NOTIZ" ] || { echo "Kein Changelog fuer ${VERSION_NAME}"; exit 1; }
 
           mkdir -p veroeffentlichung
-          cp app/build/outputs/apk/debug/*.apk veroeffentlichung/tagstock.apk
+          cp app/build/outputs/apk/release/app-release.apk veroeffentlichung/tagstock.apk
           # jq baut das JSON, damit Anfuehrungszeichen und Umbrueche im
           # Changelog nichts zerreissen.
           jq -n --argjson code "$VERSION_CODE" --arg name "$VERSION_NAME" \
@@ -128,8 +147,9 @@ jobs:
               --title "TagStock-App ${VERSION_NAME}" --notes-file "$NOTIZ" --target "${GITHUB_SHA}"
           fi
 
+      # Nur wenn etwas schiefging - sonst liest sie niemand.
       - name: Testberichte hochladen
-        if: always()
+        if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: testberichte
@@ -138,77 +158,3 @@ jobs:
             app/build/reports/lint-results-debug.html
           if-no-files-found: ignore
           retention-days: 14
-
-  server:
-    name: "Server: Tests und Abbild"
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: JDK 21 einrichten
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '21'
-          cache: gradle
-
-      - name: Gradle-Wrapper ausfuehrbar machen
-        run: chmod +x server/gradlew
-
-      - name: Tests
-        working-directory: server
-        run: ./gradlew --no-daemon --stacktrace test
-
-      - name: Jar bauen
-        working-directory: server
-        run: ./gradlew --no-daemon bootJar
-
-      - name: Docker-Abbild bauen
-        run: docker build -t tagstock-server:pruefung server
-
-      - name: Container starten und antworten lassen
-        run: |
-          docker run -d --name tagstock-pruefung -p 8080:8080 tagstock-server:pruefung
-          for i in $(seq 1 30); do
-            if curl -sf http://127.0.0.1:8080/api/v1/status > /dev/null; then
-              echo "Server antwortet:"
-              curl -s http://127.0.0.1:8080/api/v1/status
-              docker rm -f tagstock-pruefung
-              exit 0
-            fi
-            sleep 2
-          done
-          echo "Server ist nicht hochgekommen:"
-          docker logs tagstock-pruefung
-          docker rm -f tagstock-pruefung
-          exit 1
-
-      # Aus dieser Veroeffentlichung holt sich der Server seine eigene naechste
-      # Fassung - er legt das Jar ins Volume und startet neu, ohne dass jemand
-      # auf den Host muss.
-      - name: Veroeffentlichung mit Server-Jar
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          VERSION=$(grep -m1 "^version" server/build.gradle | sed "s/[^']*'\([^']*\)'.*/\1/")
-          MARKE="server-v${VERSION}"
-          NOTIZ="changelog/server/$(date +%Y)/${VERSION}.md"
-          if [ ! -f "$NOTIZ" ]; then
-            NOTIZ=$(ls changelog/server/*/"${VERSION}".md 2>/dev/null | head -1)
-          fi
-          [ -n "$NOTIZ" ] && [ -f "$NOTIZ" ] || { echo "Kein Changelog fuer Server ${VERSION}"; exit 1; }
-
-          mkdir -p veroeffentlichung
-          cp server/build/libs/tagstock-server.jar veroeffentlichung/
-          jq -n --arg version "$VERSION" --rawfile hinweis "$NOTIZ" \
-            '{version: $version, hinweis: $hinweis}' > veroeffentlichung/server.json
-
-          if gh release view "$MARKE" >/dev/null 2>&1; then
-            gh release upload "$MARKE" veroeffentlichung/tagstock-server.jar \
-              veroeffentlichung/server.json --clobber
-          else
-            gh release create "$MARKE" veroeffentlichung/tagstock-server.jar \
-              veroeffentlichung/server.json \
-              --title "TagStock-Server ${VERSION}" --notes-file "$NOTIZ" --target "${GITHUB_SHA}"
-          fi

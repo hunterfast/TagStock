@@ -914,26 +914,6 @@ public class ArtikelFormFragment extends Fragment {
         fotoAnzeigen();
     }
 
-    /** true, wenn Eingaben gemacht wurden, die noch nicht gespeichert sind. */
-    public boolean hatAenderungen() {
-        if (binding == null) {
-            return false;
-        }
-        if (original == null) {
-            return !text(binding.editName.getText()).isEmpty()
-                    || !text(binding.editKennung.getText()).isEmpty()
-                    || fotoPfad != null;
-        }
-        return !text(binding.editName.getText()).equals(original.name)
-                || !text(binding.editBeschreibung.getText()).equals(wert(original.beschreibung))
-                || !text(binding.editStandort.getText()).equals(wert(original.standort))
-                || !text(binding.editLagerort.getText()).equals(wert(original.lagerort))
-                || !text(binding.editKennung.getText()).equals(wert(original.rfidUid))
-                || binding.schalterBehaelter.isChecked() != original.istBehaelter
-                || !wert(liegtIn).equals(wert(original.behaelterKennung))
-                || status() != original.status;
-    }
-
     private String wert(@Nullable String wert) {
         return wert == null ? "" : wert;
     }

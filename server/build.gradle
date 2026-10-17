@@ -5,7 +5,7 @@ plugins {
 }
 
 group = 'de.tagstock'
-version = '2.4.1'
+version = '2.4.2'
 
 java {
     // Bytecode fuer Java 17; gebaut wird mit dem vorhandenen JDK (17 oder neuer).
@@ -31,7 +31,6 @@ tasks.withType(JavaCompile).configureEach {
 dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-jdbc'
-    implementation 'org.springframework.boot:spring-boot-starter-validation'
 
     // Passwoerter werden mit BCrypt gespeichert; nur die Krypto-Bibliothek,
     // kein vollstaendiges Spring Security.

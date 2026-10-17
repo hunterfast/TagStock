@@ -78,10 +78,6 @@ public class Repository {
         return artikelDao.beobachte(id);
     }
 
-    public LiveData<List<String>> beobachteStandorte() {
-        return artikelDao.beobachteStandorte();
-    }
-
     public LiveData<List<Kategorie>> beobachteKategorien() {
         return kategorieDao.beobachteAlle();
     }
