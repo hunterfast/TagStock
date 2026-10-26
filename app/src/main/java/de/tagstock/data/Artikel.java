@@ -126,6 +126,15 @@ public class Artikel {
     @ColumnInfo(name = "offen")
     public boolean offen = true;
 
+    /**
+     * Der Stand dieses Artikels, wie er zuletzt vom Server kam - als JSON. Er
+     * geht beim Hochladen mit: Daran sieht der Server, was hier geaendert
+     * wurde, und kann es mit den Aenderungen eines anderen Geraets
+     * zusammenfuehren, statt eine davon zu verlieren.
+     */
+    @ColumnInfo(name = "basis")
+    public String basis;
+
     /** true, wenn der Artikel im Regal fehlen wuerde und nie gescannt wurde. */
     public boolean istVermisst() {
         if (scanWarnung == ScanWarnung.NIEMALS) {
@@ -190,6 +199,7 @@ public class Artikel {
         kopie.erstelltAm = erstelltAm;
         kopie.geaendertAm = geaendertAm;
         kopie.offen = offen;
+        kopie.basis = basis;
         return kopie;
     }
 

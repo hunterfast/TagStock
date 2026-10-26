@@ -117,14 +117,19 @@ legst ein Team an oder trittst per Einladungscode einem bei.
 | `lagerist` | Bestand und Kategorien pflegen, Anfragen entscheiden |
 | `mitglied` | lesen und Ausleihen anfragen |
 
-- **Abgleich** per Ziehen in der Bestandsliste oder auf Knopfdruck: eigene
-  Änderungen hoch, fremde herunter. Bei Doppeländerungen gewinnt der jüngere
-  Zeitstempel; Löschungen kommen als Merkmal mit.
+- **Abgleich von selbst:** beim Öffnen der App, alle 30 Sekunden, solange sie
+  offen ist, sobald ein Netz dazukommt – WLAN oder VPN – und stündlich im
+  Hintergrund; dazu jederzeit per Ziehen in der Bestandsliste. Eigene Änderungen
+  gehen hoch, fremde kommen herunter, das Protokoll eingeschlossen.
+  Löschungen kommen als Merkmal mit.
+- **Zusammenführen statt Überschreiben.** Haben zwei Geräte denselben Artikel
+  geändert, bleibt beides: Mengen werden verrechnet (von 10 nimmt das eine 2,
+  das andere 1 – danach sind es überall 7), verschiedene Felder bleiben beide
+  erhalten, nur beim selben Feld gewinnt die spätere Änderung.
 - **Ohne Netz geht die Arbeit weiter.** Was offline angelegt oder geändert wird,
-  merkt sich die App und überträgt es selbst, sobald wieder eine Verbindung
-  besteht – auch wenn die App inzwischen geschlossen wurde (WorkManager mit
-  Netzbedingung, dazu ein Durchlauf alle drei Stunden als Sicherheitsnetz). In
-  den Servereinstellungen steht, wie viel noch wartet.
+  merkt sich die App und überträgt es selbst, sobald der Server wieder
+  erreichbar ist – auch wenn die App inzwischen geschlossen wurde. In den
+  Servereinstellungen steht, wie viel noch wartet.
 - **Artikelbilder** liegen auf dem Server. Die App verkleinert eine Aufnahme,
   lädt sie beim Abgleich hoch und hält auf dem Gerät nur einen
   Zwischenspeicher.

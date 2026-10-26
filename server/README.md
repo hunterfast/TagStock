@@ -259,9 +259,19 @@ auch gelöschte Artikel, erkennbar am Merkmal `geloescht`. `POST /sync` nimmt di
 {"zuordnungen":[{"lokaleId":7,"serverId":"…","angenommen":true,"grund":null}]}
 ```
 
-Bei gleichzeitigen Änderungen gewinnt der jüngere Zeitstempel; abgelehnte Fälle
-kommen mit dem Serverstand zurück, den die App dann übernimmt. Kennungen sind je
-Team eindeutig – ein zweiter Artikel mit derselben Kennung wird abgelehnt.
+Zu jedem Artikel schickt die App (ab 2.3.0) unter `basis` den Stand mit, den sie
+zuletzt vom Server hatte. Haben inzwischen beide Seiten geändert, führt der
+Server zusammen: Mengen werden verrechnet, verschiedene Felder bleiben beide
+erhalten, beim selben Feld gewinnt die spätere Änderung. Ohne `basis` gewinnt
+wie früher der jüngere Zeitstempel. Abgelehnte Fälle kommen mit dem Serverstand
+zurück, den die App dann übernimmt. Kennungen sind je Team eindeutig – ein
+zweiter Artikel mit derselben Kennung wird abgelehnt.
+
+Das Protokoll kommt nach dem **Eingang** beim Server, nicht nach dem Zeitpunkt
+des Eintrags: Ein Handy, das eine Woche ohne Netz war, reicht alte Einträge
+nach, und die anderen Geräte bekommen sie trotzdem. Einträge zu Artikeln, die
+erst mit demselben Abgleich ankommen, tragen `lokaleArtikelId`; der Server setzt
+die richtige Kennung selbst ein.
 
 ## Entwicklung
 

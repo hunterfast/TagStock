@@ -4,6 +4,7 @@ import androidx.lifecycle.LiveData;
 import androidx.room.Dao;
 import androidx.room.Insert;
 import androidx.room.Query;
+import androidx.room.Update;
 
 import java.util.List;
 
@@ -30,4 +31,19 @@ public interface ProtokollDao {
 
     @Query("DELETE FROM protokoll")
     void alleLoeschen();
+
+    @Update
+    void update(Protokoll eintrag);
+
+    @Query("SELECT * FROM protokoll WHERE serverId = :serverId LIMIT 1")
+    Protokoll nachServerId(String serverId);
+
+    /**
+     * Ein eigener Eintrag, den der Server gerade zurueckschickt: gleicher
+     * Artikel, gleiche Aktion, gleicher Zeitpunkt - aber hier noch ohne
+     * Server-Kennung, weil er von hier stammt.
+     */
+    @Query("SELECT * FROM protokoll WHERE serverId IS NULL AND artikelId = :artikelId"
+            + " AND aktion = :aktion AND zeitpunkt = :zeitpunkt LIMIT 1")
+    Protokoll eigenerOhneKennung(long artikelId, String aktion, long zeitpunkt);
 }

@@ -12,7 +12,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase;
 
 @Database(
         entities = {Artikel.class, Kategorie.class, Protokoll.class},
-        version = 5,
+        version = 6,
         exportSchema = true)
 @TypeConverters(Converters.class)
 public abstract class AppDatabase extends RoomDatabase {
@@ -39,7 +39,7 @@ public abstract class AppDatabase extends RoomDatabase {
                     instance = Room.databaseBuilder(
                                     context.getApplicationContext(), AppDatabase.class, DB_NAME)
                             .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4,
-                                    MIGRATION_4_5)
+                                    MIGRATION_4_5, MIGRATION_5_6)
                             .addCallback(new Callback() {
                                 @Override
                                 public void onCreate(@NonNull SupportSQLiteDatabase db) {
@@ -280,6 +280,23 @@ public abstract class AppDatabase extends RoomDatabase {
             db.execSQL("ALTER TABLE `artikel` ADD COLUMN `packungsGroesse`"
                     + " INTEGER NOT NULL DEFAULT 0");
             db.execSQL("ALTER TABLE `artikel` ADD COLUMN `angebrochen` TEXT");
+        }
+    };
+
+    /**
+     * Version 6: Jeder Artikel merkt sich den zuletzt bekannten Serverstand,
+     * damit Aenderungen zweier Geraete zusammengefuehrt werden koennen. Das
+     * Protokoll bekommt einen Index auf die Server-Kennung - beim Abgleich
+     * wird fuer jeden Eintrag der anderen Geraete nachgesehen, ob er schon da
+     * ist. Bestehende Artikel haben noch keinen Stand; sie bekommen ihn beim
+     * naechsten Abgleich.
+     */
+    public static final Migration MIGRATION_5_6 = new Migration(5, 6) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase db) {
+            db.execSQL("ALTER TABLE `artikel` ADD COLUMN `basis` TEXT");
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_protokoll_serverId`"
+                    + " ON `protokoll` (`serverId`)");
         }
     };
 }

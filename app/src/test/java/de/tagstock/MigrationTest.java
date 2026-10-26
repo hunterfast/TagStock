@@ -85,7 +85,8 @@ public class MigrationTest {
     private void migrieren() {
         db = Room.databaseBuilder(context, AppDatabase.class, DB)
                 .addMigrations(AppDatabase.MIGRATION_1_2, AppDatabase.MIGRATION_2_3,
-                        AppDatabase.MIGRATION_3_4, AppDatabase.MIGRATION_4_5)
+                        AppDatabase.MIGRATION_3_4, AppDatabase.MIGRATION_4_5,
+                        AppDatabase.MIGRATION_5_6)
                 .allowMainThreadQueries()
                 .build();
         db.artikelDao().alle();
@@ -375,5 +376,69 @@ public class MigrationTest {
         assertEquals(0, schrauber.packungsGroesse);
         assertNull(schrauber.angebrochen);
         assertEquals(1, schrauber.gesamtStueck());
+    }
+
+    // ------------------------------------------------------------ Version 5
+
+    /**
+     * Aus Version 5 kommt der zuletzt bekannte Serverstand je Artikel dazu,
+     * dazu ein Index auf die Server-Kennung im Protokoll. Bestehende Artikel
+     * und Eintraege bleiben, wie sie sind.
+     */
+    @Test
+    public void ausVersion5KommtDerServerstandDazu() {
+        alteDatenbank(5, db -> {
+            db.execSQL("CREATE TABLE IF NOT EXISTS `artikel` ("
+                    + "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, "
+                    + "`serverId` TEXT, `teamId` TEXT, `rfidUid` TEXT, "
+                    + "`name` TEXT NOT NULL, `beschreibung` TEXT, `kategorie` TEXT, "
+                    + "`standort` TEXT, `lagerort` TEXT, `fotoPfad` TEXT, `bildUrl` TEXT, "
+                    + "`status` TEXT NOT NULL, `verliehenAn` TEXT, `rueckgabeDatum` INTEGER, "
+                    + "`zuletztGescannt` INTEGER, `scanWarnung` TEXT NOT NULL, "
+                    + "`erstelltAm` INTEGER NOT NULL, `geaendertAm` INTEGER NOT NULL, "
+                    + "`offen` INTEGER NOT NULL, "
+                    // Hinten angehaengt, genau wie ALTER TABLE es tut.
+                    + "`istBehaelter` INTEGER NOT NULL DEFAULT 0, `behaelterArt` TEXT, "
+                    + "`behaelterKennung` TEXT, "
+                    + "`menge` INTEGER NOT NULL DEFAULT 1, "
+                    + "`istVerpackung` INTEGER NOT NULL DEFAULT 0, "
+                    + "`packungsGroesse` INTEGER NOT NULL DEFAULT 0, `angebrochen` TEXT)");
+            db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_artikel_rfidUid`"
+                    + " ON `artikel` (`rfidUid`)");
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_artikel_serverId`"
+                    + " ON `artikel` (`serverId`)");
+            db.execSQL("CREATE TABLE IF NOT EXISTS `kategorien` ("
+                    + "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, "
+                    + "`serverId` TEXT, `teamId` TEXT, `name` TEXT NOT NULL, "
+                    + "`reihenfolge` INTEGER NOT NULL)");
+            db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_kategorien_name`"
+                    + " ON `kategorien` (`name`)");
+            db.execSQL("CREATE TABLE IF NOT EXISTS `protokoll` ("
+                    + "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, "
+                    + "`serverId` TEXT, `artikelId` INTEGER NOT NULL, "
+                    + "`artikelName` TEXT NOT NULL, `aktion` TEXT NOT NULL, "
+                    + "`alterWert` TEXT, `neuerWert` TEXT, `nutzer` TEXT, "
+                    + "`zeitpunkt` INTEGER NOT NULL, `offen` INTEGER NOT NULL, "
+                    + "FOREIGN KEY(`artikelId`) REFERENCES `artikel`(`id`)"
+                    + " ON UPDATE NO ACTION ON DELETE CASCADE )");
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_protokoll_artikelId`"
+                    + " ON `protokoll` (`artikelId`)");
+            db.execSQL("INSERT INTO artikel (id, serverId, name, status, scanWarnung,"
+                    + " erstelltAm, geaendertAm, offen, menge)"
+                    + " VALUES (5, 'srv-5', 'Patchkabel', 'vorhanden', '1j', 1000, 2000, 0, 10)");
+            db.execSQL("INSERT INTO protokoll (artikelId, artikelName, aktion, alterWert,"
+                    + " neuerWert, zeitpunkt, offen)"
+                    + " VALUES (5, 'Patchkabel', 'Entnommen', '12', '10', 1500, 0)");
+        });
+        migrieren();
+
+        Artikel kabel = db.artikelDao().nachId(5);
+        assertNotNull(kabel);
+        assertEquals(10, kabel.menge);
+        assertEquals("srv-5", kabel.serverId);
+        // Den Stand bekommt er erst beim naechsten Abgleich.
+        assertNull(kabel.basis);
+        assertNotNull(db.protokollDao().eigenerOhneKennung(5, "Entnommen", 1500));
+        assertNull(db.protokollDao().nachServerId("gibt-es-nicht"));
     }
 }

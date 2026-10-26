@@ -5,6 +5,8 @@ import de.tagstock.server.daten.ArtikelDaten;
 import de.tagstock.server.daten.Bilderdienst;
 import de.tagstock.server.daten.KategorieDaten;
 import de.tagstock.server.daten.ProtokollDaten;
+import de.tagstock.server.dienst.Packungen;
+import de.tagstock.server.dienst.Zusammenfuehrung;
 import de.tagstock.server.modell.Artikel;
 import de.tagstock.server.modell.Benutzer;
 import de.tagstock.server.modell.Protokoll;
@@ -28,9 +30,11 @@ import java.util.Set;
 
 /**
  * Abgleich mit der App. Die App holt sich alles, was sich seit ihrem letzten
- * Stand geaendert hat, und schickt ihre eigenen Aenderungen hoch. Bei
- * Doppelaenderungen gewinnt der juengere Zeitstempel; abgelehnte Faelle kommen
- * mit dem Serverstand zurueck.
+ * Stand geaendert hat, und schickt ihre eigenen Aenderungen hoch. Haben zwei
+ * Seiten denselben Artikel geaendert, werden die Aenderungen zusammengefuehrt
+ * (siehe {@link Zusammenfuehrung}); Apps, die ihren Ausgangsstand noch nicht
+ * mitschicken, bekommen wie frueher: der juengere Zeitstempel gewinnt.
+ * Abgelehnte Faelle kommen mit dem Serverstand zurueck.
  */
 @RestController
 @RequestMapping("/api/v1/teams/{teamId}/sync")
@@ -38,8 +42,23 @@ public class SyncController {
 
     /** Was die App hochlaedt. */
     public static class Hochladen {
-        public List<Artikel> artikel = new ArrayList<>();
-        public List<Protokoll> protokoll = new ArrayList<>();
+        public List<Hochgeladen> artikel = new ArrayList<>();
+        public List<HochgeladenerEintrag> protokoll = new ArrayList<>();
+    }
+
+    /** Ein Artikel vom Geraet - samt dem Stand, auf dem es aufgesetzt hat. */
+    public static class Hochgeladen extends Artikel {
+        /** Leer bei Apps vor 2.3.0: Dann gewinnt die spaetere Fassung. */
+        public Artikel basis;
+    }
+
+    /** Ein Protokolleintrag vom Geraet. */
+    public static class HochgeladenerEintrag extends Protokoll {
+        /**
+         * Fuer Eintraege zu Artikeln, die erst mit diesem Abgleich auf den
+         * Server kommen und darum noch keine Server-Kennung haben.
+         */
+        public Long lokaleArtikelId;
     }
 
     /** Rueckmeldung je hochgeladenem Artikel. */
@@ -101,10 +120,19 @@ public class SyncController {
         zugriff.rolleZumBearbeiten(anfrage, teamId);
 
         List<Zuordnung> zuordnungen = new ArrayList<>();
-        for (Artikel artikel : daten.artikel) {
-            zuordnungen.add(uebernehmen(teamId, artikel, benutzer));
+        Map<Long, String> serverIds = new HashMap<>();
+        for (Hochgeladen artikel : daten.artikel) {
+            Zuordnung zuordnung = uebernehmen(teamId, artikel, benutzer);
+            zuordnungen.add(zuordnung);
+            if (artikel.lokaleId != null && zuordnung.serverId != null) {
+                serverIds.put(artikel.lokaleId, zuordnung.serverId);
+            }
         }
-        for (Protokoll eintrag : daten.protokoll) {
+        for (HochgeladenerEintrag eintrag : daten.protokoll) {
+            if ((eintrag.artikelId == null || eintrag.artikelId.isEmpty())
+                    && eintrag.lokaleArtikelId != null) {
+                eintrag.artikelId = serverIds.get(eintrag.lokaleArtikelId);
+            }
             eintrag.teamId = teamId;
             if (eintrag.nutzer == null || eintrag.nutzer.isEmpty()) {
                 eintrag.nutzer = benutzer.name;
@@ -145,7 +173,7 @@ public class SyncController {
     }
 
     /** Einen hochgeladenen Artikel einsortieren. */
-    private Zuordnung uebernehmen(String teamId, Artikel artikel, Benutzer benutzer) {
+    private Zuordnung uebernehmen(String teamId, Hochgeladen artikel, Benutzer benutzer) {
         if (artikel.name == null || artikel.name.trim().isEmpty()) {
             return new Zuordnung(artikel.lokaleId, null, false, "Bezeichnung fehlt");
         }
@@ -176,23 +204,33 @@ public class SyncController {
             weg.geloescht = true;
             return weg;
         }
-        if (server.geaendertAm > artikel.geaendertAm) {
+        Artikel neu;
+        if (artikel.basis != null) {
+            // Was beide Seiten seit dem gemeinsamen Stand getan haben, bleibt.
+            neu = Zusammenfuehrung.zusammenfuehren(artikel.basis, artikel, server);
+        } else if (server.geaendertAm > artikel.geaendertAm) {
             // Auf dem Server ist eine juengere Fassung - die gewinnt.
             return new Zuordnung(artikel.lokaleId, server.id, false, "Server ist neuer");
+        } else {
+            neu = artikel;
         }
-        Artikel belegt = artikelDaten.nachKennung(teamId, artikel.rfidUid);
-        if (belegt != null && !belegt.id.equals(artikel.id)) {
+        Artikel belegt = artikelDaten.nachKennung(teamId, neu.rfidUid);
+        if (belegt != null && !belegt.id.equals(server.id)) {
             return new Zuordnung(artikel.lokaleId, server.id, false,
                     "Kennung gehört bereits zu „" + belegt.name + "“");
         }
 
-        artikel.erstelltAm = server.erstelltAm;
-        if (server.bildUrl != null && (artikel.bildUrl == null || artikel.bildUrl.isEmpty())) {
+        neu.id = server.id;
+        neu.teamId = teamId;
+        neu.erstelltAm = server.erstelltAm;
+        neu.geloescht = false;
+        Packungen.geradeziehen(neu);
+        if (server.bildUrl != null && (neu.bildUrl == null || neu.bildUrl.isEmpty())) {
             // Das Geraet hat das Bild entfernt - dann muss es auch hier weg.
-            bilder.entfernen(teamId, artikel.id);
+            bilder.entfernen(teamId, server.id);
         }
-        artikelDaten.aktualisieren(artikel);
-        return new Zuordnung(artikel.lokaleId, artikel.id, true, null);
+        artikelDaten.aktualisieren(neu);
+        return new Zuordnung(artikel.lokaleId, server.id, true, null);
     }
 
     private Protokoll eintrag(String teamId, Artikel artikel, String aktion, String alt,

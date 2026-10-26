@@ -15,7 +15,7 @@ import androidx.room.PrimaryKey;
                 parentColumns = "id",
                 childColumns = "artikelId",
                 onDelete = ForeignKey.CASCADE),
-        indices = @Index("artikelId"))
+        indices = {@Index("artikelId"), @Index("serverId")})
 public class Protokoll {
 
     /** Bekannte Aktionen - der Text wandert unveraendert in die Anzeige. */

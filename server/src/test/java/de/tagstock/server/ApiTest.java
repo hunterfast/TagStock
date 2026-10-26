@@ -288,6 +288,86 @@ class ApiTest {
     }
 
     @Test
+    void zweiGeraeteEntnehmenOhneNetzUndBeidesZaehlt() throws Exception {
+        String token = neuesKonto(email());
+        String teamId = neuesTeam(token, "Werkstatt");
+        JsonNode basis = senden(mitToken(post("/api/v1/teams/" + teamId + "/artikel"), token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"name\":\"Patchkabel\",\"menge\":10}"), 200);
+        String id = basis.get("id").asText();
+
+        // Das erste Handy war schneller: 1 entnommen, schon auf dem Server.
+        senden(mitToken(post("/api/v1/teams/" + teamId + "/artikel/" + id + "/menge"), token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"was\":\"entnehmen\",\"anzahl\":1}"), 200);
+
+        // Das zweite hat ohne Netz 2 genommen und schickt jetzt seinen
+        // Ausgangsstand mit.
+        JsonNode antwort = senden(mitToken(post("/api/v1/teams/" + teamId + "/sync"), token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"artikel\":[{\"id\":\"" + id + "\",\"lokaleId\":3,"
+                        + "\"name\":\"Patchkabel\",\"menge\":8,"
+                        + "\"geaendertAm\":" + basis.get("geaendertAm").asLong() + ","
+                        + "\"basis\":" + basis + "}],\"protokoll\":[]}"), 200);
+
+        assertTrue(antwort.get("zuordnungen").get(0).get("angenommen").asBoolean());
+        JsonNode liste = senden(mitToken(get("/api/v1/teams/" + teamId + "/artikel"), token), 200);
+        assertEquals(7, liste.get(0).get("menge").asInt());
+    }
+
+    @Test
+    void nachgereichtesProtokollErreichtAuchGeraeteMitSpaeteremStand() throws Exception {
+        String token = neuesKonto(email());
+        String teamId = neuesTeam(token, "Lager");
+        String id = neuerArtikel(token, teamId, "Leiter", null);
+        long stand = senden(mitToken(get("/api/v1/teams/" + teamId + "/sync?seit=0"), token),
+                200).get("stand").asLong();
+
+        // Ein Handy, das eine Woche ohne Netz war, liefert einen alten Eintrag nach.
+        long eineWocheHer = stand - 7L * 24 * 60 * 60 * 1000;
+        senden(mitToken(post("/api/v1/teams/" + teamId + "/sync?seit=" + stand), token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"artikel\":[],\"protokoll\":[{\"artikelId\":\"" + id + "\","
+                        + "\"artikelName\":\"Leiter\",\"aktion\":\"Entnommen\","
+                        + "\"alterWert\":\"2\",\"neuerWert\":\"1\","
+                        + "\"zeitpunkt\":" + eineWocheHer + "}]}"), 200);
+
+        // Ein anderes Geraet, das zuletzt bei "stand" war, bekommt ihn trotzdem.
+        JsonNode neues = senden(mitToken(get("/api/v1/teams/" + teamId + "/sync?seit=" + stand),
+                token), 200).get("protokoll");
+        boolean dabei = false;
+        for (JsonNode eintrag : neues) {
+            dabei |= eintrag.get("zeitpunkt").asLong() == eineWocheHer;
+        }
+        assertTrue(dabei, "Protokoll: " + neues);
+    }
+
+    @Test
+    void protokollZuEinemNeuenArtikelFindetSeinenArtikel() throws Exception {
+        String token = neuesKonto(email());
+        String teamId = neuesTeam(token, "Keller");
+
+        // Artikel und sein erster Eintrag kommen im selben Abgleich - der
+        // Eintrag kennt nur die lokale Nummer.
+        JsonNode antwort = senden(mitToken(post("/api/v1/teams/" + teamId + "/sync"), token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"artikel\":[{\"lokaleId\":5,\"name\":\"Bohrhammer\","
+                        + "\"geaendertAm\":" + System.currentTimeMillis() + "}],"
+                        + "\"protokoll\":[{\"lokaleArtikelId\":5,\"artikelName\":\"Bohrhammer\","
+                        + "\"aktion\":\"Artikel erstellt\",\"zeitpunkt\":"
+                        + System.currentTimeMillis() + "}]}"), 200);
+        String id = antwort.get("zuordnungen").get(0).get("serverId").asText();
+
+        JsonNode protokoll = senden(mitToken(get("/api/v1/teams/" + teamId + "/artikel/" + id
+                + "/protokoll"), token), 200);
+        boolean erstellt = false;
+        for (JsonNode eintrag : protokoll) {
+            erstellt |= "Artikel erstellt".equals(eintrag.get("aktion").asText());
+        }
+        assertTrue(erstellt, "Protokoll: " + protokoll);
+    }
+
+    @Test
     void geloeschtesBleibtGeloeschtAuchBeiSpaeterAenderung() throws Exception {
         String token = neuesKonto(email());
         String teamId = neuesTeam(token, "Keller");

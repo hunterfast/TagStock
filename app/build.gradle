@@ -56,8 +56,8 @@ android {
         targetSdk 35
         // Beim Ausliefern hochzaehlen: die App vergleicht diese Nummer mit der
         // Fassung, die auf dem Server liegt.
-        versionCode 10
-        versionName "2.2.2"
+        versionCode 11
+        versionName "2.3.0"
         vectorDrawables.useSupportLibrary = true
 
         // Nur ARM: Handys mit Android 7 oder neuer haben keinen Intel-Prozessor

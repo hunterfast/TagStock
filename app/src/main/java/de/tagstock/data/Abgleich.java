@@ -18,7 +18,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.ReentrantLock;
 
 import de.tagstock.util.Einstellungen;
 import de.tagstock.util.Fotos;
@@ -27,8 +28,11 @@ import de.tagstock.util.Serverbilder;
 
 /**
  * Abgleich zwischen App und Server: eigene Aenderungen hochladen, fremde
- * uebernehmen. Auch die Artikelbilder gehen dabei auf den Server; auf dem
- * Geraet bleibt nur ein Zwischenspeicher.
+ * uebernehmen - Artikel wie Protokoll. Zu jedem Artikel geht der Stand mit,
+ * den die App zuletzt vom Server hatte; daran fuehrt der Server die
+ * Aenderungen zweier Geraete zusammen, statt eine zu verlieren. Auch die
+ * Artikelbilder gehen dabei auf den Server; auf dem Geraet bleibt nur ein
+ * Zwischenspeicher.
  */
 public final class Abgleich {
 
@@ -46,6 +50,11 @@ public final class Abgleich {
         public boolean abgemeldet;
         /** true, wenn gerade schon ein Abgleich lief - dann war das hier kein Fehler. */
         public boolean laeuftSchon;
+        /**
+         * true, wenn der Server gar nicht zu erreichen war - etwa unterwegs
+         * ohne VPN. Dann hilft nur ein anderes Netz, kein Wiederholen.
+         */
+        public boolean unerreichbar;
 
         public boolean erfolgreich() {
             return fehler == null;
@@ -62,8 +71,26 @@ public final class Abgleich {
     private Abgleich() {
     }
 
-    /** Fuehrt einen vollstaendigen Abgleich aus; die Antwort kommt im Hauptthread. */
+    /**
+     * Fuehrt einen vollstaendigen Abgleich aus; die Antwort kommt im
+     * Hauptthread. Laeuft gerade einer im Hintergrund, wartet dieser - wer
+     * von Hand abgleicht, will ein Ergebnis und keine Ausrede.
+     */
     public static void ausfuehren(Context context, Repository.Callback<Ergebnis> callback) {
+        ausfuehren(context, true, callback);
+    }
+
+    /**
+     * Fuer den Takt, solange die App offen ist: Laeuft gerade einer, faellt
+     * dieser aus - der naechste Takt kommt bestimmt.
+     */
+    public static void nebenbei(Context context) {
+        ausfuehren(context, false, ergebnis -> {
+        });
+    }
+
+    private static void ausfuehren(Context context, boolean warten,
+                                   Repository.Callback<Ergebnis> callback) {
         Context app = context.getApplicationContext();
         Ergebnis vorab = vorpruefung(app);
         if (vorab != null) {
@@ -71,7 +98,7 @@ public final class Abgleich {
             return;
         }
         ARBEITER.execute(() -> {
-            Ergebnis ergebnis = jetzt(app);
+            Ergebnis ergebnis = abgleichen(app, warten);
             HAUPTTHREAD.post(() -> callback.onResult(ergebnis));
         });
     }
@@ -82,12 +109,18 @@ public final class Abgleich {
      */
     @WorkerThread
     public static Ergebnis jetzt(Context context) {
+        // Im Hintergrund wartet er, bis ein laufender Abgleich fertig ist:
+        // Der hat womoeglich nicht mehr mitgenommen, weswegen dieser startet.
+        return abgleichen(context, true);
+    }
+
+    private static Ergebnis abgleichen(Context context, boolean warten) {
         Ergebnis vorab = vorpruefung(context);
         if (vorab != null) {
             return vorab;
         }
         try {
-            return durchfuehren(context, AppDatabase.getInstance(context));
+            return durchfuehren(context, AppDatabase.getInstance(context), warten);
         } catch (Exception fehler) {
             Ergebnis ergebnis = new Ergebnis();
             ergebnis.fehler = fehler.getMessage() == null
@@ -108,8 +141,8 @@ public final class Abgleich {
         return null;
     }
 
-    /** Zwei Abgleiche gleichzeitig braucht niemand - der zweite wartet nicht, er faellt aus. */
-    private static final AtomicBoolean LAEUFT = new AtomicBoolean(false);
+    /** Zwei Abgleiche gleichzeitig braucht niemand - der zweite wartet oder faellt aus. */
+    private static final ReentrantLock SPERRE = new ReentrantLock();
 
     /**
      * Der Abgleich laeuft neben der Oberflaeche her. Deshalb geht nichts ueber
@@ -117,12 +150,19 @@ public final class Abgleich {
      * Uebertragung geaendert wurde, bleibt offen und wird nicht vom
      * Serverstand ueberschrieben - es geht beim naechsten Mal mit.
      */
-    private static Ergebnis durchfuehren(Context context, AppDatabase db) {
+    private static Ergebnis durchfuehren(Context context, AppDatabase db, boolean warten) {
         ArtikelDao artikelDao = db.artikelDao();
         KategorieDao kategorieDao = db.kategorieDao();
         ProtokollDao protokollDao = db.protokollDao();
         Ergebnis ergebnis = new Ergebnis();
-        if (!LAEUFT.compareAndSet(false, true)) {
+        boolean gesperrt;
+        try {
+            gesperrt = warten ? SPERRE.tryLock(2, TimeUnit.MINUTES) : SPERRE.tryLock();
+        } catch (InterruptedException unterbrochen) {
+            Thread.currentThread().interrupt();
+            gesperrt = false;
+        }
+        if (!gesperrt) {
             ergebnis.fehler = "Abgleich laeuft bereits";
             ergebnis.laeuftSchon = true;
             return ergebnis;
@@ -130,9 +170,14 @@ public final class Abgleich {
         String url = Einstellungen.serverUrl(context);
         String token = Einstellungen.token(context);
         String teamId = Einstellungen.teamId(context);
-        long seit = Einstellungen.letzterSync(context);
-        ServerClient client = new ServerClient(url, token);
+        // Einmal alles: Das Protokoll der anderen Geraete kam frueher gar nicht
+        // an - so ist auch das Aeltere danach auf jedem Geraet.
+        boolean vollstaendig = Einstellungen.vollabgleichFaellig(context);
+        long seit = vollstaendig ? 0L : Einstellungen.letzterSync(context);
         try {
+            // Im try: Was hier schiefgeht, darf die Sperre nicht festhalten -
+            // sonst liefe nie wieder ein Abgleich.
+            ServerClient client = new ServerClient(url, token);
             // Geloeschtes zuerst - sonst kaeme es mit dem Serverstand zurueck.
             loeschungenMelden(context, client, teamId, ergebnis);
 
@@ -174,6 +219,8 @@ public final class Abgleich {
                 if (!gesendeteEintraege.isEmpty()) {
                     protokollDao.alsGesendetMarkieren(gesendeteEintraege);
                 }
+                protokollUebernehmen(antwort.optJSONArray("protokoll"), artikelDao,
+                        protokollDao);
             });
 
             // Neu angelegte Artikel haben jetzt eine Server-Kennung - ihre
@@ -182,14 +229,24 @@ public final class Abgleich {
 
             long stand = antwort.optLong("stand", System.currentTimeMillis());
             Einstellungen.setzeLetztenSync(context, stand);
+            if (vollstaendig) {
+                Einstellungen.vollabgleichErledigt(context);
+            }
         } catch (ServerClient.ServerFehler fehler) {
             ergebnis.fehler = fehler.getMessage();
             ergebnis.abgemeldet = fehler.istAbgemeldet();
-        } catch (Exception fehler) {
+            // 502 bis 504 kommen von einem Vorschaltrechner, wenn der Server
+            // dahinter nicht antwortet.
+            ergebnis.unerreichbar = fehler.status >= 502 && fehler.status <= 504;
+        } catch (java.io.IOException fehler) {
             ergebnis.fehler = fehler.getMessage() == null
                     ? "Server nicht erreichbar" : fehler.getMessage();
+            ergebnis.unerreichbar = true;
+        } catch (Exception fehler) {
+            ergebnis.fehler = fehler.getMessage() == null
+                    ? "Abgleich fehlgeschlagen" : fehler.getMessage();
         } finally {
-            LAEUFT.set(false);
+            SPERRE.unlock();
         }
         return ergebnis;
     }
@@ -225,6 +282,13 @@ public final class Abgleich {
         o.put("behaelterKennung", artikel.behaelterKennung);
         o.put("erstelltAm", artikel.erstelltAm);
         o.put("geaendertAm", artikel.geaendertAm);
+        if (artikel.basis != null) {
+            try {
+                o.put("basis", new JSONObject(artikel.basis));
+            } catch (JSONException kaputt) {
+                // Ohne Stand entscheidet der Server wie frueher nach der Zeit.
+            }
+        }
         return o;
     }
 
@@ -232,6 +296,9 @@ public final class Abgleich {
             throws JSONException {
         JSONObject o = new JSONObject();
         o.put("artikelId", artikelServerId);
+        // Fuer Artikel, die erst mit diesem Abgleich auf den Server kommen:
+        // Der Server setzt dann selbst die richtige Kennung ein.
+        o.put("lokaleArtikelId", eintrag.artikelId);
         o.put("artikelName", eintrag.artikelName);
         o.put("aktion", eintrag.aktion);
         o.put("alterWert", eintrag.alterWert);
@@ -446,6 +513,8 @@ public final class Abgleich {
             ziel.erstelltAm = o.optLong("erstelltAm", System.currentTimeMillis());
             ziel.geaendertAm = o.optLong("geaendertAm", ziel.erstelltAm);
             ziel.offen = false;
+            // Ab hier baut jede Aenderung auf diesem Stand auf.
+            ziel.basis = o.toString();
 
             if (vorhanden == null) {
                 artikelDao.insert(ziel);
@@ -453,6 +522,60 @@ public final class Abgleich {
                 artikelDao.update(ziel);
             }
             ergebnis.uebernommen++;
+        }
+    }
+
+    /**
+     * Uebernimmt das Protokoll der anderen Geraete und der Weboberflaeche -
+     * damit jeder Artikel ueberall denselben Verlauf zeigt. Die eigenen
+     * Eintraege kommen dabei zurueck; die erkennt man an Artikel, Aktion und
+     * Zeitpunkt und merkt sich nur ihre Server-Kennung.
+     */
+    private static void protokollUebernehmen(@Nullable JSONArray eintraege,
+                                             ArtikelDao artikelDao, ProtokollDao protokollDao) {
+        if (eintraege == null) {
+            return;
+        }
+        Map<String, Long> artikelIds = new HashMap<>();
+        for (int i = 0; i < eintraege.length(); i++) {
+            JSONObject o = eintraege.optJSONObject(i);
+            if (o == null) {
+                continue;
+            }
+            String serverId = leer(o.optString("id", null));
+            String artikelServerId = leer(o.optString("artikelId", null));
+            if (serverId == null || artikelServerId == null
+                    || protokollDao.nachServerId(serverId) != null) {
+                continue;
+            }
+            if (!artikelIds.containsKey(artikelServerId)) {
+                Artikel artikel = artikelDao.nachServerId(artikelServerId);
+                artikelIds.put(artikelServerId, artikel == null ? null : artikel.id);
+            }
+            Long artikelId = artikelIds.get(artikelServerId);
+            if (artikelId == null) {
+                // Den Artikel gibt es hier nicht (mehr).
+                continue;
+            }
+            String aktion = o.optString("aktion", "");
+            long zeitpunkt = o.optLong("zeitpunkt");
+            Protokoll eigener = protokollDao.eigenerOhneKennung(artikelId, aktion, zeitpunkt);
+            if (eigener != null) {
+                eigener.serverId = serverId;
+                protokollDao.update(eigener);
+                continue;
+            }
+            Protokoll eintrag = new Protokoll();
+            eintrag.serverId = serverId;
+            eintrag.artikelId = artikelId;
+            eintrag.artikelName = o.optString("artikelName", "");
+            eintrag.aktion = aktion;
+            eintrag.alterWert = leer(o.optString("alterWert", null));
+            eintrag.neuerWert = leer(o.optString("neuerWert", null));
+            eintrag.nutzer = leer(o.optString("nutzer", null));
+            eintrag.zeitpunkt = zeitpunkt;
+            eintrag.offen = false;
+            protokollDao.insert(eintrag);
         }
     }
 

@@ -27,6 +27,7 @@ public final class Einstellungen {
     private static final String SCHLUESSEL_SYNC = "letzterSync";
     private static final String SCHLUESSEL_GTIN = "gtinNachschlagen";
     private static final String SCHLUESSEL_LOESCHUNGEN = "loeschungen";
+    private static final String SCHLUESSEL_VOLLABGLEICH = "vollabgleich";
 
     private Einstellungen() {
     }
@@ -110,6 +111,19 @@ public final class Einstellungen {
         prefs(context).edit().putLong(SCHLUESSEL_SYNC, zeitpunkt).apply();
     }
 
+    /**
+     * true, solange einmal alles geholt werden muss: Vor App 2.3.0 kam das
+     * Protokoll der anderen Geraete nie an, und ihre aelteren Eintraege
+     * liegen vor dem letzten Abgleich.
+     */
+    public static boolean vollabgleichFaellig(Context context) {
+        return prefs(context).getInt(SCHLUESSEL_VOLLABGLEICH, 0) < 1;
+    }
+
+    public static void vollabgleichErledigt(Context context) {
+        prefs(context).edit().putInt(SCHLUESSEL_VOLLABGLEICH, 1).apply();
+    }
+
     /** true, wenn der Server bei Handelsnummern den Produktnamen nachschlagen darf. */
     public static boolean gtinNachschlagen(Context context) {
         return prefs(context).getBoolean(SCHLUESSEL_GTIN, false);
@@ -181,6 +195,7 @@ public final class Einstellungen {
                 .remove(SCHLUESSEL_ROLLE)
                 .remove(SCHLUESSEL_SYNC)
                 .remove(SCHLUESSEL_LOESCHUNGEN)
+                .remove(SCHLUESSEL_VOLLABGLEICH)
                 .apply();
     }
 
@@ -192,6 +207,7 @@ public final class Einstellungen {
                 .remove(SCHLUESSEL_ROLLE)
                 .remove(SCHLUESSEL_SYNC)
                 .remove(SCHLUESSEL_LOESCHUNGEN)
+                .remove(SCHLUESSEL_VOLLABGLEICH)
                 .apply();
     }
 }

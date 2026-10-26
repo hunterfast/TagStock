@@ -30,6 +30,13 @@ public class AbgleichArbeit extends Worker {
         if (ergebnis.erfolgreich()) {
             return Result.success();
         }
+        if (ergebnis.unerreichbar) {
+            // Unterwegs ohne VPN hilft kein Wiederholen - und jeder Fehlschlag
+            // liesse WorkManager laenger warten, bis zu fuenf Stunden, auch
+            // wenn laengst wieder das Heimnetz da ist. Ein neues Netz meldet
+            // sich selbst, und stuendlich wird ohnehin nachgesehen.
+            return Result.success();
+        }
         if (ergebnis.laeuftSchon) {
             // Was waehrend des laufenden Abgleichs geaendert wurde, hat der
             // nicht mehr mitgenommen - gleich danach noch einmal.

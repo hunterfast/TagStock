@@ -503,10 +503,9 @@ Adresse im Datensatz. Spielst du eine ältere Datenbank ein, bleiben neuere
 Bilddateien als Karteileichen liegen – sie stören nicht.
 
 **Auf dem Handy:** *Einstellungen → Daten → Import*, wahlweise ergänzend oder
-ersetzend. Hängt das Gerät an einem Server, gewinnt beim nächsten Abgleich der
-jüngere Zeitstempel – ein Import einer alten Datei wird also gegebenenfalls
-wieder überschrieben. Wer wirklich zurück will, spielt die Sicherung **auf dem
-Server** ein.
+ersetzend. Hängt das Gerät an einem Server, gilt dessen Stand für alle Geräte –
+ein Import auf einem Handy macht ihn nicht rückgängig. Wer wirklich zurück will,
+spielt die Sicherung **auf dem Server** ein.
 
 ---
 

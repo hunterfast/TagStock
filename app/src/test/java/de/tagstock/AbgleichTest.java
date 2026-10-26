@@ -2,6 +2,7 @@ package de.tagstock;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
@@ -9,6 +10,7 @@ import android.content.Context;
 
 import androidx.test.core.app.ApplicationProvider;
 
+import org.json.JSONObject;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -36,6 +38,7 @@ import de.tagstock.data.Abgleich;
 import de.tagstock.data.AppDatabase;
 import de.tagstock.data.Artikel;
 import de.tagstock.data.ArtikelDao;
+import de.tagstock.data.Protokoll;
 import de.tagstock.util.Einstellungen;
 
 /**
@@ -54,6 +57,9 @@ public class AbgleichTest {
     private final ExecutorService hintergrund = Executors.newSingleThreadExecutor();
 
     private final List<String> anfragen = Collections.synchronizedList(new ArrayList<>());
+    /** Was die App zuletzt zum Abgleich geschickt hat - Adresse und Inhalt. */
+    private volatile String letzteAdresse = "";
+    private volatile String letzterInhalt = "";
     private volatile String antwort = "{}";
     private volatile Runnable waehrendDerUebertragung = () -> {
     };
@@ -106,12 +112,21 @@ public class AbgleichTest {
                 laenge = Integer.parseInt(kopf.substring("content-length:".length()).trim());
             }
         }
-        for (int i = 0; i < laenge && ein.read() != -1; i++) {
-            // Der Inhalt interessiert hier nicht, er muss nur gelesen sein.
+        java.io.ByteArrayOutputStream inhalt = new java.io.ByteArrayOutputStream();
+        for (int i = 0; i < laenge; i++) {
+            int zeichen = ein.read();
+            if (zeichen == -1) {
+                break;
+            }
+            inhalt.write(zeichen);
         }
         String pfad = anfrage.length > 1 ? anfrage[1].split("\\?")[0] : "";
         String was = anfrage[0] + " " + pfad;
         anfragen.add(was);
+        if (was.endsWith("/sync")) {
+            letzteAdresse = anfrage[1];
+            letzterInhalt = new String(inhalt.toByteArray(), StandardCharsets.UTF_8);
+        }
 
         int status = 200;
         String text = "{}";
@@ -177,6 +192,8 @@ public class AbgleichTest {
         Abgleich.Ergebnis ergebnis = imHintergrund(() -> Abgleich.jetzt(context));
 
         assertFalse("Anfragen: " + anfragen, ergebnis.erfolgreich());
+        // Kein Fehler, den Wiederholen behebt - erst ein anderes Netz hilft.
+        assertTrue(ergebnis.unerreichbar);
         assertTrue("Fehler: " + ergebnis.fehler,
                 Einstellungen.loeschungen(context).contains("srv-1"));
     }
@@ -241,6 +258,95 @@ public class AbgleichTest {
         assertTrue(ergebnis.fehler, ergebnis.erfolgreich());
         assertEquals(1, ergebnis.geloescht);
         assertNull(imHintergrund(() -> artikelDao.nachId(stuhl)));
+    }
+
+    @Test
+    public void serverstandWirdGemerktUndGehtBeimNaechstenMalMit() throws Exception {
+        long kabel = neuerArtikel("Patchkabel", 10);
+        antwort = "{\"stand\":5,\"kategorien\":[],"
+                + "\"zuordnungen\":[{\"lokaleId\":" + kabel
+                + ",\"serverId\":\"srv-k\",\"angenommen\":true}],"
+                + "\"artikel\":[{\"id\":\"srv-k\",\"name\":\"Patchkabel\",\"menge\":10,"
+                + "\"status\":\"vorhanden\",\"geaendertAm\":5}]}";
+        assertTrue(imHintergrund(() -> Abgleich.jetzt(context)).erfolgreich());
+        assertNotNull(imHintergrund(() -> artikelDao.nachId(kabel)).basis);
+
+        // Ohne Netz 2 entnommen - der Server soll sehen, wovon das ausging.
+        imHintergrund(() -> {
+            Artikel artikel = artikelDao.nachId(kabel);
+            artikel.menge = 8;
+            artikel.geaendertAm++;
+            artikel.offen = true;
+            artikelDao.update(artikel);
+            return null;
+        });
+        antwort = "{\"stand\":6,\"kategorien\":[],\"zuordnungen\":[],\"artikel\":[]}";
+        assertTrue(imHintergrund(() -> Abgleich.jetzt(context)).erfolgreich());
+
+        JSONObject gesendet = new JSONObject(letzterInhalt).getJSONArray("artikel")
+                .getJSONObject(0);
+        assertEquals(8, gesendet.getInt("menge"));
+        assertEquals(10, gesendet.getJSONObject("basis").getInt("menge"));
+    }
+
+    @Test
+    public void protokollDerAnderenKommtAnUndEigenesNichtDoppelt() throws Exception {
+        long leiter = imHintergrund(() -> {
+            Artikel artikel = new Artikel();
+            artikel.name = "Leiter";
+            artikel.serverId = "srv-l";
+            artikel.offen = false;
+            return artikelDao.insert(artikel);
+        });
+        imHintergrund(() -> {
+            Protokoll eigener = new Protokoll();
+            eigener.artikelId = leiter;
+            eigener.artikelName = "Leiter";
+            eigener.aktion = "Entnommen";
+            eigener.zeitpunkt = 1500;
+            return AppDatabase.getInstance(context).protokollDao().insert(eigener);
+        });
+        antwort = "{\"stand\":5,\"kategorien\":[],\"zuordnungen\":[],\"artikel\":[],"
+                + "\"protokoll\":["
+                // der eigene, vom Server zurueck
+                + "{\"id\":\"p1\",\"artikelId\":\"srv-l\",\"artikelName\":\"Leiter\","
+                + "\"aktion\":\"Entnommen\",\"zeitpunkt\":1500},"
+                // einer vom anderen Handy
+                + "{\"id\":\"p2\",\"artikelId\":\"srv-l\",\"artikelName\":\"Leiter\","
+                + "\"aktion\":\"Zugang\",\"alterWert\":\"3\",\"neuerWert\":\"5\","
+                + "\"nutzer\":\"Anna\",\"zeitpunkt\":1600},"
+                // einer zu einem Artikel, den es hier nicht gibt
+                + "{\"id\":\"p3\",\"artikelId\":\"weg\",\"artikelName\":\"Alt\","
+                + "\"aktion\":\"Zugang\",\"zeitpunkt\":1700}]}";
+
+        assertTrue(imHintergrund(() -> Abgleich.jetzt(context)).erfolgreich());
+        // Der eigene ging mit der Nummer des Artikels hoch.
+        assertEquals(leiter, new JSONObject(letzterInhalt).getJSONArray("protokoll")
+                .getJSONObject(0).getLong("lokaleArtikelId"));
+        // Und kommt noch einmal - nichts darf doppelt werden.
+        assertTrue(imHintergrund(() -> Abgleich.jetzt(context)).erfolgreich());
+
+        List<Protokoll> verlauf = imHintergrund(() ->
+                AppDatabase.getInstance(context).protokollDao().alle());
+        assertEquals("Verlauf: " + verlauf.size(), 2, verlauf.size());
+        boolean vonAnna = false;
+        for (Protokoll eintrag : verlauf) {
+            assertNotNull(eintrag.serverId);
+            vonAnna |= "Anna".equals(eintrag.nutzer) && "5".equals(eintrag.neuerWert);
+        }
+        assertTrue(vonAnna);
+    }
+
+    @Test
+    public void ersterAbgleichNachDemUpdateHoltAlles() throws Exception {
+        Einstellungen.setzeLetztenSync(context, 1234L);
+        antwort = "{\"stand\":5,\"kategorien\":[],\"zuordnungen\":[],\"artikel\":[]}";
+
+        assertTrue(imHintergrund(() -> Abgleich.jetzt(context)).erfolgreich());
+        assertTrue(letzteAdresse, letzteAdresse.endsWith("seit=0"));
+
+        assertTrue(imHintergrund(() -> Abgleich.jetzt(context)).erfolgreich());
+        assertTrue(letzteAdresse, letzteAdresse.endsWith("seit=5"));
     }
 
     // ----------------------------------------------------------- Hilfsmittel

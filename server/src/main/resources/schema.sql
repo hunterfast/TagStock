@@ -113,7 +113,8 @@ CREATE TABLE IF NOT EXISTS protokoll (
     alter_wert   TEXT,
     neuer_wert   TEXT,
     nutzer       TEXT,
-    zeitpunkt    INTEGER NOT NULL
+    zeitpunkt    INTEGER NOT NULL,
+    eingegangen  INTEGER
 );
 CREATE INDEX IF NOT EXISTS idx_protokoll_team ON protokoll (team_id, zeitpunkt);
 CREATE INDEX IF NOT EXISTS idx_protokoll_artikel ON protokoll (artikel_id);

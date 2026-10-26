@@ -51,12 +51,15 @@ public class Schemapflege implements ApplicationRunner {
         spalten("artikel").put("ist_verpackung", "INTEGER NOT NULL DEFAULT 0");
         spalten("artikel").put("packungs_groesse", "INTEGER NOT NULL DEFAULT 0");
         spalten("artikel").put("angebrochen", "TEXT");
+        spalten("protokoll").put("eingegangen", "INTEGER");
     }
 
     /** Indizes, die eine hier ergaenzte Spalte brauchen. */
     private static final List<String> INDIZES = List.of(
             "CREATE INDEX IF NOT EXISTS idx_artikel_behaelter"
-                    + " ON artikel (team_id, behaelter_kennung)");
+                    + " ON artikel (team_id, behaelter_kennung)",
+            "CREATE INDEX IF NOT EXISTS idx_protokoll_eingang"
+                    + " ON protokoll (team_id, eingegangen)");
 
     private static Map<String, String> spalten(String tabelle) {
         return ERWARTET.computeIfAbsent(tabelle, name -> new LinkedHashMap<>());
@@ -84,10 +87,19 @@ public class Schemapflege implements ApplicationRunner {
                 LOG.info("Spalte {}.{} ergaenzt", tabelle.getKey(), spalte.getKey());
             }
         }
-        // Erst jetzt, wo alle Spalten stehen.
+        // Erst jetzt, wo alle Spalten stehen - und nur fuer Tabellen, die es
+        // gibt, wie bei den Spalten.
         for (String index : INDIZES) {
-            jdbc.execute(index);
+            if (tabelleDa(tabelleVon(index))) {
+                jdbc.execute(index);
+            }
         }
+    }
+
+    /** "CREATE INDEX ... ON artikel (...)" - die Tabelle hinter dem ON. */
+    private static String tabelleVon(String index) {
+        String rest = index.substring(index.indexOf(" ON ") + 4).trim();
+        return rest.substring(0, rest.indexOf(' ')).trim();
     }
 
     private boolean tabelleDa(String name) {
